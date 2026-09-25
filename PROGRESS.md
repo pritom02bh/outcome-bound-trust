@@ -5,7 +5,7 @@
 | 2 Environment + oracles | DONE | Seeded Beer Game (prepaid invoices, holding/backlog cost), read-only OracleView, honest main + backup suppliers, order-up-to buyer; reruns give identical cost. |
 | 3 Verifier | DONE | DELIVERY/PRICE template registry, deadline-ordered step with sync listeners, receipt allocation against double counting (D9); pass/fail/boundary tests. |
 | 4 Budget + gate | DONE | B(c) with cool-down (D3), P(c), §6 gate + offer staging (D4); hypothesis state machine checks I1 and I2, and catches gate mutants. |
-| 5 Dependency tracker | TODO | |
+| 5 Dependency tracker | DONE | Verifier listener flags citing actions + notes inside the failing step, replan hooks, late notes flagged on entry; I4 hypothesis machine (found + fixed duplicate-citation bug). |
 | 6 Scripted attackers | TODO | |
 | 7 Extractor + memory view | TODO | |
 | 8 LLM buyer agent | TODO | |
@@ -34,3 +34,7 @@
 - `obt/budget.py`: `BudgetConfig(b0, window, backup)`, `TrustBudget.B(c, now)` with cool-down rule (D3), `pending(c)` = value of executed actions citing >=1 PENDING claim of c.
 - `obt/gate.py`: `Gate.allow` = DESIGN §6 pseudocode (+ `UNKNOWN_CLAIM` for ids in neither store); `Gate.submit` logs PROPOSED, gates, commits staged claims, executes, adds exposure to cited PENDING claims (D1).
 - `tests/test_budget_gate.py`: unit tests per reason code and budget formula; hypothesis `RuleBasedStateMachine` over random claims, oracle events, verifier ticks and actions checking I1 after every execution and I2 (B rises only in a verifier step that PASSED a claim of c).
+
+### Stage 5 plan
+- `obt/deps.py`: `DependencyTracker(ledger, actions, notes, verifier)` subscribes to verifier resolutions; on FAILED flags every EXECUTED/PROPOSED action and every note citing the claim inside the verifier step, then fires replan hooks with a `FailureEvent`. `add_note` flags at once if a cited claim is already FAILED.
+- `tests/test_deps.py`: flags in the same step (flagged_round == failing round, before `step` returns), passing claims flag nothing, blocked actions untouched, hook fires once per failure, late note citing a FAILED claim is flagged; hypothesis state machine asserting I4 after every step.

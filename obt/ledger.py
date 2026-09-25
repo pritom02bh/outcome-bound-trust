@@ -104,7 +104,7 @@ class ActionLog:
         if action.status != "PROPOSED":
             raise LedgerError("actions enter the log PROPOSED")
         self._actions[action.action_id] = action
-        for k in action.cited_claims:
+        for k in dict.fromkeys(action.cited_claims):
             self._by_claim.setdefault(k, []).append(action.action_id)
 
     def transition(self, action_id: str, status: str, round_: int, reason: str | None = None) -> Action:
@@ -134,7 +134,7 @@ class NoteLog:
         if note.note_id in self._notes:
             raise LedgerError(f"note {note.note_id} already logged")
         self._notes[note.note_id] = note
-        for k in note.cited_claims:
+        for k in dict.fromkeys(note.cited_claims):
             self._by_claim.setdefault(k, []).append(note.note_id)
 
     def flag(self, note_id: str, round_: int) -> Note:
