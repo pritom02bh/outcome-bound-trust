@@ -59,6 +59,14 @@ _PRICE = re.compile(
     r"\b(?:valid until|good until|through)\s+round\s+" + _NUM, re.I)
 
 
+class NullExtractor(Extractor):
+    """For LLM baselines that never read claims: no extraction cost, everything UNTESTABLE."""
+    name = "null"
+
+    def propose(self, msg: Message) -> list[dict]:
+        return []
+
+
 class RuleExtractor(Extractor):
     """Deterministic regex extractor for scripted runs and as a baseline for the LLM one."""
     name = "rule"

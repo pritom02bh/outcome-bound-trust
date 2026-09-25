@@ -98,6 +98,7 @@ class LLM:
         self.calls = 0
         self.tokens = 0
         self.latency = 0.0
+        self.by_purpose: dict[str, dict[str, float]] = {}
 
     def _key(self, system: str, user: str, schema: dict | None) -> str:
         blob = json.dumps([self.backend, self.model, self.temperature, self.seed, self.think,
@@ -125,6 +126,10 @@ class LLM:
         self.calls += 1
         self.tokens += reply.prompt_tokens + reply.completion_tokens
         self.latency += reply.latency_s
+        p = self.by_purpose.setdefault(purpose or "?", {"calls": 0, "tokens": 0, "latency_s": 0.0})
+        p["calls"] += 1
+        p["tokens"] += reply.prompt_tokens + reply.completion_tokens
+        p["latency_s"] += reply.latency_s
         self._log(reply, purpose, key)
         return reply
 

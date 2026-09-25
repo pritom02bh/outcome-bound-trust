@@ -8,7 +8,7 @@
 | 5 Dependency tracker | DONE | Verifier listener flags citing actions + notes inside the failing step, replan hooks, late notes flagged on entry; I4 hypothesis machine (found + fixed duplicate-citation bug). |
 | 6 Scripted attackers | DONE | Gateway, rule extractor, offer book, sim loop + BuyerAPI, pulse-scripted buyer (D10), scenarios 1-10; deterministic traces for obt/none, per-scenario checks, OBT loss < no-defense loss. |
 | 7 Extractor + memory view | DONE | LLM backend (logged, cached, paid calls fail closed, $13 CostMeter), pydantic-validated LLMExtractor (bad output -> UNTESTABLE), render(); I5 canary/injection, slot-smuggling, structural tests; live test passes on gemma3:12b. |
-| 8 LLM buyer agent | TODO | |
+| 8 LLM buyer agent | DONE | LLMBuyer (render-only context, code-derived values, block->replan, selfcheck veto, parse fallback). gpt-oss:20b honest OBT run $6,224.5 < backup-only $6,932.0 (seed 1, runs/stage8_gpt-oss-20b_obt_s1.json). |
 | 9 TLA+ spec | TODO | |
 | 10 Eval harness | TODO | |
 
