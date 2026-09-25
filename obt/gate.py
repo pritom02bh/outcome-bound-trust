@@ -37,24 +37,31 @@ class Gate:
             return False, "OVER_BUDGET"
         return True, "OK"
 
-    def submit(self, a: Action, now: int, execute: Callable[[Action], None] | None = None) -> Action:
-        """Log, gate, and (if allowed) execute one action. Returns its final record."""
+    def decide(self, a: Action, now: int) -> Action:
+        """Round phase 7: log, gate and commit one action. Allowed actions count toward P(c) at once,
+        so later proposals in the same round see them. Environment effects happen in phase 8."""
         self.actions.append(a)
         ok, reason = self.allow(a, now) if self.enforce else (True, "UNGATED")
         if not ok:
             return self.actions.transition(a.action_id, "BLOCKED", now, reason)
         cited = list(dict.fromkeys(a.cited_claims))
-        if a.counterparty != self.budget.cfg.backup:
+        backup = a.counterparty == self.budget.cfg.backup
+        if not backup:
             # D4: the offer is now relied on, so it becomes a ledger claim the verifier will test.
             for k in cited:
                 if k not in self.ledger and k in self.offers:
                     self.ledger.append(self.offers.take(k), round_=now)
-        if execute is not None:
-            execute(a)
         done = self.actions.transition(a.action_id, "EXECUTED", now, reason)
-        if a.counterparty != self.budget.cfg.backup:
+        if not backup:
             for k in cited:
                 # D1: only PENDING claims take on exposure.
                 if k in self.ledger and self.ledger[k].status == "PENDING":
                     self.ledger.add_exposure(k, a.value, now)
         return done
+
+    def submit(self, a: Action, now: int, execute: Callable[[Action], None] | None = None) -> Action:
+        """decide + execute in one call (used outside the round loop, e.g. unit tests)."""
+        rec = self.decide(a, now)
+        if rec.status == "EXECUTED" and execute is not None:
+            execute(rec)
+        return rec

@@ -1,7 +1,7 @@
 """Beer Game variant (DESIGN §8): one buyer, a cheap main supplier, a pricier honest backup.
 
-Round t runs: arrivals -> demand -> holding/backlog cost, then the buyer orders.
-Orders are prepaid at the supplier's invoice price, which is what makes a broken
+`step()` is the single source of truth for the round order (DESIGN §5). Orders
+are prepaid at the supplier's invoice price, which is what makes a broken
 delivery promise a direct loss.
 """
 from __future__ import annotations
@@ -9,6 +9,7 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass, field
+from typing import Protocol
 
 from .oracles import Invoice, Oracles, Receipt
 
@@ -32,6 +33,42 @@ class GameConfig:
     # Buyer stops expecting an order this many rounds after its promised arrival.
     write_off_grace: int = 1
     default_lot: int = 20
+
+
+# DESIGN §5 round order. Nothing else may reorder these.
+ROUND_ORDER = ("env", "verify", "budget", "remediate", "messages", "propose", "gate", "execute")
+
+
+class RoundPhases(Protocol):
+    """One method per ROUND_ORDER entry.
+
+    env        environment posts deliveries and invoices to the oracles, then demand and costs
+    verify     verifier resolves due claims
+    budget     budget recompute
+    remediate  dependency tracker flags + automatic remediation
+    messages   new supplier messages -> gateway -> extractor -> claim store
+    propose    buyer agent proposes actions
+    gate       gate decides each action in proposal order; allowed actions commit immediately
+    execute    allowed actions hit the environment; blocked ORDER qty is rerouted to backup
+    """
+
+    def env(self) -> None: ...
+    def verify(self) -> None: ...
+    def budget(self) -> None: ...
+    def remediate(self) -> None: ...
+    def messages(self) -> None: ...
+    def propose(self) -> None: ...
+    def gate(self) -> None: ...
+    def execute(self) -> None: ...
+
+
+def step(phases: RoundPhases) -> list[str]:
+    """Run one round in the fixed order and return the phases run."""
+    done = []
+    for name in ROUND_ORDER:
+        getattr(phases, name)()
+        done.append(name)
+    return done
 
 
 def base_stock(cfg: GameConfig, lead: int, z: float = 1.65) -> int:
@@ -164,6 +201,7 @@ class BeerGame:
         self.orders: dict[str, OrderRecord] = {}
         self.history: list[RoundState] = []
         self._transit: list[_Shipment] = []
+        self._unposted_invoices: list[Invoice] = []
         self._next_order = 0
 
     @property
@@ -175,6 +213,10 @@ class BeerGame:
         if t > self.cfg.rounds:
             raise RuntimeError("game over")
         self.round = t
+        # Phase 1: invoices issued last round are posted together with this round's deliveries.
+        for inv in self._unposted_invoices:
+            self._oracles.record_invoice(inv)
+        self._unposted_invoices = []
         arrived: dict[str, int] = {}
         keep = []
         for s in self._transit:
@@ -207,7 +249,7 @@ class BeerGame:
         oid = f"o{self._next_order}"
         reply = self.suppliers[supplier].on_order(OrderRequest(oid, self.round, qty))
         # The supplier sets the invoice; the buyer pays it up front.
-        self._oracles.record_invoice(Invoice(self.round, supplier, ITEM, qty, reply.unit_price, oid))
+        self._unposted_invoices.append(Invoice(self.round, supplier, ITEM, qty, reply.unit_price, oid))
         self.costs["purchase"] += qty * reply.unit_price
         for q, arr in reply.shipments:
             if q > 0:

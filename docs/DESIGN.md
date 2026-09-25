@@ -73,6 +73,17 @@ A message the extractor can't map to a valid template becomes `UNTESTABLE`. Unte
 - **Gate.** Checks each proposed action against the rules (§6). Blocked actions return to the agent with a reason code.
 - **Dependency tracker.** When a claim fails, flags every action and note citing it in the same step and fires a replan hook.
 
+**Round order (single source of truth: `obt/env/beer_game.py: ROUND_ORDER`, `step()`).** Every round runs exactly:
+
+1. Environment posts deliveries and invoices to the oracles (invoices issued last round are posted now), then demand and holding/backlog costs.
+2. Verifier resolves due claims.
+3. Budget recompute.
+4. Dependency tracker flags + automatic remediation.
+5. New supplier messages → gateway → extractor → claim store.
+6. Buyer agent proposes actions (proposals only; nothing is decided or executed yet).
+7. Gate decides each action in proposal order; allowed actions commit immediately (they count toward `P(c)` and consume claim capacity before the next proposal is decided).
+8. Execute allowed actions; blocked ORDER quantity is rerouted to backup by code.
+
 ## 6. Gate and budget
 
 Definitions per counterparty `c`:

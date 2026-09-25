@@ -51,21 +51,19 @@ def test_obt_order_value_comes_from_claims_not_llm(tmp_path):
     assert sim.budget.B(MAIN, sim.game.round) <= 5.0 + max(a.value for a in execd)
 
 
-def test_block_triggers_one_replan_call(tmp_path):
+def test_block_is_rerouted_by_code_not_llm(tmp_path):
     calls = []
 
     def fn(system, user):
         calls.append(user)
-        if "BLOCKED with reason OVER_BUDGET" in user:
-            return json.dumps({"backup_qty": 33})
         return decision(offer_ids(user), backup=0, lot=100)   # 100-unit lot is way over b0
     sim, buyer = make(tmp_path, fn, rounds=3)
     sim.run()
     blocked = [a for a in main_actions(sim) if a.status == "BLOCKED"]
     assert blocked and all(a.reason == "OVER_BUDGET" for a in blocked)
-    assert buyer.stats["replans"] == len(blocked)
-    backups = [a for a in sim.actions if a.counterparty == BACKUP]
-    assert [a.qty for a in backups if a.round in {b.round for b in blocked}] == [33] * len(blocked)
+    assert buyer.stats["replans"] == 0 and not any("BLOCKED with reason" in u for u in calls)
+    backups = [o for o in sim.game.orders.values() if o.supplier == BACKUP]
+    assert [(o.round, o.qty) for o in backups] == [(b.round, b.qty) for b in blocked]
 
 
 def test_unparseable_output_falls_back_to_backup(tmp_path):

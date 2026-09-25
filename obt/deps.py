@@ -1,7 +1,8 @@
 """Failure propagation (DESIGN §5, I4).
 
-Runs inside the verifier step as a listener, so by the time `Verifier.step`
-returns, everything that cited a failed claim is already flagged.
+In the round loop the tracker runs as phase 4 (`process`), right after the
+verifier and before anything else can act on the failed claim. Standalone
+(auto=True) it listens to the verifier directly.
 """
 from __future__ import annotations
 
@@ -23,17 +24,26 @@ class FailureEvent:
 
 
 class DependencyTracker:
-    def __init__(self, ledger: Ledger, actions: ActionLog, notes: NoteLog, verifier: Verifier) -> None:
+    def __init__(self, ledger: Ledger, actions: ActionLog, notes: NoteLog, verifier: Verifier,
+                 auto: bool = True) -> None:
         self.ledger = ledger
         self.actions = actions
         self.notes = notes
         self.events: list[FailureEvent] = []
         self._hooks: list[Callable[[FailureEvent], None]] = []
-        verifier.subscribe(self._on_resolved)
+        if auto:
+            verifier.subscribe(self._on_resolved)
 
     def on_failure(self, hook: Callable[[FailureEvent], None]) -> None:
         """Register a replan hook, called once per failed claim."""
         self._hooks.append(hook)
+
+    def process(self, resolved: list[Claim], now: int) -> list[FailureEvent]:
+        """Phase 4: flag everything citing the claims that just failed."""
+        before = len(self.events)
+        for c in resolved:
+            self._on_resolved(c, now)
+        return self.events[before:]
 
     def _on_resolved(self, claim: Claim, now: int) -> None:
         if claim.status != "FAILED":

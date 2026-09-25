@@ -74,7 +74,7 @@
 | Item | Status | Summary |
 |---|---|---|
 | F0 Freeze old state | DONE | Stopped eval at 12/40, tagged `v1-pre-fixes`, moved runs to `runs/_invalid_v1/` (+README), branch `fixes-v2`. |
-| F1 Fixed round order | TODO | |
+| F1 Fixed round order | DONE | `ROUND_ORDER` + `step()` in beer_game drive `Sim.phase_*`; gate decides after all proposals and commits at once; blocked ORDER qty rerouted to backup (replaces LLM replan); invoices posted next round; DESIGN §5 updated. Scenario-8 loss threshold xfail until F2. |
 | F2 Gate claim-action binding | TODO | |
 | F3 Verifier allocation + grace | TODO | |
 | F4 Remediation in code | TODO | |
