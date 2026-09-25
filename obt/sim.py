@@ -33,6 +33,7 @@ class SimConfig:
     defense: str = "obt"
     raw_history: int = 6
     horizon_cap: int = 8
+    grace: int = 0          # δ: DELIVERY claims resolve at by_round + δ (F3)
 
     def budget_cfg(self) -> BudgetConfig:
         return BudgetConfig.from_game(self.game, self.b0_frac, self.window)
@@ -153,7 +154,7 @@ class Sim:
         # Only OBT enforces the gate; selfcheck adds its own LLM veto on top of an open gate.
         self.gate = Gate(self.ledger, self.actions, self.budget, enforce=cfg.defense == "obt",
                          min_lead={MAIN: cfg.game.main_lead})
-        self.verifier = Verifier(self.ledger, self.game.oracles, cfg.allocate_receipts)
+        self.verifier = Verifier(self.ledger, self.game.oracles, cfg.allocate_receipts, grace=cfg.grace)
         self.deps = DependencyTracker(self.ledger, self.actions, self.notes, self.verifier, auto=False)
         self.gateway = Gateway(extractor or RuleExtractor(), self.ledger, {MAIN}, horizon_cap=cfg.horizon_cap)
         self.trace: list[dict] = []

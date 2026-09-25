@@ -156,11 +156,14 @@ def test_allocation_honest_pipeline_all_pass():
     assert all(c.status == "PASSED" for c in led)
 
 
-def test_failed_claim_does_not_consume_receipts():
+def test_units_credited_at_arrival_even_to_a_claim_that_later_fails():
+    # F3 supersedes D9's "failed claims consume nothing": units go to the earliest-deadline
+    # claim when they arrive, so the 20 units back "big" (owed 50) and "small" gets none.
     o, led, v = make()
     owe(led, delivery("big", created=5, qty=50, by=7))
     owe(led, delivery("small", created=6, qty=20, by=8))
     receipt(o, 7, 20)
     v.step(7)
     v.step(8)
-    assert led["big"].status == "FAILED" and led["small"].status == "PASSED"
+    assert led["big"].status == "FAILED" and led["small"].status == "FAILED"
+    assert v.allocated("big") == 20 and v.allocated("small") == 0

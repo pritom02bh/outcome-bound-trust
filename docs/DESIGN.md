@@ -61,7 +61,7 @@ Tests are **typed templates**, not code. The extractor picks a template and fill
 
 | Template                             | Passes iff (checked against oracle)                                                |
 | ------------------------------------ | ---------------------------------------------------------------------------------- |
-| DELIVERY(item, qty, by_round)        | units received from counterparty in (created_round, by_round], credited to at most one claim, ≥ **consumed** |
+| DELIVERY(item, qty, by_round)        | units credited to it by round by_round + δ ≥ **consumed**. Each unit received from the counterparty is credited on arrival to its earliest-deadline PENDING DELIVERY claim for the item that still needs units and whose window (created_round, by_round + δ] contains the arrival; a unit backs at most one claim. Resolves at by_round + δ (δ config, default 0). Partial delivery fails. |
 | PRICE(item, unit_price, valid_until) | every invoice for item from counterparty in [created_round, valid_until) has price ≤ unit_price |
 
 Either template resolves LAPSED instead if `consumed = 0`. A message the extractor can't map to a valid template becomes `UNTESTABLE`, as does any claim whose deadline is more than `H` rounds after creation (default 8). Untestable claims can't be cited.
@@ -74,7 +74,7 @@ Either template resolves LAPSED instead if `consumed = 0`. A message the extract
 - **Memory view.** The only path from counterparty data to the agent. Renders claims as cards (template, slots, status, deadline) plus each counterparty's track record and current budget headroom. No raw text.
 - **Buyer agent (LLM).** Plans orders across a main supplier and a backup. Must cite claim ids on every action toward a counterparty. Its notes may cite claim ids too.
 - **Oracles.** Environment-owned records: warehouse receipts, invoices. Read-only to everything except the environment.
-- **Verifier.** Each round, resolves every PENDING claim with `deadline <= now` against the oracle.
+- **Verifier.** Each round (phase 2), credits newly arrived units to DELIVERY claims (earliest deadline first), then resolves every PENDING claim that is due: DELIVERY at `by_round + δ`, PRICE at `valid_until`.
 - **Trust budget.** Per counterparty, computed in code (§6).
 - **Gate.** Checks each proposed action against the rules (§6). Blocked actions return to the agent with a reason code.
 - **Dependency tracker.** When a claim fails, flags every action and note citing it in the same step and fires a replan hook.

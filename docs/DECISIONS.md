@@ -39,7 +39,9 @@ For orders to `S_main`, code sets `qty = sum(qty of cited DELIVERY claims)` and 
 ## D8. b0 default
 `b0 = 5%` of expected per-round spend = 0.05 * 20 units * $5 = $5 (1 unit). This is very tight and costs utility in scenario 1; `b0` and `W` are config fields and should be ablated (§11).
 
-## D9. DELIVERY receipts can be double-counted
+## D9. DELIVERY receipts can be double-counted — FORMALIZED by F3
+**Status.** F3 replaces the allocation rule: units are credited as they arrive, to the earliest-deadline PENDING claim that still needs units, so a claim that later fails keeps the units it was credited. `allocate_receipts=False` still gives the literal template.
+
 **Issue.** DELIVERY passes iff "received >= qty in (created_round, by_round]". Windows of consecutive claims overlap, so one real shipment can satisfy several claims. Example: claims made at rounds 5 and 6, both for 20 units, due by rounds 7 and 8. The supplier ships 20 units once, arriving at round 7. Both claims pass, so a supplier can keep passing claims while delivering half of what it promised.
 **Code.** `Verifier(allocate_receipts=True)` (default): claims resolve in deadline order, and a passing claim consumes the units it counted, so each received unit backs at most one claim. A failed claim consumes nothing. `allocate_receipts=False` gives the literal template for comparison.
 **Proposed change.** Amend the DELIVERY row in §4: "... received >= qty units not already credited to another claim".
