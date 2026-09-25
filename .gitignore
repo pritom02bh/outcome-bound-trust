@@ -3,3 +3,7 @@ runs/
 .env
 __pycache__/
 .DS_Store
+tools/
+spec/tla2tools.jar
+spec/states/
+spec/*.out

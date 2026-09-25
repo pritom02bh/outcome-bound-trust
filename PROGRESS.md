@@ -9,7 +9,7 @@
 | 6 Scripted attackers | DONE | Gateway, rule extractor, offer book, sim loop + BuyerAPI, pulse-scripted buyer (D10), scenarios 1-10; deterministic traces for obt/none, per-scenario checks, OBT loss < no-defense loss. |
 | 7 Extractor + memory view | DONE | LLM backend (logged, cached, paid calls fail closed, $13 CostMeter), pydantic-validated LLMExtractor (bad output -> UNTESTABLE), render(); I5 canary/injection, slot-smuggling, structural tests; live test passes on gemma3:12b. |
 | 8 LLM buyer agent | DONE | LLMBuyer (render-only context, code-derived values, block->replan, selfcheck veto, parse fallback). gpt-oss:20b honest OBT run $6,224.5 < backup-only $6,932.0 (seed 1, runs/stage8_gpt-oss-20b_obt_s1.json). |
-| 9 TLA+ spec | TODO | |
+| 9 TLA+ spec | DONE | TLC: I1-I4 hold on 80.7M states (small bounds); budget-check-removed mutant gives a 4-step I1 counterexample. |
 | 10 Eval harness | TODO | |
 
 ## Notes
@@ -59,3 +59,8 @@
 - `obt/sim.py`: `BuyerAPI.veto` for the selfcheck baseline; buyer stats in metrics.
 - `eval/stage8.py`: honest scenario, LLM buyer under OBT vs scripted backup-only on the same seed; writes `runs/stage8_*.json`.
 - `tests/test_llm_buyer.py`: fake-backend tests (citations passed through, value never from the LLM, block -> re-plan call, bad JSON fallback, selfcheck veto, prompt has no raw text under OBT). Acceptance run on gpt-oss:20b (dev on gemma3:12b while it downloads).
+
+### Stage 9 plan
+- `spec/OBT.tla`: one counterparty; offer book -> ledger commit, gate with budget, verifier with nondeterministic outcomes + same-step flagging, notes, ticks. I1-I3 as action properties, I4 as a state invariant; `CHECK_BUDGET` switches the mutated gate.
+- `spec/OBT.cfg` (3 claims, 3 actions, 1 note, values {1,2}, B0=1, W=1, 3 rounds) and `spec/OBT_mutant.cfg`; `spec/check.sh` runner (portable JDK in `tools/`, git-ignored).
+- Result: correct gate 80,680,591 distinct states, no error (4m51s); mutant -> "Action property I1 is violated" after 4 states (order value 2 executes with B0 = 1).
