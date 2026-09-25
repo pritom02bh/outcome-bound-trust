@@ -4,7 +4,7 @@
 | 1 Types + ledger | DONE | Frozen Claim/Action/Note models, illegal transitions raise, append-only Ledger/ActionLog/NoteLog with verifier capability key (25 tests). |
 | 2 Environment + oracles | DONE | Seeded Beer Game (prepaid invoices, holding/backlog cost), read-only OracleView, honest main + backup suppliers, order-up-to buyer; reruns give identical cost. |
 | 3 Verifier | DONE | DELIVERY/PRICE template registry, deadline-ordered step with sync listeners, receipt allocation against double counting (D9); pass/fail/boundary tests. |
-| 4 Budget + gate | TODO | |
+| 4 Budget + gate | DONE | B(c) with cool-down (D3), P(c), §6 gate + offer staging (D4); hypothesis state machine checks I1 and I2, and catches gate mutants. |
 | 5 Dependency tracker | TODO | |
 | 6 Scripted attackers | TODO | |
 | 7 Extractor + memory view | TODO | |
@@ -28,3 +28,9 @@
 ### Stage 3 plan
 - `obt/verifier.py`: pure template checks `check_delivery`, `check_price` in a fixed registry; `Verifier(ledger, oracles, allocate_receipts=True)` binds the ledger key, `step(now)` resolves PENDING claims with deadline <= now in deadline order and notifies listeners synchronously (for stage 5).
 - `tests/test_verifier.py`: pass/fail for both templates; boundary rounds (receipt at created_round excluded, at by_round included, at by_round+1 too late; invoice at created_round included, at valid_until excluded; price equal passes, one cent above fails; vacuous PRICE); not resolved before deadline; UNTESTABLE ignored; no double counting (D9) and literal mode shows the gap.
+
+### Stage 4 plan
+- `obt/ledger.py`: add `OfferBook` (staged claims not yet relied on, D4).
+- `obt/budget.py`: `BudgetConfig(b0, window, backup)`, `TrustBudget.B(c, now)` with cool-down rule (D3), `pending(c)` = value of executed actions citing >=1 PENDING claim of c.
+- `obt/gate.py`: `Gate.allow` = DESIGN §6 pseudocode (+ `UNKNOWN_CLAIM` for ids in neither store); `Gate.submit` logs PROPOSED, gates, commits staged claims, executes, adds exposure to cited PENDING claims (D1).
+- `tests/test_budget_gate.py`: unit tests per reason code and budget formula; hypothesis `RuleBasedStateMachine` over random claims, oracle events, verifier ticks and actions checking I1 after every execution and I2 (B rises only in a verifier step that PASSED a claim of c).

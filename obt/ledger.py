@@ -150,3 +150,39 @@ class NoteLog:
 
     def __len__(self) -> int:
         return len(self._notes)
+
+
+class OfferBook:
+    """Extracted claims not yet relied on (DECISIONS D4).
+
+    A supplier's offer is conditional on the buyer ordering, so its claims only
+    enter the ledger once an allowed action cites them. Unaccepted offers never
+    get verified and can't hurt an honest supplier's record.
+    """
+
+    def __init__(self) -> None:
+        self._claims: dict[str, Claim] = {}
+
+    def add(self, claim: Claim) -> None:
+        if claim.claim_id in self._claims:
+            raise LedgerError(f"offer claim {claim.claim_id} already staged")
+        self._claims[claim.claim_id] = claim
+
+    def get(self, claim_id: str) -> Claim | None:
+        return self._claims.get(claim_id)
+
+    def take(self, claim_id: str) -> Claim:
+        return self._claims.pop(claim_id)
+
+    def __contains__(self, claim_id: object) -> bool:
+        return claim_id in self._claims
+
+    def __iter__(self) -> Iterator[Claim]:
+        return iter(list(self._claims.values()))
+
+    def expire_before(self, round_: int) -> list[Claim]:
+        """Drop offers made before `round_`; they were never accepted."""
+        gone = [c for c in self._claims.values() if c.created_round < round_]
+        for c in gone:
+            del self._claims[c.claim_id]
+        return gone
