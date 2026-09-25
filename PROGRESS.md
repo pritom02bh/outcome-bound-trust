@@ -10,7 +10,7 @@
 | 7 Extractor + memory view | DONE | LLM backend (logged, cached, paid calls fail closed, $13 CostMeter), pydantic-validated LLMExtractor (bad output -> UNTESTABLE), render(); I5 canary/injection, slot-smuggling, structural tests; live test passes on gemma3:12b. |
 | 8 LLM buyer agent | DONE | LLMBuyer (render-only context, code-derived values, block->replan, selfcheck veto, parse fallback). gpt-oss:20b honest OBT run $6,224.5 < backup-only $6,932.0 (seed 1, runs/stage8_gpt-oss-20b_obt_s1.json). |
 | 9 TLA+ spec | DONE | TLC: I1-I4 hold on 80.7M states (small bounds); budget-check-removed mutant gives a 4-step I1 counterexample. |
-| 10 Eval harness | TODO | |
+| 10 Eval harness | DONE | eval/run.py (loss/utility/overhead/extractor tables, $13 hard stop, paid fail-closed), 200-message labeled set; scripted + fake-LLM end-to-end tests. |
 
 ## Notes
 
@@ -64,3 +64,8 @@
 - `spec/OBT.tla`: one counterparty; offer book -> ledger commit, gate with budget, verifier with nondeterministic outcomes + same-step flagging, notes, ticks. I1-I3 as action properties, I4 as a state invariant; `CHECK_BUDGET` switches the mutated gate.
 - `spec/OBT.cfg` (3 claims, 3 actions, 1 note, values {1,2}, B0=1, W=1, 3 rounds) and `spec/OBT_mutant.cfg`; `spec/check.sh` runner (portable JDK in `tools/`, git-ignored).
 - Result: correct gate 80,680,591 distinct states, no error (4m51s); mutant -> "Action property I1 is violated" after 4 states (order value 2 executes with B0 = 1).
+
+### Stage 10 plan
+- `eval/extractor_set/build.py` -> `messages.jsonl`: 200 seeded labeled messages (honest, relative time, delivery/price only, split, far, special, vague, distractor, negated, injection).
+- `eval/run.py`: scenarios x defenses x seeds; per-run JSON lines, `summary.json` + `summary.md` with loss from lies, utility (scenarios 1, 9), overhead per round vs none, extractor P/R (rule + LLM). Paid path: `check_budget` before every run, `CostMeter` before every call, hard stop at $13 recorded in the report; never sets `OBT_ALLOW_PAID`. Baselines use `NullExtractor` so overhead is fair. Each eval logs its LLM calls to its own dir under `runs/`.
+- `tests/test_eval.py`: scripted end-to-end, fake-LLM end-to-end with overhead, multiset scoring, hard stop at cap, paid refused without env flag.
