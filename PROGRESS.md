@@ -7,7 +7,7 @@
 | 4 Budget + gate | DONE | B(c) with cool-down (D3), P(c), §6 gate + offer staging (D4); hypothesis state machine checks I1 and I2, and catches gate mutants. |
 | 5 Dependency tracker | DONE | Verifier listener flags citing actions + notes inside the failing step, replan hooks, late notes flagged on entry; I4 hypothesis machine (found + fixed duplicate-citation bug). |
 | 6 Scripted attackers | DONE | Gateway, rule extractor, offer book, sim loop + BuyerAPI, pulse-scripted buyer (D10), scenarios 1-10; deterministic traces for obt/none, per-scenario checks, OBT loss < no-defense loss. |
-| 7 Extractor + memory view | TODO | |
+| 7 Extractor + memory view | DONE | LLM backend (logged, cached, paid calls fail closed, $13 CostMeter), pydantic-validated LLMExtractor (bad output -> UNTESTABLE), render(); I5 canary/injection, slot-smuggling, structural tests; live test passes on gemma3:12b. |
 | 8 LLM buyer agent | TODO | |
 | 9 TLA+ spec | TODO | |
 | 10 Eval harness | TODO | |
@@ -47,3 +47,9 @@
 - `obt/agent.py`: `ScriptedClaimBuyer` (base-stock need, accepts main offer if price <= backup and lot <= need + slack, headroom-aware request under OBT, backup covers the rest).
 - `obt/attacks/suppliers.py`: scenarios 1-10 from DESIGN §9 + `make_supplier(n, cfg, seed)`.
 - `tests/test_scenarios.py`: every scenario x {obt, none} produces an identical trace on rerun; per-scenario behaviour checks (which claims fail, UNTESTABLE blocks, far deadlines stay pending, I1 holds every round under OBT, OBT loss <= none loss for lying scenarios).
+
+### Stage 7 plan
+- `obt/llm.py`: `LLM(backend, model)` for `ollama` | `openai` | `fake`; JSON-schema output; every call logged to `runs/llm_calls.jsonl` (model, tokens, latency, purpose); optional disk cache; `openai` refuses unless `OBT_ALLOW_PAID=1`; `CostMeter` with persistent hard cap (fails closed on unknown prices).
+- `obt/extractor.py`: `LLMExtractor` with a flat JSON schema validated by pydantic; bad JSON/schema -> UNTESTABLE; bad slot values -> that claim UNTESTABLE.
+- `obt/memory_view.py`: `render(view)` -> agent prompt text from structured fields only; raw messages only for the `none`/`selfcheck` baselines.
+- `tests/test_extractor_view.py`: fake-backend schema tests; I5: structural (memory_view/agent never import gateway/Message), canary run (injection supplier with unique canaries; spy buyer records every rendered context; no canary/raw substring under OBT, present under `none` as positive control), slot smuggling blocked; live ollama smoke test marked `llm`.
