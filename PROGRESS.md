@@ -69,3 +69,25 @@
 - `eval/extractor_set/build.py` -> `messages.jsonl`: 200 seeded labeled messages (honest, relative time, delivery/price only, split, far, special, vague, distractor, negated, injection).
 - `eval/run.py`: scenarios x defenses x seeds; per-run JSON lines, `summary.json` + `summary.md` with loss from lies, utility (scenarios 1, 9), overhead per round vs none, extractor P/R (rule + LLM). Paid path: `check_budget` before every run, `CostMeter` before every call, hard stop at $13 recorded in the report; never sets `OBT_ALLOW_PAID`. Baselines use `NullExtractor` so overhead is fair. Each eval logs its LLM calls to its own dir under `runs/`.
 - `tests/test_eval.py`: scripted end-to-end, fake-LLM end-to-end with overhead, multiset scoring, hard stop at cap, paid refused without env flag.
+
+## Fixes v2
+| Item | Status | Summary |
+|---|---|---|
+| F0 Freeze old state | DONE | Stopped eval at 12/40, tagged `v1-pre-fixes`, moved runs to `runs/_invalid_v1/` (+README), branch `fixes-v2`. |
+| F1 Fixed round order | TODO | |
+| F2 Gate claim-action binding | TODO | |
+| F3 Verifier allocation + grace | TODO | |
+| F4 Remediation in code | TODO | |
+| F5 Extractor hardening | TODO | |
+| F6 Invariants: spec, monitors, mutants | TODO | |
+| F7 Loss bound | TODO | |
+| F8 Scenarios 11-12 | TODO | |
+| F9 Reputation baseline | TODO | |
+| F10 Message bank + extractor dataset | TODO | |
+| F11 Real A2A transport | TODO | |
+| F12 Reproducibility | TODO | |
+| E1 Ablation grid | TODO | |
+| E2 Main LLM eval gpt-oss:20b | TODO | |
+| E3 Second family qwen3:8b | TODO | |
+| E4 Extractor eval | TODO | |
+| E5 Paid, prepare only | TODO | |
