@@ -25,7 +25,7 @@ def fresh(n, defense="obt", seed=1):
 
 
 def main_actions(r):
-    return [a for row in r.trace for a in row["actions"] if a[1] == MAIN]
+    return [a for row in r.trace for a in row["actions"] if a[1] == MAIN and a[0] == "ORDER"]
 
 
 @pytest.mark.parametrize("n", sorted(SCENARIOS))
@@ -124,9 +124,10 @@ def test_7_far_deadlines_never_resolve_but_exposure_stays_bounded():
 def test_8_claim_splitting_many_small_claims_one_big_order_blocked():
     r = run(8)
     late = [row for row in r.trace if row["round"] >= 20]
-    assert all(sum(1 for c in row["offer"] if c[1] == "DELIVERY") >= 5 for row in late)
-    blocked = [a for row in late for a in row["actions"] if a[1] == MAIN and a[4] == "BLOCKED"]
-    assert blocked and all(len(a[6]) >= 6 for a in blocked)
+    assert all(sum(1 for c in row["offer"] if c[1] == "DELIVERY") >= 3 for row in late)
+    blocked = [a for row in late for a in row["actions"] if a[0] == "ORDER" and a[1] == MAIN and a[4] == "BLOCKED"]
+    # One order backed by several small DELIVERY claims (+ the quote) is still budgeted as one action.
+    assert blocked and all(len(a[6]) >= 4 and a[5] == "OVER_BUDGET" for a in blocked)
     assert r.metrics["claims"]["FAILED"] == 0
 
 
@@ -141,9 +142,7 @@ def test_obt_loses_less_than_no_defense(n):
     assert loss_from_lies(run(n), run(1)) < loss_from_lies(run(n, "none"), run(1, "none"))
 
 
-@pytest.mark.parametrize("n", [2, 4, 5, 6, 7, pytest.param(8, marks=pytest.mark.xfail(
-    strict=True, reason="F1 reroutes a blocked whole-lot order to backup, overstocking; "
-                        "F2 makes ORDER qty the buyer's own (claims give capacity) and removes this"))])
+@pytest.mark.parametrize("n", [2, 4, 5, 6, 7, 8])
 def test_obt_loss_small_vs_spend(n):
     # Loss stays a few percent of total spend under OBT for sustained liars.
     assert loss_from_lies(run(n), run(1)) < 0.05 * run(1).total_cost

@@ -34,22 +34,24 @@ def test_gate_runs_after_all_proposals_and_before_execution():
     assert events[0][0] == "proposed"
     assert set(events[0][1]) == {"PROPOSED"} and events[0][2] == 0
     assert all(a[4] in ("EXECUTED", "BLOCKED") for a in row["actions"])
-    assert len(sim.game.orders) == sum(1 for a in row["actions"] if a[4] == "EXECUTED") + row["rerouted_orders"]
+    # Reroutes are logged as EXECUTED BACKUP orders, so every env order has an executed ORDER action.
+    assert len(sim.game.orders) == sum(1 for a in row["actions"] if a[0] == "ORDER" and a[4] == "EXECUTED")
 
 
 def test_later_proposals_see_earlier_allowed_ones_in_the_budget():
     # Two proposals citing the same offer in one round: the second must see the first's exposure.
     class Double(ScriptedClaimBuyer):
         def act(self, view, api):
-            ids = [c.claim_id for c in view.offer]
-            api.order(MAIN, ids)
-            api.order(MAIN, ids)
-            api.request(1)
+            if view.round == 2:
+                ids = [c.claim_id for c in view.offer]
+                api.order(MAIN, ids, qty=1)
+                api.order(MAIN, ids, qty=1)
+            api.request(2)
 
     sim = Sim(SimConfig(), 1, make_supplier(1, G, 1), Double(G))
-    sim.step()            # round 1: default lot 20 > b0, both blocked
-    sim.step()            # round 2: lot 1 at $5 == b0
-    acts = [a for a in sim.actions if a.round == 2 and a.counterparty == MAIN]
+    sim.step()            # round 1: no S_main orders, just ask for a 2-unit lot
+    sim.step()            # round 2: capacity for both, b0 = $5 budget for one
+    acts = [a for a in sim.actions if a.round == 2 and a.counterparty == MAIN and a.kind == "ORDER"]
     assert [a.status for a in acts] == ["EXECUTED", "BLOCKED"]
     assert acts[1].reason == "OVER_BUDGET"
 
@@ -57,12 +59,12 @@ def test_later_proposals_see_earlier_allowed_ones_in_the_budget():
 def test_blocked_order_rerouted_to_backup_same_round():
     class Greedy(ScriptedClaimBuyer):
         def act(self, view, api):
-            api.order(MAIN, [c.claim_id for c in view.offer])   # 20-unit default lot, over b0
+            api.order(MAIN, [c.claim_id for c in view.offer], qty=20)   # $100, over b0
             api.request(20)
 
     sim = Sim(SimConfig(), 1, make_supplier(1, G, 1), Greedy(G))
     row = sim.step()
-    assert [a[4] for a in row["actions"] if a[1] == MAIN] == ["BLOCKED"]
+    assert [a[4] for a in row["actions"] if a[1] == MAIN and a[0] == "ORDER"] == ["BLOCKED"]
     backup = [o for o in sim.game.orders.values() if o.supplier == BACKUP]
     assert [o.qty for o in backup] == [20] and row["rerouted_orders"] == 1
 

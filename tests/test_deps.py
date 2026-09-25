@@ -6,14 +6,14 @@ from obt.budget import BudgetConfig, TrustBudget
 from obt.deps import DependencyTracker
 from obt.env.oracles import Oracles, Receipt
 from obt.gate import Gate
-from obt.ledger import ActionLog, Ledger, NoteLog, OfferBook
+from obt.ledger import ActionLog, Ledger, NoteLog
 from obt.types import Action, Claim, Note
 from obt.verifier import Verifier
 
 CP = "S_main"
 
 
-def delivery(cid, created=1, qty=10, by=3):
+def delivery(cid, created=1, qty=30, by=3):
     return Claim.make(claim_id=cid, counterparty=CP, source_msg_hash="h", created_round=created,
                       template="DELIVERY", slots={"item": "widget", "qty": qty, "by_round": by})
 
@@ -24,19 +24,26 @@ class World:
         self.led = Ledger()
         self.acts = ActionLog()
         self.notes = NoteLog()
-        self.offers = OfferBook()
         self.budget = TrustBudget(self.led, self.acts, BudgetConfig(b0=b0, window=3))
-        self.gate = Gate(self.led, self.acts, self.budget, self.offers)
+        self.gate = Gate(self.led, self.acts, self.budget)
+
         self.ver = Verifier(self.led, self.o.view)
         self.deps = DependencyTracker(self.led, self.acts, self.notes, self.ver)
         self.events = []
         self.deps.on_failure(self.events.append)
         self.n = 0
 
-    def act(self, value, cites, now=1):
+    def act(self, qty, cites, now=1):
         self.n += 1
-        return self.gate.submit(Action(action_id=f"a{self.n}", kind="ORDER", counterparty=CP,
-                                       value=value, cited_claims=tuple(cites), round=now), now)
+        qty = int(qty)
+        # Fresh one-round $1 quote: value == qty, and F2 needs exactly one PRICE claim per order.
+        q = f"q{self.n}"
+        self.led.append(Claim.make(claim_id=q, counterparty=CP, source_msg_hash="h", created_round=now,
+                                   template="PRICE", slots={"item": "widget", "unit_price": 1.0,
+                                                            "valid_until": now + 1}))
+        return self.gate.submit(Action(action_id=f"a{self.n}", kind="ORDER", counterparty=CP, qty=qty,
+                                       unit_price=1.0, value=float(qty), cited_claims=tuple(cites) + (q,),
+                                       round=now), now)
 
     def note(self, cites, now=1):
         self.n += 1
@@ -45,22 +52,23 @@ class World:
 
 def test_failure_flags_citing_actions_and_notes_in_same_step():
     w = World()
-    w.offers.add(delivery("first", by=3))
-    w.offers.add(delivery("second", by=3))
+    w.led.append(delivery("first", by=3))
+    w.led.append(delivery("second", by=3))
     a1 = w.act(10, ["first"])
     a2 = w.act(10, ["first", "second"])
     a3 = w.act(10, ["second"])
     n1 = w.note(["first"])
     n2 = w.note(["second"])
     n3 = w.note([])
-    w.o.record_receipt(Receipt(3, CP, "widget", 10, "o"))
+    # "first" is owed 20 (a1 + a2 via EDF/id order), "second" 10 (a3): 20 units only cover "first".
+    w.o.record_receipt(Receipt(3, CP, "widget", 20, "o"))
     seen_during_step = []
     # A hook registered after the tracker sees the flags already applied.
     w.ver.subscribe(lambda c, now: seen_during_step.append(w.acts[a1.action_id].status))
     w.ver.step(3)
     assert {w.led["first"].status, w.led["second"].status} == {"PASSED", "FAILED"}
     failed = "first" if w.led["first"].status == "FAILED" else "second"
-    assert failed == "second"  # same deadline: resolved in id order, "first" takes the 10 units
+    assert failed == "second"
     for a in (a1, a2, a3):
         rec = w.acts[a.action_id]
         should = failed in a.cited_claims
@@ -78,7 +86,7 @@ def test_failure_flags_citing_actions_and_notes_in_same_step():
 
 def test_pass_flags_nothing_and_blocked_actions_untouched():
     w = World(b0=5)
-    w.offers.add(delivery("k", by=3))
+    w.led.append(delivery("k", by=3))
     ok = w.act(5, ["k"])
     blocked = w.act(50, ["k"])
     assert blocked.status == "BLOCKED"
@@ -90,7 +98,7 @@ def test_pass_flags_nothing_and_blocked_actions_untouched():
 
 def test_duplicate_citation_flags_once():
     w = World()
-    w.offers.add(delivery("k", by=2))
+    w.led.append(delivery("k", by=2))
     a = w.act(5, ["k", "k"])
     w.ver.step(2)
     assert w.acts[a.action_id].status == "FLAGGED"
@@ -99,7 +107,7 @@ def test_duplicate_citation_flags_once():
 
 def test_note_citing_already_failed_claim_is_flagged_on_entry():
     w = World()
-    w.offers.add(delivery("k", by=2))
+    w.led.append(delivery("k", by=2))
     w.act(5, ["k"])
     w.ver.step(2)
     n = w.note(["k"], now=4)
@@ -118,7 +126,7 @@ class DepsMachine(RuleBasedStateMachine):
     def offer(self, qty, dt):
         self.k += 1
         cid = f"c{self.k}"
-        self.w.offers.add(delivery(cid, created=self.now, qty=qty, by=self.now + dt))
+        self.w.led.append(delivery(cid, created=self.now, qty=qty, by=self.now + dt))
         self.ids.append(cid)
 
     @rule(picks=st.lists(st.integers(0, 999), min_size=1, max_size=3), value=st.floats(0, 50))

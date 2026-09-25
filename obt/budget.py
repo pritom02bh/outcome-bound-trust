@@ -42,14 +42,17 @@ class TrustBudget:
             # DECISIONS D3: passes during the cool-down don't count, so the window
             # expiring never raises B by itself (I2).
             floor = f + self.cfg.window
+        # Only honored DELIVERY claims earn trust; LAPSED ones never count (DECISIONS D11).
         earned = [k.realized_exposure for k in self.ledger.claims_of(c)
-                  if k.status == "PASSED" and (floor is None or k.resolved_round >= floor)]
+                  if k.status == "PASSED" and k.template == "DELIVERY"
+                  and (floor is None or k.resolved_round >= floor)]
         return self.cfg.b0 + max(earned, default=0.0)
 
     def pending(self, c: str) -> float:
         total = 0.0
         for a in self.actions:
-            if a.counterparty != c or not a.was_executed:
+            # Payments pay for orders already counted here (DECISIONS D14).
+            if a.counterparty != c or not a.was_executed or a.kind != "ORDER":
                 continue
             cited = (self.ledger.get(k) for k in set(a.cited_claims))
             if any(k is not None and k.counterparty == c and k.status == "PENDING" for k in cited):

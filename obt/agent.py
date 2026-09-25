@@ -43,6 +43,9 @@ def run_plain(cfg: GameConfig, seed: int, main: Supplier, supplier: str = MAIN) 
     buyer = OrderUpToBuyer(supplier, base_stock(cfg, lead))
     while not game.done:
         game.begin_round()
+        # No defense here: every posted invoice is paid in full.
+        for inv in game.posted_invoices:
+            game.pay_invoice(inv.order_id, inv.total)
         main.offer_message(game.round, 0)
         q = buyer.decide(game)
         if q > 0:
@@ -78,19 +81,20 @@ class ScriptedClaimBuyer:
         vague = [c for c in view.offer if c.template is None]
         got = 0
         if dels:
-            q = sum(c.slot("qty") for c in dels)
+            cap = sum(c.remaining for c in dels)
             p = max((c.slot("unit_price") for c in prices), default=cfg.main_price)
-            ok = need > 0 and p <= cfg.backup_price and q <= need + self.slack
+            qty = min(need, cap)
+            ok = qty > 0 and p <= cfg.backup_price
             if obt:
                 ok = ok and view.track[MAIN].pending_exposure == 0
             if ok:
                 cites = [c.claim_id for c in dels + prices]
-                rec = api.order(MAIN, cites)
+                rec = api.order(MAIN, cites, qty=qty)
                 # Proposals are gated after the buyer is done; a blocked order's quantity is
                 # rerouted to backup by code (round phase 8), so count it as covered either way.
                 if rec is not None:
                     got = rec.qty
-                    api.note(f"Relying on S_main lot of {rec.qty} by round {max(c.slot('by_round') for c in dels)}",
+                    api.note(f"Relying on S_main for {rec.qty} by round {max(c.slot('by_round') for c in dels)}",
                              [c.claim_id for c in dels])
         elif vague and need > 0:
             # Believes the vague pitch and orders its usual amount against it.
@@ -166,8 +170,8 @@ You may also write one short note to yourself for later rounds."""
 
 _OBT = """
 S_main rules (enforced by code, not by you):
-- To order from S_main you accept its CURRENT offer by citing the offer's claim ids in s_main_order.cite. Quantity and price come from the cited claims; s_main_order.qty is ignored. You accept the whole lot or nothing.
-- UNTESTABLE claims can't be cited. Orders citing FAILED claims are blocked.
+- To order from S_main, cite the CURRENT offer's DELIVERY claim id(s) and its one PRICE claim id in s_main_order.cite, and set s_main_order.qty to any quantity up to the offered capacity. The price is the cited PRICE claim's; code computes the value.
+- UNTESTABLE claims can't be cited. Orders citing FAILED claims are blocked. Old claims can't back a new order.
 - Trust budget: an S_main order is blocked (OVER_BUDGET) if pending exposure P + order value > budget B. B = cold-start budget + the value of the largest order whose claims S_main honored. B falls back to the cold start after any failed claim.
 - Because B grows with the largest honored order, the fastest way to grow it is to have one S_main order in flight at a time: accept an offer only when P is $0 and the offered lot fits your headroom (see BUDGET MATH), and set next_lot_request to the projected lot size from BUDGET MATH so S_main offers a lot that will fit.
 - Cover whatever S_main doesn't supply with S_backup. If headroom is too small for the offered lot, skip it (s_main_order = null) and use S_backup.

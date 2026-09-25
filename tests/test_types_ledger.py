@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from obt.ledger import ActionLog, Ledger, LedgerError, NoteLog
 from obt.types import Action, Claim, IllegalTransition, Note
 
-STATUSES = ["PENDING", "PASSED", "FAILED", "UNTESTABLE"]
+STATUSES = ["PENDING", "PASSED", "FAILED", "LAPSED", "UNTESTABLE"]
 
 
 def delivery(cid="k1", cp="S_main", created=1, qty=10, by=3):
@@ -29,7 +29,8 @@ def claim_in(status):
 @pytest.mark.parametrize("src,dst", list(itertools.product(STATUSES, STATUSES)))
 def test_claim_transition_matrix(src, dst):
     c = claim_in(src)
-    if src == "PENDING" and dst in ("PASSED", "FAILED"):
+    # I3 (F2): PENDING -> PASSED | FAILED | LAPSED; claim_in's PENDING claim is unconsumed, so LAPSED is legal.
+    if src == "PENDING" and dst in ("PASSED", "FAILED", "LAPSED"):
         assert c.with_status(dst, 3).status == dst
     else:
         with pytest.raises(IllegalTransition):
@@ -68,12 +69,13 @@ def test_deadline_derived_from_slots():
 
 
 def test_exposure_only_on_pending():
-    c = delivery().with_exposure(10)
-    assert c.realized_exposure == 10
+    # F2: exposure = consumed units x claimed price, only while PENDING.
+    c = delivery().with_consumption(2, 5.0)
+    assert c.realized_exposure == 10 and c.consumed == 2
     with pytest.raises(IllegalTransition):
-        c.with_status("PASSED", 3).with_exposure(1)
+        c.with_status("PASSED", 3).with_consumption(1, 5.0)
     with pytest.raises(ValueError):
-        c.with_exposure(-1)
+        c.with_consumption(-1, 5.0)
 
 
 def test_ledger_resolve_needs_verifier_key():
@@ -110,11 +112,11 @@ def test_ledger_is_append_only():
     with pytest.raises(LedgerError):
         led.append(delivery("b").with_status("PASSED", 2))
     with pytest.raises(LedgerError):
-        led.append(delivery("c").with_exposure(5))
+        led.append(delivery("c").with_consumption(1, 5.0))
     key = led.bind_verifier()
     before = led.events
     led.append(price("p"))
-    led.add_exposure("a", 20, 1)
+    led.consume("a", 4, 5.0, 1)
     led.resolve("a", "PASSED", 3, key)
     after = led.events
     assert after[: len(before)] == before and len(after) == len(before) + 3

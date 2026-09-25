@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from .budget import TrustBudget
 from .deps import DependencyTracker
 from .env.beer_game import BACKUP, MAIN, BeerGame, base_stock
-from .ledger import ActionLog, Ledger, NoteLog, OfferBook
+from .ledger import ActionLog, Ledger, NoteLog
 from .types import Claim
 
 
@@ -25,11 +25,12 @@ class ClaimCard:
     status: str
     deadline: int
     created_round: int
+    remaining: int = 0
 
     @classmethod
     def of(cls, c: Claim) -> "ClaimCard":
         return cls(c.claim_id, c.counterparty, c.template, tuple(sorted(c.slots.items())),
-                   c.status, c.deadline, c.created_round)
+                   c.status, c.deadline, c.created_round, c.remaining)
 
     def slot(self, name: str):
         return dict(self.slots).get(name)
@@ -39,7 +40,8 @@ class ClaimCard:
             return f"[{self.claim_id}] UNTESTABLE (no checkable promise; can't be cited)"
         s = dict(self.slots)
         if self.template == "DELIVERY":
-            body = f"DELIVERY {s['qty']} {s['item']} by round {s['by_round']}"
+            body = (f"DELIVERY up to {s['qty']} {s['item']} by round {s['by_round']} "
+                    f"(capacity left {self.remaining})")
         else:
             body = f"PRICE {s['item']} <= ${s['unit_price']:.2f}/unit until round {s['valid_until']}"
         return f"[{self.claim_id}] {body} | status {self.status} | resolves round {self.deadline}"
@@ -53,6 +55,7 @@ class TrackRecord:
     failed: int
     pending: int
     untestable: int
+    lapsed: int
     budget: float
     pending_exposure: float
     headroom: float
@@ -82,21 +85,23 @@ class MemoryView:
     raw_messages: list[str] = field(default_factory=list)   # only filled for the no-defense baseline
 
 
-def build_view(*, game: BeerGame, ledger: Ledger, offers: OfferBook, actions: ActionLog, notes: NoteLog,
+def build_view(*, game: BeerGame, ledger: Ledger, actions: ActionLog, notes: NoteLog,
                budget: TrustBudget, deps: DependencyTracker, defense: str = "obt",
                history: int = 8) -> MemoryView:
     t = game.round
     cfg = game.cfg
-    offer = sorted((ClaimCard.of(c) for c in offers if c.counterparty == MAIN and c.created_round == t),
+    offer = sorted((ClaimCard.of(c) for c in ledger if c.counterparty == MAIN and c.created_round == t),
                    key=lambda c: c.claim_id)
+    # Earlier claims worth showing: ones the buyer relied on (consumed) that are pending or just resolved.
     recent = sorted(ledger, key=lambda c: (c.created_round, c.claim_id))
-    ledger_cards = [ClaimCard.of(c) for c in recent if c.status == "PENDING" or
-                    (c.resolved_round is not None and c.resolved_round >= t - history)]
+    ledger_cards = [ClaimCard.of(c) for c in recent if c.created_round < t and c.consumed > 0 and
+                    (c.status == "PENDING" or (c.resolved_round is not None and c.resolved_round >= t - history))]
     track = {}
     for cp in (MAIN,):
         cs = ledger.claims_of(cp)
         count = lambda s: sum(1 for c in cs if c.status == s)  # noqa: E731
         track[cp] = TrackRecord(cp, budget.cfg.b0, count("PASSED"), count("FAILED"), count("PENDING"), count("UNTESTABLE"),
+                                count("LAPSED"),
                                 budget.B(cp, t), budget.pending(cp), budget.headroom(cp, t),
                                 budget.last_failure(cp))
     blocked = [(a.counterparty, a.qty, a.value, a.reason or "") for a in actions
@@ -142,7 +147,7 @@ def render(v: MemoryView) -> str:
     if v.defense == "obt":
         tr = v.track[MAIN]
         L.append(f"S_main TRACK RECORD (computed by code): passed {tr.passed}, failed {tr.failed}, "
-                 f"pending {tr.pending}; trust budget B={_money(tr.budget)} (cold start {_money(tr.b0)}), "
+                 f"pending {tr.pending}, lapsed (offered, never used) {tr.lapsed}; trust budget B={_money(tr.budget)} (cold start {_money(tr.b0)}), "
                  f"pending exposure P={_money(tr.pending_exposure)}, headroom {_money(tr.headroom)}; "
                  f"last failure: {'none' if tr.last_failure is None else f'round {tr.last_failure}'}.")
         price = m["nominal_price"]
@@ -151,7 +156,7 @@ def render(v: MemoryView) -> str:
                  f"{int(tr.headroom // price)} units at {_money(price)}. If your pending S_main orders are "
                  f"honored, B becomes about {_money(projected)}, which fits a lot of about "
                  f"{int(projected // price)} units once nothing is pending.")
-        L.append("CURRENT S_main OFFER (valid this round only; cite these ids to accept):")
+        L.append("CURRENT S_main OFFER (cite the DELIVERY id(s) and the one PRICE id; choose any qty up to capacity):")
         L += [f"  {c.line()}" for c in v.offer] or ["  (no offer)"]
         if v.ledger_cards:
             L.append("RECENT S_main CLAIMS YOU RELIED ON:")

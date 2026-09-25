@@ -19,7 +19,7 @@ class LedgerError(Exception):
 @dataclass(frozen=True)
 class Event:
     round: int
-    kind: str          # APPEND | RESOLVE | EXPOSURE
+    kind: str          # APPEND | RESOLVE | CONSUME
     claim_id: str
     detail: str
 
@@ -45,8 +45,8 @@ class Ledger:
             raise LedgerError(f"claim {claim.claim_id} already in ledger")
         if claim.status not in ("PENDING", "UNTESTABLE"):
             raise LedgerError("claims enter the ledger PENDING or UNTESTABLE")
-        if claim.resolved_round is not None or claim.realized_exposure != 0.0:
-            raise LedgerError("new claims start unresolved with zero exposure")
+        if claim.resolved_round is not None or claim.realized_exposure != 0.0 or claim.consumed != 0:
+            raise LedgerError("new claims start unresolved and unconsumed")
         self._claims[claim.claim_id] = claim
         r = claim.created_round if round_ is None else round_
         self._events.append(Event(r, "APPEND", claim.claim_id, claim.status))
@@ -59,11 +59,14 @@ class Ledger:
         self._events.append(Event(round_, "RESOLVE", claim_id, status))
         return new
 
-    def add_exposure(self, claim_id: str, value: float, round_: int) -> Claim:
-        new = self._claims[claim_id].with_exposure(value)
+    def consume(self, claim_id: str, qty: int, unit_price: float, round_: int) -> Claim:
+        new = self._claims[claim_id].with_consumption(qty, unit_price)
         self._claims[claim_id] = new
-        self._events.append(Event(round_, "EXPOSURE", claim_id, f"{value:.4f}"))
+        self._events.append(Event(round_, "CONSUME", claim_id, f"{qty}@{unit_price:.4f}"))
         return new
+
+    def remaining(self, claim_id: str) -> int:
+        return self._claims[claim_id].remaining
 
     def __getitem__(self, claim_id: str) -> Claim:
         return self._claims[claim_id]
@@ -112,6 +115,9 @@ class ActionLog:
         self._actions[action_id] = new
         return new
 
+    def get(self, action_id: str) -> Action | None:
+        return self._actions.get(action_id)
+
     def citing(self, claim_id: str) -> list[Action]:
         return [self._actions[a] for a in self._by_claim.get(claim_id, [])]
 
@@ -150,39 +156,3 @@ class NoteLog:
 
     def __len__(self) -> int:
         return len(self._notes)
-
-
-class OfferBook:
-    """Extracted claims not yet relied on (DECISIONS D4).
-
-    A supplier's offer is conditional on the buyer ordering, so its claims only
-    enter the ledger once an allowed action cites them. Unaccepted offers never
-    get verified and can't hurt an honest supplier's record.
-    """
-
-    def __init__(self) -> None:
-        self._claims: dict[str, Claim] = {}
-
-    def add(self, claim: Claim) -> None:
-        if claim.claim_id in self._claims:
-            raise LedgerError(f"offer claim {claim.claim_id} already staged")
-        self._claims[claim.claim_id] = claim
-
-    def get(self, claim_id: str) -> Claim | None:
-        return self._claims.get(claim_id)
-
-    def take(self, claim_id: str) -> Claim:
-        return self._claims.pop(claim_id)
-
-    def __contains__(self, claim_id: object) -> bool:
-        return claim_id in self._claims
-
-    def __iter__(self) -> Iterator[Claim]:
-        return iter(list(self._claims.values()))
-
-    def expire_before(self, round_: int) -> list[Claim]:
-        """Drop offers made before `round_`; they were never accepted."""
-        gone = [c for c in self._claims.values() if c.created_round < round_]
-        for c in gone:
-            del self._claims[c.claim_id]
-        return gone

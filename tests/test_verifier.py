@@ -8,12 +8,28 @@ from obt.verifier import TEMPLATES, Verifier, check_delivery, check_price
 CP = "S_main"
 
 
+# Under D11 a claim is owed only what allowed orders consumed. These helpers build claims that
+# were fully relied on (DELIVERY: all qty consumed; PRICE: some units ordered at the quote).
 def delivery(cid="d", created=5, qty=20, by=7, cp=CP):
+    return _delivery(cid, created, qty, by, cp).with_consumption(qty, 5.0)
+
+
+def owe(led, c):
+    """Append a claim as extracted, then record the consumption the gate would have made."""
+    led.append(c.model_copy(update={"consumed": 0, "realized_exposure": 0.0}))
+    led.consume(c.claim_id, c.consumed, 5.0, c.created_round)
+
+
+def _delivery(cid, created, qty, by, cp):
     return Claim.make(claim_id=cid, counterparty=cp, source_msg_hash="h", created_round=created,
                       template="DELIVERY", slots={"item": "widget", "qty": qty, "by_round": by})
 
 
 def price(cid="p", created=5, p=5.0, until=7, cp=CP):
+    return _price(cid, created, p, until, cp).with_consumption(10, p)
+
+
+def _price(cid, created, p, until, cp):
     return Claim.make(claim_id=cid, counterparty=cp, source_msg_hash="h", created_round=created,
                       template="PRICE", slots={"item": "widget", "unit_price": p, "valid_until": until})
 
@@ -89,8 +105,8 @@ def test_step_resolves_only_due_claims_and_notifies():
     o, led, v = make()
     seen = []
     v.subscribe(lambda c, now: seen.append((c.claim_id, c.status, now)))
-    led.append(delivery("d1", by=7))
-    led.append(price("p1", until=9))
+    owe(led, delivery("d1", by=7))
+    owe(led, price("p1", until=9))
     led.append(Claim.untestable(claim_id="u", counterparty=CP, source_msg_hash="h", created_round=5))
     receipt(o, 7, 20)
     assert v.step(6) == []
@@ -109,7 +125,7 @@ def test_step_resolves_only_due_claims_and_notifies():
 
 def test_late_step_still_resolves_overdue():
     o, led, v = make()
-    led.append(delivery("d1", by=7))
+    owe(led, delivery("d1", by=7))
     receipt(o, 8, 20)   # arrives after the deadline
     v.step(12)
     assert led["d1"].status == "FAILED"
@@ -119,8 +135,8 @@ def test_no_double_counting_across_overlapping_windows():
     # One 20-unit shipment at round 7 lies in both claims' windows (D9).
     for allocate, expected in [(True, ("PASSED", "FAILED")), (False, ("PASSED", "PASSED"))]:
         o, led, v = make(allocate)
-        led.append(delivery("a", created=5, by=7))
-        led.append(delivery("b", created=6, by=8))
+        owe(led, delivery("a", created=5, by=7))
+        owe(led, delivery("b", created=6, by=8))
         receipt(o, 7, 20)
         v.step(7)
         v.step(8)
@@ -131,7 +147,7 @@ def test_allocation_honest_pipeline_all_pass():
     o, led, v = make()
     # Honest supplier: lot made at t arrives exactly at t+2, one lot per round.
     for t in range(1, 10):
-        led.append(delivery(f"d{t}", created=t, qty=10 + t, by=t + 2))
+        owe(led, delivery(f"d{t}", created=t, qty=10 + t, by=t + 2))
     for now in range(1, 13):
         t = now - 2
         if 1 <= t < 10:
@@ -142,8 +158,8 @@ def test_allocation_honest_pipeline_all_pass():
 
 def test_failed_claim_does_not_consume_receipts():
     o, led, v = make()
-    led.append(delivery("big", created=5, qty=50, by=7))
-    led.append(delivery("small", created=6, qty=20, by=8))
+    owe(led, delivery("big", created=5, qty=50, by=7))
+    owe(led, delivery("small", created=6, qty=20, by=8))
     receipt(o, 7, 20)
     v.step(7)
     v.step(8)

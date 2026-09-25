@@ -31,23 +31,28 @@ def make(tmp_path, fn, defense="obt", supplier=None, rounds=None):
 
 
 def main_actions(sim):
-    return [a for a in sim.actions if a.counterparty == MAIN]
+    return [a for a in sim.actions if a.counterparty == MAIN and a.kind == "ORDER"]
 
 
-def test_obt_order_value_comes_from_claims_not_llm(tmp_path):
+def backup_orders(sim):
+    return [a for a in sim.actions if a.counterparty == BACKUP and a.kind == "ORDER"]
+
+
+def test_obt_qty_capped_by_claims_and_value_never_from_llm(tmp_path):
     def fn(system, user):
-        if "BLOCKED with reason" in user:
-            return json.dumps({"backup_qty": 0})
-        # Claims lot 1 at b0; LLM tries to inflate qty and smuggle a value/trust field.
-        return decision(offer_ids(user), qty=999, backup=0, lot=1, value=0.01, trust_budget=1e9)
+        rnd = int(re.search(r"ROUND (\d+)", user).group(1))
+        # Round 1: try to inflate far past the offered capacity. Later: 1 unit, plus smuggled fields.
+        qty = 999 if rnd == 1 else 1
+        return decision(offer_ids(user), qty=qty, backup=0, lot=1, value=0.01, trust_budget=1e9)
     sim, _ = make(tmp_path, fn, rounds=3)
     sim.run()
-    execd = [a for a in main_actions(sim) if a.was_executed]
+    acts = main_actions(sim)
+    assert acts[0].status == "BLOCKED" and acts[0].reason == "OVER_CLAIM"
+    execd = [a for a in acts if a.was_executed]
     assert execd
     for a in execd:
-        dels = [sim.ledger[k] for k in a.cited_claims if sim.ledger[k].template == "DELIVERY"]
-        assert a.qty == sum(c.slots["qty"] for c in dels) and a.qty != 999
-        assert a.value == a.qty * 5.0
+        price = [sim.ledger[k] for k in a.cited_claims if sim.ledger[k].template == "PRICE"][0]
+        assert a.unit_price == price.slots["unit_price"] and a.value == a.qty * a.unit_price
     assert sim.budget.B(MAIN, sim.game.round) <= 5.0 + max(a.value for a in execd)
 
 
@@ -56,7 +61,7 @@ def test_block_is_rerouted_by_code_not_llm(tmp_path):
 
     def fn(system, user):
         calls.append(user)
-        return decision(offer_ids(user), backup=0, lot=100)   # 100-unit lot is way over b0
+        return decision(offer_ids(user), qty=20, backup=0, lot=100)   # $100, way over b0
     sim, buyer = make(tmp_path, fn, rounds=3)
     sim.run()
     blocked = [a for a in main_actions(sim) if a.status == "BLOCKED"]
@@ -64,6 +69,7 @@ def test_block_is_rerouted_by_code_not_llm(tmp_path):
     assert buyer.stats["replans"] == 0 and not any("BLOCKED with reason" in u for u in calls)
     backups = [o for o in sim.game.orders.values() if o.supplier == BACKUP]
     assert [(o.round, o.qty) for o in backups] == [(b.round, b.qty) for b in blocked]
+    assert {a.reason for a in backup_orders(sim)} == {"OK"}
 
 
 def test_unparseable_output_falls_back_to_backup(tmp_path):
@@ -96,7 +102,7 @@ def test_selfcheck_veto_blocks_main_order(tmp_path):
     acts = main_actions(sim)
     assert acts and all(a.status == "BLOCKED" and a.reason == "SELF_CHECK" for a in acts)
     assert buyer.stats["selfcheck_vetoes"] == 3
-    assert [a.qty for a in sim.actions if a.counterparty == BACKUP] == [7, 7, 7]
+    assert [a.qty for a in backup_orders(sim)] == [7, 7, 7]
 
 
 def test_no_defense_orders_by_qty_ungated(tmp_path):

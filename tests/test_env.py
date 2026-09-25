@@ -32,17 +32,24 @@ def test_cost_accounting_by_hand():
     g.demand = [3, 4, 0, 2]
     st = g.begin_round()                       # r1: inv 5 -> 2, hold 2
     assert (st.inventory, st.backlog) == (2, 0)
-    g.place_order(MAIN, 10, 2)                 # purchase 20, arrives r2
-    st = g.begin_round()                       # r2: +10 -> 12, -4 -> 8, hold 8
+    o1 = g.place_order(MAIN, 10, 2)            # invoice 20, nothing charged yet (D14); arrives r2
+    assert g.costs["purchase"] == 0 and g.posted_invoices == []
+    st = g.begin_round()                       # r2: +10 -> 12, -4 -> 8, hold 8; invoice posted
     assert st.arrived == {MAIN: 10} and st.inventory == 8
+    assert [i.order_id for i in g.posted_invoices] == [o1.order_id]
+    g.pay_invoice(o1.order_id, 15)             # capped payment: 5 stays unpaid
+    assert g.costs["purchase"] == 15 and g.unpaid_total == 5
+    with pytest.raises(ValueError):
+        g.pay_invoice(o1.order_id, 6)          # can't pay more than invoiced
     g.demand[2] = 11
     st = g.begin_round()                       # r3: 8 - 11 -> backlog 3, cost 9
     assert (st.inventory, st.backlog) == (0, 3)
-    g.place_order(BACKUP, 4, 6)                # 4 * 6.0 = 24, arrives r6 (after horizon)
+    o2 = g.place_order(BACKUP, 4, 6)           # invoice 24, arrives r6 (after horizon)
     st = g.begin_round()                       # r4: backlog 3 + 2 = 5, cost 15
     assert st.backlog == 5
-    assert g.costs == {"purchase": 20 + 24, "payment": 0.0, "holding": 2 + 8, "backlog": 9 + 15}
-    assert g.total_cost == 78
+    g.pay_invoice(o2.order_id, 24)
+    assert g.costs == {"purchase": 15 + 24, "holding": 2 + 8, "backlog": 9 + 15}
+    assert g.total_cost == 73
     with pytest.raises(RuntimeError):
         g.begin_round()
 

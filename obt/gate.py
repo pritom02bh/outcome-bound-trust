@@ -1,63 +1,105 @@
-"""Action gate (DESIGN §6). Code only; the LLM proposes, this decides."""
+"""Action gate (DESIGN §6, FIXES F2). Code only; the LLM proposes, this decides.
+
+`allow` returns the first failing check, in the order of the DESIGN §6 table.
+`decide` also commits an allowed action: it consumes claim capacity (earliest
+deadline first) and sets realized exposure = consumed units x claimed price.
+Nothing else in the system writes exposure.
+"""
 from __future__ import annotations
 
 from typing import Callable
 
 from .budget import TrustBudget
-from .ledger import ActionLog, Ledger, OfferBook
+from .ledger import ActionLog, Ledger
 from .types import Action, Claim
+
+PRICE_EPS = 1e-9
 
 
 class Gate:
-    def __init__(self, ledger: Ledger, actions: ActionLog, budget: TrustBudget,
-                 offers: OfferBook | None = None, enforce: bool = True) -> None:
+    def __init__(self, ledger: Ledger, actions: ActionLog, budget: TrustBudget, enforce: bool = True,
+                 min_lead: dict[str, int] | None = None) -> None:
         self.ledger = ledger
         self.actions = actions
         self.budget = budget
-        self.offers = offers if offers is not None else OfferBook()
         # enforce=False is the no-defense / provenance baseline: same bookkeeping, no checks.
         self.enforce = enforce
+        self.min_lead = dict(min_lead or {})
 
-    def _lookup(self, k: str) -> Claim | None:
-        return self.ledger.get(k) or self.offers.get(k)
+    def lookup(self, k: str) -> Claim | None:
+        return self.ledger.get(k)
+
+    def paid_so_far(self, order_id: str) -> float:
+        return sum(a.value for a in self.actions
+                   if a.kind == "PAYMENT" and a.ref_order == order_id and a.was_executed)
+
+    def _cited_deliveries(self, a: Action, claims: list[Claim]) -> list[Claim]:
+        return [k for k in claims if k.template == "DELIVERY" and k.status == "PENDING"
+                and k.slots["item"] == a.item]
 
     def allow(self, a: Action, now: int) -> tuple[bool, str]:
         if a.counterparty == self.budget.cfg.backup:
             return True, "OK"  # scripted honest supplier, nothing to check
         if not a.cited_claims:
             return False, "NO_CITATION"
-        claims = [self._lookup(k) for k in a.cited_claims]
+        claims = [self.lookup(k) for k in dict.fromkeys(a.cited_claims)]
         if any(k is None for k in claims):
             return False, "UNKNOWN_CLAIM"
         if any(k.counterparty != a.counterparty for k in claims):
             return False, "WRONG_COUNTERPARTY"
-        if any(k.status in ("FAILED", "UNTESTABLE") for k in claims):
+        if any(k.status in ("FAILED", "UNTESTABLE", "LAPSED") for k in claims):
             return False, "BAD_CLAIM"
-        if self.budget.pending(a.counterparty) + a.value > self.budget.B(a.counterparty, now):
+        increment = a.value
+        if a.kind == "ORDER":
+            dels = self._cited_deliveries(a, claims)
+            lead = self.min_lead.get(a.counterparty, 0)
+            if not dels or any(k.slots["by_round"] - now < lead for k in claims if k.template == "DELIVERY"):
+                return False, "CLAIM_MISMATCH"
+            prices = [k for k in claims if k.template == "PRICE"]
+            if (len(prices) != 1 or prices[0].status != "PENDING" or prices[0].slots["item"] != a.item
+                    or not prices[0].created_round <= now < prices[0].slots["valid_until"]
+                    or a.unit_price is None
+                    or abs(prices[0].slots["unit_price"] - a.unit_price) > PRICE_EPS
+                    or abs(a.value - a.qty * a.unit_price) > 1e-6):
+                return False, "PRICE_MISMATCH"
+            if a.qty > sum(k.remaining for k in dels):
+                return False, "OVER_CLAIM"
+        else:
+            ref = self.actions.get(a.ref_order) if a.ref_order else None
+            if (ref is None or ref.kind != "ORDER" or ref.counterparty != a.counterparty
+                    or not ref.was_executed or ref.unit_price is None
+                    or self.paid_so_far(ref.action_id) + a.value > ref.qty * ref.unit_price + 1e-9):
+                return False, "OVERPAY"
+            # Pays for an order whose value is already in P(c); OVERPAY caps it there (DECISIONS D14).
+            increment = 0.0
+        if self.budget.pending(a.counterparty) + increment > self.budget.B(a.counterparty, now) + 1e-9:
             return False, "OVER_BUDGET"
         return True, "OK"
 
     def decide(self, a: Action, now: int) -> Action:
-        """Round phase 7: log, gate and commit one action. Allowed actions count toward P(c) at once,
-        so later proposals in the same round see them. Environment effects happen in phase 8."""
+        """Round phase 7: log, gate and commit one action. Allowed actions count toward P(c) and use up
+        claim capacity at once, so later proposals in the same round see them."""
         self.actions.append(a)
         ok, reason = self.allow(a, now) if self.enforce else (True, "UNGATED")
         if not ok:
             return self.actions.transition(a.action_id, "BLOCKED", now, reason)
-        cited = list(dict.fromkeys(a.cited_claims))
-        backup = a.counterparty == self.budget.cfg.backup
-        if not backup:
-            # D4: the offer is now relied on, so it becomes a ledger claim the verifier will test.
-            for k in cited:
-                if k not in self.ledger and k in self.offers:
-                    self.ledger.append(self.offers.take(k), round_=now)
-        done = self.actions.transition(a.action_id, "EXECUTED", now, reason)
-        if not backup:
-            for k in cited:
-                # D1: only PENDING claims take on exposure.
-                if k in self.ledger and self.ledger[k].status == "PENDING":
-                    self.ledger.add_exposure(k, a.value, now)
-        return done
+        if a.kind == "ORDER" and a.counterparty != self.budget.cfg.backup:
+            self._consume(a, now)
+        return self.actions.transition(a.action_id, "EXECUTED", now, reason)
+
+    def _consume(self, a: Action, now: int) -> None:
+        claims = [k for k in (self.lookup(c) for c in dict.fromkeys(a.cited_claims))
+                  if k is not None and k.status == "PENDING" and k.counterparty == a.counterparty]
+        price = a.unit_price or 0.0
+        left = a.qty
+        for k in sorted((k for k in claims if k.template == "DELIVERY"), key=lambda k: (k.deadline, k.claim_id)):
+            take = min(left, k.remaining)
+            if take > 0:
+                self.ledger.consume(k.claim_id, take, price, now)
+                left -= take
+        for k in claims:
+            if k.template == "PRICE":
+                self.ledger.consume(k.claim_id, a.qty, price, now)
 
     def submit(self, a: Action, now: int, execute: Callable[[Action], None] | None = None) -> Action:
         """decide + execute in one call (used outside the round loop, e.g. unit tests)."""

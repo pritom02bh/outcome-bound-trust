@@ -15,8 +15,9 @@ PRICE_EPS = 1e-9
 
 
 def check_delivery(claim: Claim, oracles: OracleView) -> bool:
+    # The supplier owes what allowed orders consumed, not the whole offered capacity (D11).
     s = claim.slots
-    return oracles.received(claim.counterparty, s["item"], claim.created_round, s["by_round"]) >= s["qty"]
+    return oracles.received(claim.counterparty, s["item"], claim.created_round, s["by_round"]) >= claim.consumed
 
 
 def check_price(claim: Claim, oracles: OracleView) -> bool:
@@ -48,7 +49,7 @@ class Verifier:
 
     def _delivery_allocated(self, claim: Claim) -> bool:
         s = claim.slots
-        need = s["qty"]
+        need = claim.consumed
         take: list[tuple[int, int]] = []
         for idx, r in enumerate(self._oracles.receipts()):
             if need <= 0:
@@ -77,7 +78,11 @@ class Verifier:
         due = sorted(self._ledger.pending_due(now), key=lambda c: (c.deadline, c.created_round, c.claim_id))
         out = []
         for c in due:
-            status = "PASSED" if self._passes(c) else "FAILED"
+            if c.consumed == 0:
+                # Nobody relied on it: no obligation, no credit, no penalty (D11).
+                status = "LAPSED"
+            else:
+                status = "PASSED" if self._passes(c) else "FAILED"
             new = self._ledger.resolve(c.claim_id, status, now, self._key)
             for fn in self._listeners:
                 fn(new, now)

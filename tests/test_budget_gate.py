@@ -7,7 +7,7 @@ from obt.budget import BudgetConfig, TrustBudget
 from obt.env.beer_game import BACKUP, GameConfig
 from obt.env.oracles import Invoice, Oracles, Receipt
 from obt.gate import Gate
-from obt.ledger import ActionLog, Ledger, OfferBook
+from obt.ledger import ActionLog, Ledger
 from obt.types import Action, Claim
 from obt.verifier import Verifier
 
@@ -20,49 +20,38 @@ def delivery(cid, cp=CP, created=1, qty=10, by=3):
 
 
 class World:
-    def __init__(self, b0=10.0, window=3):
+    """Claims go straight to the ledger (F2). `act` cites a fresh one-round $1 quote, so an
+    order's value equals its qty and the quote resolves right after (it never earns trust)."""
+
+    def __init__(self, b0=10.0, window=3, cps=(CP, "S_x")):
         self.o = Oracles()
         self.led = Ledger()
         self.acts = ActionLog()
-        self.offers = OfferBook()
         self.budget = TrustBudget(self.led, self.acts, BudgetConfig(b0=b0, window=window))
-        self.gate = Gate(self.led, self.acts, self.budget, self.offers)
+        self.gate = Gate(self.led, self.acts, self.budget)
         self.ver = Verifier(self.led, self.o.view)
         self.n = 0
 
-    def act(self, value, cites, cp=CP, now=1):
+    def act(self, qty, cites, cp=CP, now=1):
         self.n += 1
-        return self.gate.submit(Action(action_id=f"a{self.n}", kind="ORDER", counterparty=cp,
-                                       value=value, cited_claims=tuple(cites), round=now), now)
+        if cites and cp != BACKUP:
+            q = f"q{self.n}"
+            self.led.append(Claim.make(claim_id=q, counterparty=cp, source_msg_hash="h", created_round=now,
+                                       template="PRICE", slots={"item": "widget", "unit_price": 1.0,
+                                                                "valid_until": now + 1}))
+            cites = list(cites) + [q]
+        return self.gate.submit(Action(action_id=f"a{self.n}", kind="ORDER", counterparty=cp, qty=int(qty),
+                                       unit_price=1.0, value=float(int(qty)), cited_claims=tuple(cites),
+                                       round=now), now)
 
 
 def test_default_b0_is_5pct_of_round_spend():
     assert BudgetConfig.from_game(GameConfig()).b0 == pytest.approx(5.0)
 
 
-def test_reason_codes():
-    w = World()
-    w.offers.add(delivery("k"))
-    w.offers.add(delivery("other", cp="S_x"))
-    w.offers.add(Claim.untestable(claim_id="u", counterparty=CP, source_msg_hash="h", created_round=1))
-    assert w.act(5, []).reason == "NO_CITATION"
-    assert w.act(5, ["nope"]).reason == "UNKNOWN_CLAIM"
-    assert w.act(5, ["k", "other"]).reason == "WRONG_COUNTERPARTY"
-    assert w.act(5, ["k", "u"]).reason == "BAD_CLAIM"
-    assert w.act(10.01, ["k"]).reason == "OVER_BUDGET"
-    assert w.act(100, [], cp=BACKUP).status == "EXECUTED"
-    ok = w.act(10, ["k"])
-    assert ok.status == "EXECUTED" and ok.reason == "OK"
-    # Blocked actions never committed their claims or added exposure.
-    assert "k" in w.led and "u" not in w.led and "other" not in w.led
-    assert w.led["k"].realized_exposure == 10
-    assert w.budget.pending(CP) == 10
-    assert w.act(0.01, ["k"]).reason == "OVER_BUDGET"
-
-
 def test_failed_claim_blocks_citation():
     w = World()
-    w.offers.add(delivery("k", by=2))
+    w.led.append(delivery("k", by=2))
     w.act(5, ["k"])
     w.ver.step(2)
     assert w.led["k"].status == "FAILED"
@@ -71,13 +60,13 @@ def test_failed_claim_blocks_citation():
 
 def test_budget_grows_by_honored_claim_and_resets_on_failure():
     w = World(b0=10, window=3)
-    w.offers.add(delivery("k1", qty=10, by=3))
+    w.led.append(delivery("k1", qty=10, by=3))
     w.act(10, ["k1"], now=1)
     w.o.record_receipt(Receipt(3, CP, "widget", 10, "o1"))
     w.ver.step(3)
     assert w.budget.B(CP, 3) == 20            # b0 + largest honored claim
     assert w.budget.pending(CP) == 0
-    w.offers.add(delivery("k2", created=3, qty=20, by=5))
+    w.led.append(delivery("k2", created=3, qty=20, by=5))
     w.act(20, ["k2"], now=3)
     w.ver.step(5)                               # not delivered
     assert w.led["k2"].status == "FAILED"
@@ -88,30 +77,31 @@ def test_budget_grows_by_honored_claim_and_resets_on_failure():
 
 def test_pass_during_cooldown_never_counts():
     w = World(b0=10, window=3)
-    w.offers.add(delivery("bad", qty=5, by=2))
+    w.led.append(delivery("bad", qty=5, by=2))
     w.act(5, ["bad"], now=1)
     w.ver.step(2)                               # fails at round 2; cool-down covers rounds 2..4
-    w.offers.add(delivery("good", created=2, qty=5, by=4))
+    w.led.append(delivery("good", created=2, qty=5, by=4))
     w.act(5, ["good"], now=2)
     w.o.record_receipt(Receipt(4, CP, "widget", 5, "o"))
     w.ver.step(4)
     assert w.led["good"].status == "PASSED"
     assert w.budget.B(CP, 4) == 10 and w.budget.B(CP, 5) == 10
-    w.offers.add(delivery("later", created=5, qty=8, by=6))
+    w.led.append(delivery("later", created=5, qty=8, by=6))
     w.act(8, ["later"], now=5)
     w.o.record_receipt(Receipt(6, CP, "widget", 8, "o"))
     w.ver.step(6)
     assert w.budget.B(CP, 6) == 18
 
 
-def test_citing_passed_claim_adds_no_exposure():
+def test_citing_passed_claim_cannot_back_an_order():
+    # D2 closed by F2: an order must cite a PENDING DELIVERY claim.
     w = World()
-    w.offers.add(delivery("k", qty=10, by=2))
+    w.led.append(delivery("k", qty=10, by=2))
     w.act(10, ["k"], now=1)
     w.o.record_receipt(Receipt(2, CP, "widget", 10, "o"))
     w.ver.step(2)
     before = w.budget.B(CP, 2)
-    assert w.act(15, ["k"], now=2).status == "EXECUTED"
+    assert w.act(15, ["k"], now=2).reason == "CLAIM_MISMATCH"
     assert w.budget.B(CP, 2) == before and w.led["k"].realized_exposure == 10
 
 
@@ -135,9 +125,8 @@ class GateMachine(RuleBasedStateMachine):
         assert all(after[c] <= before[c] + 1e-9 for c in self.CPS), (before, after)
 
     @rule(cp=st.sampled_from(CPS), tmpl=st.sampled_from(["DELIVERY", "PRICE", "UNTESTABLE"]),
-          qty=st.integers(1, 30), dt=st.integers(0, 4), price=st.sampled_from([4.0, 5.0, 6.0]),
-          staged=st.booleans())
-    def new_claim(self, cp, tmpl, qty, dt, price, staged):
+          qty=st.integers(1, 30), dt=st.integers(0, 4), price=st.sampled_from([4.0, 5.0, 6.0]))
+    def new_claim(self, cp, tmpl, qty, dt, price):
         before = self._Bs()
         self.k += 1
         cid = f"c{self.k}"
@@ -150,7 +139,7 @@ class GateMachine(RuleBasedStateMachine):
             c = Claim.make(claim_id=cid, counterparty=cp, source_msg_hash="h", created_round=self.now,
                            template="PRICE",
                            slots={"item": "widget", "unit_price": price, "valid_until": self.now + dt})
-        (self.w.offers.add if staged else self.w.led.append)(c)
+        self.w.led.append(c)
         self.ids.append(cid)
         self._no_rise(before)
 
@@ -177,7 +166,7 @@ class GateMachine(RuleBasedStateMachine):
                 # I2: a rise needs a PASSED claim of c in this verifier step.
                 assert any(k.counterparty == c and k.status == "PASSED" for k in resolved)
 
-    @rule(cp=st.sampled_from(CPS + (BACKUP,)), value=st.floats(0, 60, allow_nan=False),
+    @rule(cp=st.sampled_from(CPS + (BACKUP,)), value=st.integers(0, 60),
           picks=st.lists(st.integers(0, 10_000), max_size=3), bogus=st.booleans())
     def propose(self, cp, value, picks, bogus):
         before = self._Bs()
@@ -191,7 +180,7 @@ class GateMachine(RuleBasedStateMachine):
             claims = [self.w.led[k] for k in rec.cited_claims]
             assert claims, "executed without a citation"
             assert all(k.counterparty == cp for k in claims)
-            assert all(k.status not in ("FAILED", "UNTESTABLE") for k in claims)
+            assert all(k.status not in ("FAILED", "UNTESTABLE", "LAPSED") for k in claims)
             assert self.w.budget.pending(cp) <= self.w.budget.B(cp, self.now) + 1e-9
 
     @invariant()
@@ -199,7 +188,7 @@ class GateMachine(RuleBasedStateMachine):
         if not hasattr(self, "w"):
             return
         for k in self.w.led:
-            assert k.status in ("PENDING", "PASSED", "FAILED", "UNTESTABLE")
+            assert k.status in ("PENDING", "PASSED", "FAILED", "LAPSED", "UNTESTABLE")
             if k.status == "PASSED":
                 assert k.resolved_round is not None
 

@@ -15,7 +15,8 @@ ITEMS = ("widget",)
 Item = Literal["widget"]
 
 Template = Literal["DELIVERY", "PRICE"]
-ClaimStatus = Literal["PENDING", "PASSED", "FAILED", "UNTESTABLE"]
+ClaimStatus = Literal["PENDING", "PASSED", "FAILED", "LAPSED", "UNTESTABLE"]
+TERMINAL = ("PASSED", "FAILED", "LAPSED", "UNTESTABLE")
 ActionKind = Literal["ORDER", "PAYMENT"]
 ActionStatus = Literal["PROPOSED", "EXECUTED", "BLOCKED", "FLAGGED"]
 
@@ -79,6 +80,9 @@ class Claim(BaseModel):
     status: ClaimStatus = "PENDING"
     resolved_round: int | None = None
     realized_exposure: float = Field(default=0.0, ge=0.0)
+    # DELIVERY: units of capacity consumed by allowed orders (what the supplier owes).
+    # PRICE: units ordered at this quote. Zero at resolution -> LAPSED (DECISIONS D11).
+    consumed: int = Field(default=0, ge=0)
 
     @field_validator("slots", mode="after")
     @classmethod
@@ -101,6 +105,8 @@ class Claim(BaseModel):
             raise ValueError("deadline must match the template's deadline slot")
         if self.status == "PENDING" and self.resolved_round is not None:
             raise ValueError("PENDING claim can't have resolved_round")
+        if self.template == "DELIVERY" and self.consumed > self.slots["qty"]:
+            raise ValueError("consumed exceeds claimed qty")
         return self
 
     @classmethod
@@ -119,18 +125,29 @@ class Claim(BaseModel):
                    deadline=created_round, status="UNTESTABLE")
 
     def with_status(self, new: str, round_: int) -> "Claim":
-        # I3: PENDING -> PASSED | FAILED is the only legal change; UNTESTABLE is terminal.
-        if self.status != "PENDING" or new not in ("PASSED", "FAILED"):
+        # I3: PENDING -> PASSED | FAILED | LAPSED only; LAPSED only if nothing was consumed.
+        if self.status != "PENDING" or new not in ("PASSED", "FAILED", "LAPSED"):
             raise IllegalTransition(f"claim {self.claim_id}: {self.status} -> {new}")
+        if new == "LAPSED" and self.consumed != 0:
+            raise IllegalTransition(f"claim {self.claim_id}: LAPSED with consumed={self.consumed}")
         return self.model_copy(update={"status": new, "resolved_round": round_})
 
-    def with_exposure(self, added: float) -> "Claim":
-        # D1: exposure after resolution would move B(c) outside a verifier step (I2).
+    @property
+    def remaining(self) -> int:
+        return self.slots["qty"] - self.consumed if self.template == "DELIVERY" else 0
+
+    def with_consumption(self, qty: int, unit_price: float) -> "Claim":
+        """Record an allowed order against this claim. Exposure = consumed units x claimed price (F2)."""
         if self.status != "PENDING":
-            raise IllegalTransition(f"claim {self.claim_id}: exposure on {self.status} claim")
-        if added < 0:
-            raise ValueError("exposure only grows")
-        return self.model_copy(update={"realized_exposure": self.realized_exposure + added})
+            raise IllegalTransition(f"claim {self.claim_id}: consumption on {self.status} claim")
+        if qty < 0 or unit_price < 0:
+            raise ValueError("consumption is non-negative")
+        if self.template == "DELIVERY":
+            if qty > self.remaining:
+                raise IllegalTransition(f"claim {self.claim_id}: capacity {self.remaining} < {qty}")
+            return self.model_copy(update={"consumed": self.consumed + qty,
+                                           "realized_exposure": self.realized_exposure + qty * unit_price})
+        return self.model_copy(update={"consumed": self.consumed + qty})
 
 
 _ACTION_MOVES = {
@@ -153,6 +170,10 @@ class Action(BaseModel):
     round: int = 0
     item: Item = "widget"
     qty: int = Field(default=0, ge=0, le=MAX_QTY)
+    # Code sets this from the single cited PRICE claim (DECISIONS D13); value = qty x unit_price.
+    unit_price: float | None = None
+    # PAYMENT only: the executed ORDER this pays for.
+    ref_order: str | None = None
     # Kept so a FLAGGED action still records whether money actually moved.
     executed_round: int | None = None
     reason: str | None = None

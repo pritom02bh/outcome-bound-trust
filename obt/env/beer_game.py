@@ -1,8 +1,11 @@
 """Beer Game variant (DESIGN §8): one buyer, a cheap main supplier, a pricier honest backup.
 
-`step()` is the single source of truth for the round order (DESIGN §5). Orders
-are prepaid at the supplier's invoice price, which is what makes a broken
-delivery promise a direct loss.
+`step()` is the single source of truth for the round order (DESIGN §5).
+Placing an order charges nothing. The supplier's invoice is posted the next
+round and is paid only through `pay_invoice`, which the round loop calls for
+gated PAYMENT actions (DECISIONS D14). Payment lands before delivery (lead
+time >= 2), so orders are prepaid in effect: a broken delivery promise is money
+lost. Invoice amounts left unpaid (capped or blocked) are not charged.
 """
 from __future__ import annotations
 
@@ -161,10 +164,19 @@ class OrderRecord:
     promised_round: int
     unit_price: float
     received: int = 0
+    paid: float = 0.0
 
     @property
     def outstanding(self) -> int:
         return max(0, self.qty - self.received)
+
+    @property
+    def invoice_total(self) -> float:
+        return self.qty * self.unit_price
+
+    @property
+    def unpaid(self) -> float:
+        return max(0.0, self.invoice_total - self.paid)
 
 
 @dataclass
@@ -197,11 +209,12 @@ class BeerGame:
         self.inventory = cfg.init_inventory
         self.backlog = 0
         self.round = 0
-        self.costs = {"purchase": 0.0, "payment": 0.0, "holding": 0.0, "backlog": 0.0}
+        self.costs = {"purchase": 0.0, "holding": 0.0, "backlog": 0.0}
         self.orders: dict[str, OrderRecord] = {}
         self.history: list[RoundState] = []
         self._transit: list[_Shipment] = []
         self._unposted_invoices: list[Invoice] = []
+        self.posted_invoices: list[Invoice] = []
         self._next_order = 0
 
     @property
@@ -216,6 +229,7 @@ class BeerGame:
         # Phase 1: invoices issued last round are posted together with this round's deliveries.
         for inv in self._unposted_invoices:
             self._oracles.record_invoice(inv)
+        self.posted_invoices = self._unposted_invoices
         self._unposted_invoices = []
         arrived: dict[str, int] = {}
         keep = []
@@ -248,9 +262,8 @@ class BeerGame:
         self._next_order += 1
         oid = f"o{self._next_order}"
         reply = self.suppliers[supplier].on_order(OrderRequest(oid, self.round, qty))
-        # The supplier sets the invoice; the buyer pays it up front.
+        # The supplier sets the invoice; nothing is charged until a gated payment (D14).
         self._unposted_invoices.append(Invoice(self.round, supplier, ITEM, qty, reply.unit_price, oid))
-        self.costs["purchase"] += qty * reply.unit_price
         for q, arr in reply.shipments:
             if q > 0:
                 self._transit.append(_Shipment(supplier, q, max(arr, self.round + 1), oid))
@@ -258,11 +271,18 @@ class BeerGame:
         self.orders[oid] = rec
         return rec
 
-    def pay(self, supplier: str, amount: float) -> None:
-        if amount < 0:
-            raise ValueError("payment must be non-negative")
-        self.costs["payment"] += amount
-        self.suppliers[supplier].on_payment(self.round, amount)
+    def pay_invoice(self, order_id: str, amount: float) -> None:
+        o = self.orders[order_id]
+        if amount < 0 or o.paid + amount > o.invoice_total + 1e-9:
+            raise ValueError("payment must be non-negative and within the invoice")
+        o.paid += amount
+        self.costs["purchase"] += amount
+        self.suppliers[o.supplier].on_payment(self.round, amount)
+
+    @property
+    def unpaid_total(self) -> float:
+        """Invoiced but not charged: capped (disputed) or blocked payments, or not yet due."""
+        return round(sum(o.unpaid for o in self.orders.values()), 6)
 
     def pipeline(self, supplier: str | None = None) -> int:
         """Units the buyer still expects: outstanding orders not yet written off."""

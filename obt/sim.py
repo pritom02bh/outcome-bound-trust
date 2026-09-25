@@ -16,7 +16,7 @@ from .env.beer_game import BACKUP, MAIN, BackupSupplier, BeerGame, GameConfig, S
 from .extractor import Extractor, RuleExtractor
 from .gate import Gate
 from .gateway import Gateway
-from .ledger import ActionLog, Ledger, NoteLog, OfferBook
+from .ledger import ActionLog, Ledger, NoteLog
 from .memory_view import MemoryView, build_view
 from .types import Action, Note
 from .verifier import Verifier
@@ -32,6 +32,7 @@ class SimConfig:
     allocate_receipts: bool = True
     defense: str = "obt"
     raw_history: int = 6
+    horizon_cap: int = 8
 
     def budget_cfg(self) -> BudgetConfig:
         return BudgetConfig.from_game(self.game, self.b0_frac, self.window)
@@ -42,7 +43,11 @@ class Buyer(Protocol):
 
 
 class BuyerAPI:
-    """What a buyer may do in a round. Value and quantity for S_main come from the cited claims (D5)."""
+    """What a buyer may do in a round: propose actions. The gate decides them after the buyer is done.
+
+    For S_main the buyer picks the quantity; price comes from the single cited PRICE claim
+    (DECISIONS D13), so the value the gate checks is qty x claimed price, never an LLM number.
+    """
 
     def __init__(self, sim: "Sim") -> None:
         self._sim = sim
@@ -56,46 +61,43 @@ class BuyerAPI:
     def pending(self) -> float:
         return self._sim.budget.pending(MAIN)
 
-    def order(self, counterparty: str, cited_claims=(), qty: int = 0, kind: str = "ORDER") -> Action | None:
-        """Propose an action. It is decided by the gate after the buyer finishes (round phase 7)."""
+    def order(self, counterparty: str, cited_claims=(), qty: int = 0) -> Action | None:
+        """Propose an ORDER. Decided by the gate after the buyer finishes (round phase 7)."""
         s = self._sim
         t = s.game.round
         cfg = s.cfg.game
         cited = tuple(str(k) for k in cited_claims)
+        qty = max(0, int(qty))
         if counterparty == BACKUP:
             cited = ()
-            qty = int(qty)
             price = cfg.backup_price
             promised = t + cfg.backup_lead
         elif counterparty == MAIN:
-            found = [s.gate._lookup(k) for k in cited]
+            found = [s.ledger.get(k) for k in cited]
             dels = [c for c in found if c is not None and c.template == "DELIVERY"]
             prices = [c.slots["unit_price"] for c in found if c is not None and c.template == "PRICE"]
-            if dels:
-                qty = sum(c.slots["qty"] for c in dels)
-                promised = max(c.slots["by_round"] for c in dels)
-            else:
-                qty = int(qty)
-                promised = t + cfg.main_lead
-            # Highest quoted price is the conservative value for the gate.
-            price = max(prices) if prices else cfg.main_price
+            promised = max((c.slots["by_round"] for c in dels), default=t + cfg.main_lead)
+            # Exactly one quote sets the price; anything else is left for the gate to reject.
+            price = prices[0] if len(prices) == 1 else cfg.main_price
         else:
             return None
-        if kind == "ORDER" and qty <= 0 and not cited:
+        if qty <= 0 and not cited:
             return None
-        value = round(max(qty, 0) * price, 6) if kind == "ORDER" else float(qty)
-        s._n += 1
-        a = Action(action_id=f"a{s._n}", kind=kind, counterparty=counterparty, value=value,
-                   cited_claims=cited, round=t, qty=max(qty, 0) if kind == "ORDER" else 0)
+        return self._propose(Action(action_id=s.next_id("a"), kind="ORDER", counterparty=counterparty,
+                                    qty=qty, unit_price=price, value=round(qty * price, 6),
+                                    cited_claims=cited, round=t), promised)
+
+    def _propose(self, a: Action, promised: int | None = None) -> Action:
         self.round_actions.append(a)
-        s._promised[a.action_id] = promised
+        if promised is not None:
+            self._sim._promised[a.action_id] = promised
         return a
 
     def veto(self, counterparty: str, qty: int, reason: str) -> Action:
         """Record an order the buyer's own check refused (selfcheck baseline)."""
         s = self._sim
-        s._n += 1
-        a = Action(action_id=f"a{s._n}", kind="ORDER", counterparty=counterparty,
+        a = Action(action_id=s.next_id("a"), kind="ORDER", counterparty=counterparty,
+                   unit_price=s.cfg.game.main_price,
                    value=round(qty * s.cfg.game.main_price, 6), round=s.game.round, qty=max(0, int(qty)))
         s.actions.append(a)
         rec = s.actions.transition(a.action_id, "BLOCKED", s.game.round, reason)
@@ -104,8 +106,7 @@ class BuyerAPI:
 
     def note(self, text: str, cited_claims=()) -> Note:
         s = self._sim
-        s._n += 1
-        n = Note(note_id=f"n{s._n}", round=s.game.round, text=str(text)[:500],
+        n = Note(note_id=s.next_id("n"), round=s.game.round, text=str(text)[:500],
                  cited_claims=tuple(str(k) for k in cited_claims))
         return s.deps.add_note(n, s.game.round)
 
@@ -148,22 +149,29 @@ class Sim:
         self.ledger = Ledger()
         self.actions = ActionLog()
         self.notes = NoteLog()
-        self.offers = OfferBook()
         self.budget = TrustBudget(self.ledger, self.actions, cfg.budget_cfg())
         # Only OBT enforces the gate; selfcheck adds its own LLM veto on top of an open gate.
-        self.gate = Gate(self.ledger, self.actions, self.budget, self.offers, enforce=cfg.defense == "obt")
+        self.gate = Gate(self.ledger, self.actions, self.budget, enforce=cfg.defense == "obt",
+                         min_lead={MAIN: cfg.game.main_lead})
         self.verifier = Verifier(self.ledger, self.game.oracles, cfg.allocate_receipts)
         self.deps = DependencyTracker(self.ledger, self.actions, self.notes, self.verifier, auto=False)
-        self.gateway = Gateway(extractor or RuleExtractor(), self.offers, {MAIN})
+        self.gateway = Gateway(extractor or RuleExtractor(), self.ledger, {MAIN}, horizon_cap=cfg.horizon_cap)
         self.trace: list[dict] = []
         self.request_qty = 0
         self._n = 0
         self._promised: dict[str, int] = {}
+        self._order_of: dict[str, str] = {}      # ORDER action id -> env order id
+        self._action_of: dict[str, str] = {}     # env order id -> ORDER action id
+        self._pay_order: dict[str, str] = {}     # PAYMENT action id -> env order id
         self.phase_log: list[tuple[str, int]] = []
         self.rerouted_qty = 0
 
+    def next_id(self, prefix: str) -> str:
+        self._n += 1
+        return f"{prefix}{self._n}"
+
     def view(self) -> MemoryView:
-        v = build_view(game=self.game, ledger=self.ledger, offers=self.offers, actions=self.actions,
+        v = build_view(game=self.game, ledger=self.ledger, actions=self.actions,
                        notes=self.notes, budget=self.budget, deps=self.deps, defense=self.cfg.defense)
         if self.cfg.defense in ("none", "selfcheck"):
             # Baselines (a)/(b) keep raw supplier messages in memory; OBT never does.
@@ -199,7 +207,6 @@ class Sim:
 
     def phase_messages(self) -> None:
         t = self.game.round
-        self.offers.expire_before(t)
         text = self.main.offer_message(t, self.request_qty)
         self._offer_claims = self.gateway.receive(MAIN, t, text) if text else []
         self._log("messages")
@@ -207,7 +214,24 @@ class Sim:
     def phase_propose(self) -> None:
         self._api = BuyerAPI(self)
         self.buyer.act(self.view(), self._api)
+        self._propose_payments()
         self._log("propose")
+
+    def _propose_payments(self) -> None:
+        """Code, not the buyer, proposes paying each invoice posted this round (DECISIONS D14).
+        Under OBT the amount is capped at qty x the order's claimed price; the excess stays unpaid."""
+        g = self.game
+        for inv in g.posted_invoices:
+            ref = self._action_of.get(inv.order_id)
+            order = self.actions.get(ref) if ref else None
+            amount = inv.total
+            if self.cfg.defense == "obt" and inv.supplier == MAIN and order is not None and order.unit_price:
+                amount = min(amount, order.qty * order.unit_price)
+            a = Action(action_id=self.next_id("a"), kind="PAYMENT", counterparty=inv.supplier,
+                       value=round(amount, 6), round=g.round, ref_order=ref,
+                       cited_claims=order.cited_claims if order is not None else ())
+            self._api._propose(a)
+            self._pay_order[a.action_id] = inv.order_id
 
     def phase_gate(self) -> None:
         t = self.game.round
@@ -227,22 +251,35 @@ class Sim:
     def phase_execute(self) -> None:
         g = self.game
         self._rerouted = 0
+        reroutes = []
         for a in self._api.round_actions:
             if a.status == "EXECUTED":
                 if a.kind == "ORDER":
                     if a.qty > 0:
-                        g.place_order(a.counterparty, a.qty, self._promised[a.action_id])
+                        self._place(a, self._promised[a.action_id])
                 else:
-                    g.pay(a.counterparty, a.value)
+                    g.pay_invoice(self._pay_order[a.action_id], a.value)
             elif a.status == "BLOCKED" and a.kind == "ORDER" and a.counterparty == MAIN and a.qty > 0 \
                     and a.reason not in ("SELF_CHECK",):
-                # Remediation is code's job, not the LLM's: blocked quantity goes to backup now.
-                g.place_order(BACKUP, a.qty, g.round + self.cfg.game.backup_lead)
-                self._rerouted += 1
-                self.rerouted_qty += a.qty
+                reroutes.append(a)
+        for a in reroutes:
+            # Remediation is code's job, not the LLM's: blocked quantity goes to backup now (F4).
+            rr = Action(action_id=self.next_id("a"), kind="ORDER", counterparty=BACKUP, qty=a.qty,
+                        unit_price=self.cfg.game.backup_price, value=round(a.qty * self.cfg.game.backup_price, 6),
+                        round=g.round)
+            rec = self.gate.decide(rr, g.round)
+            self._api.round_actions.append(rec)
+            self._place(rec, g.round + self.cfg.game.backup_lead)
+            self._rerouted += 1
+            self.rerouted_qty += a.qty
         if self._api.request_qty is not None:
             self.request_qty = self._api.request_qty
         self._log("execute")
+
+    def _place(self, a: Action, promised: int) -> None:
+        rec = self.game.place_order(a.counterparty, a.qty, promised)
+        self._order_of[a.action_id] = rec.order_id
+        self._action_of[rec.order_id] = a.action_id
 
     def step(self) -> dict:
         phases = run_round(_Phases(self))
@@ -276,7 +313,7 @@ class Sim:
 
     def metrics(self) -> dict:
         acts = list(self.actions)
-        main = [a for a in acts if a.counterparty == MAIN]
+        main = [a for a in acts if a.counterparty == MAIN and a.kind == "ORDER"]
         blocked: dict[str, int] = {}
         for a in main:
             if a.status == "BLOCKED":
@@ -298,7 +335,9 @@ class Sim:
             "flagged_actions": sum(1 for a in acts if a.status == "FLAGGED"),
             "flagged_notes": sum(1 for n in self.notes if n.flagged),
             "claims": {s: sum(1 for c in claims if c.status == s)
-                       for s in ("PENDING", "PASSED", "FAILED", "UNTESTABLE")},
+                       for s in ("PENDING", "PASSED", "FAILED", "LAPSED", "UNTESTABLE")},
+            "unpaid_invoices": self.game.unpaid_total,
+            "payments_blocked": sum(1 for a in acts if a.kind == "PAYMENT" and a.status == "BLOCKED"),
             "actions_citing_only_passed": only_passed,
             "max_B": max((r["B"] for r in self.trace), default=0.0),
             "max_P": max((r["P"] for r in self.trace), default=0.0),
