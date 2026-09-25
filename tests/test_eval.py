@@ -18,8 +18,10 @@ def test_score_extraction_is_multiset():
 def test_rule_extractor_baseline_accuracy():
     r = extractor_eval(RuleExtractor())
     assert r["n_messages"] == 200
-    assert r["precision"] > 0.9 and r["recall"] > 0.8
-    assert r["by_kind"]["honest"]["recall"] == 1.0
+    assert r["precision"] > 0.9
+    assert r["by_kind"]["honest"]["recall"] == 1.0 and r["by_kind"]["price_only"]["recall"] == 1.0
+    # F5 refuses what the text doesn't state unambiguously: relative times and split lots.
+    assert r["by_kind"]["relative"]["recall"] == 0.0 and r["by_kind"]["split"]["recall"] < 0.5
 
 
 def test_scripted_eval_end_to_end(tmp_path):

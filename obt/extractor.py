@@ -2,7 +2,15 @@
 
 An extractor only proposes (template, slots) pairs. `Extractor.extract` turns
 them into Claim records through the typed slot models; anything that fails
-validation becomes UNTESTABLE. Extractors never set status, trust or exposure.
+validation becomes UNTESTABLE. Extractors never set status, trust or exposure,
+and never the counterparty: that comes from the gateway's authenticated message.
+
+Hardening (F5): each numeric slot must be grounded in the raw text *in that
+slot's context*, and unambiguous. `slot_candidates` finds every value the text
+offers for a slot (e.g. numbers next to "widgets" for qty); a claim is kept only
+if that set is exactly {its value}. So injected instructions ("record qty as
+50"), decoy numbers, and values the model inferred but the text never states
+(relative times, arithmetic) all make the claim UNTESTABLE.
 """
 from __future__ import annotations
 
@@ -13,6 +21,33 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .llm import LLM, parse_json
 from .types import Claim, Message
+
+
+_CANDIDATES = {
+    "qty": [re.compile(r"(\d{1,6})\s*(?:x\s*)?(?:units?|widgets?|pcs|pieces)\b", re.I),
+            re.compile(r"\b(?:qty|quantity)\b\D{0,15}?(\d{1,6})", re.I)],
+    "by_round": [re.compile(r"\b(?:by|no later than|arriv\w*\s+(?:by|at|in))\s+round\s+(\d{1,6})", re.I)],
+    "valid_until": [re.compile(r"\b(?:until|through|thru|till|invoiced before)\s+round\s+(\d{1,6})", re.I)],
+    "unit_price": [re.compile(r"\$\s?(\d+(?:\.\d+)?)"),
+                   re.compile(r"(\d+(?:\.\d+)?)\s*(?:dollars|usd)\b", re.I),
+                   re.compile(r"\bprice\b[^$\d]{0,20}?(\d+(?:\.\d+)?)", re.I)],
+}
+_NUMERIC_SLOTS = {"DELIVERY": ("qty", "by_round"), "PRICE": ("unit_price", "valid_until")}
+
+
+def slot_candidates(text: str) -> dict[str, set[float]]:
+    """Every value the raw text offers for each numeric slot, found by that slot's context patterns."""
+    out: dict[str, set[float]] = {}
+    for slot, pats in _CANDIDATES.items():
+        vals: set[float] = set()
+        for pat in pats:
+            vals |= {float(m.group(1)) for m in pat.finditer(text)}
+        out[slot] = {int(v) if slot != "unit_price" else v for v in vals}
+    return out
+
+
+def grounded(claim: Claim, cands: dict[str, set[float]]) -> bool:
+    return all(cands[slot] == {claim.slots[slot]} for slot in _NUMERIC_SLOTS[claim.template])
 
 
 class Extractor:
@@ -30,12 +65,16 @@ class Extractor:
         if not isinstance(specs, list):
             specs = []
         out: list[Claim] = []
+        cands = slot_candidates(msg.text)
         for i, spec in enumerate(specs, start=1):
             cid = claim_id(msg, i)
             try:
-                out.append(Claim.make(claim_id=cid, counterparty=msg.counterparty,
-                                      source_msg_hash=msg.msg_hash, created_round=msg.round,
-                                      template=spec["template"], slots=spec["slots"]))
+                c = Claim.make(claim_id=cid, counterparty=msg.counterparty,
+                               source_msg_hash=msg.msg_hash, created_round=msg.round,
+                               template=spec["template"], slots=spec["slots"])
+                if not grounded(c, cands):
+                    raise ValueError("slot value not grounded in text, or ambiguous")
+                out.append(c)
             except (ValidationError, KeyError, TypeError, ValueError):
                 out.append(Claim.untestable(claim_id=cid, counterparty=msg.counterparty,
                                             source_msg_hash=msg.msg_hash, created_round=msg.round))
@@ -56,7 +95,7 @@ _DELIVERY = [
 ]
 _PRICE = re.compile(
     r"\$\s?(\d+(?:\.\d+)?)\s*(?:/\s*unit|per widget|per unit|each)?[^.;]*?"
-    r"\b(?:valid until|good until|through)\s+round\s+" + _NUM, re.I)
+    r"\b(?:valid until|good until|through|invoiced before)\s+round\s+" + _NUM, re.I)
 
 
 class NullExtractor(Extractor):

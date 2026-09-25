@@ -72,3 +72,7 @@ A claim whose deadline is more than `H` rounds after its creation is stored as U
 
 ## D16. Code remediation is part of OBT only (F4)
 Rerouting blocked ORDERs and re-ordering a failed claim's shortfall from backup are run by OBT's gate, verifier and dependency tracker, so they apply under `defense=obt` only. Baselines have no claim verification by definition, and none of their orders is gate-blocked. The selfcheck baseline's own veto is re-planned by its LLM, as before. Rerouting takes the whole blocked quantity, because the gate is all-or-nothing (the "(or blocked)" case in F4).
+
+## D17. Grounding means "the only value the text offers for that slot" (F5)
+F5 requires every slot number to appear in the raw text and rejects messages with more than one candidate per slot. The code implements both as one rule: for each numeric slot, the set of values matched by that slot's context patterns (`obt.extractor.slot_candidates`) must equal `{value}`. A number that appears only in another context (e.g. "in 2 rounds" when "round 9" appears elsewhere as a price validity) doesn't ground a deadline.
+**Consequences.** Relative-time promises and computed values are UNTESTABLE. Split offers with *different* lot sizes are UNTESTABLE (equal-size splits stay testable). Any injected or decoy number in a slot's context makes that claim UNTESTABLE, even when the extractor wasn't fooled. That's the intended fail-closed direction: an untestable offer can't back an order.

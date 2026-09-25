@@ -78,7 +78,7 @@
 | F2 Gate claim-action binding | DONE | FIXES table gate (capacity, EDF consumption, exposure = consumed x claimed price, OVER_CLAIM/PRICE_MISMATCH/CLAIM_MISMATCH incl. lead time/OVERPAY), claims straight to ledger with LAPSED (D11), gated capped invoice payments (D14), H=8 cap (D15); D2 closed. Scripted: honest 0 FAILED, all lying scenarios OBT loss <= $197. |
 | F3 Verifier allocation + grace | DONE | Units credited on arrival to earliest-deadline PENDING DELIVERY claim still owed (at most one claim per unit, `credits()` for I7); resolve at by_round+δ (SimConfig.grace, default 0); partial/late fail; PRICE window check. |
 | F4 Remediation in code | DONE | Phase 4 re-orders failed DELIVERY shortfall (consumed − credited) from backup before I4 flags; phase 8 reroutes blocked ORDER qty; both proven with a buyer that ignores feedback; OBT-only (D16). |
-| F5 Extractor hardening | TODO | |
+| F5 Extractor hardening | DONE | Per-slot context grounding + ambiguity (D17): injected "record qty as 50", decoys, missing/relative numbers -> UNTESTABLE; counterparty only from gateway; prompt sha256 pinned in obt/config.py (re-frozen after F10 tuning). |
 | F6 Invariants: spec, monitors, mutants | TODO | |
 | F7 Loss bound | TODO | |
 | F8 Scenarios 11-12 | TODO | |

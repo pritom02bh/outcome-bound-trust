@@ -121,14 +121,25 @@ def test_7_far_deadlines_never_resolve_but_exposure_stays_bounded():
     assert max(row["P"] for row in r.trace) <= max(row["B"] for row in r.trace)
 
 
-def test_8_claim_splitting_many_small_claims_one_big_order_blocked():
+def test_8_claim_splitting_mixed_lot_sizes_are_untestable():
+    # F5: a message offering several *distinct* lot quantities is ambiguous, so all its
+    # DELIVERY claims are UNTESTABLE; equal-size splits are unambiguous and stay testable.
     r = run(8)
-    late = [row for row in r.trace if row["round"] >= 20]
-    assert all(sum(1 for c in row["offer"] if c[1] == "DELIVERY") >= 3 for row in late)
-    blocked = [a for row in late for a in row["actions"] if a[0] == "ORDER" and a[1] == MAIN and a[4] == "BLOCKED"]
-    # One order backed by several small DELIVERY claims (+ the quote) is still budgeted as one action.
-    assert blocked and all(len(a[6]) >= 4 and a[5] == "OVER_BUDGET" for a in blocked)
-    assert r.metrics["claims"]["FAILED"] == 0
+    mixed = 0
+    for row in r.trace:
+        qtys = {c[2]["qty"] for c in row["offer"] if c[1] == "DELIVERY"}
+        assert len(qtys) <= 1
+        if any(c[1] is None for c in row["offer"]):
+            mixed += 1
+    assert mixed > 0
+    # Nothing ever executed against an UNTESTABLE split.
+    for a in main_actions(r):
+        if a[4] == "EXECUTED":
+            assert all(r_claims_testable(r, cid) for cid in a[6])
+
+
+def r_claims_testable(r, cid):
+    return any(c[0] == cid and c[1] is not None for row in r.trace for c in row["offer"])
 
 
 def test_9_noisy_honest_some_false_positives_but_keeps_trading():
