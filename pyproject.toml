@@ -1,0 +1,9 @@
+[project]
+name = "outcome-bound-trust"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = ["llm: needs a local ollama model (deselect with -m 'not llm')"]
