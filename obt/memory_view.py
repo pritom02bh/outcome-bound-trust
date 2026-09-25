@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 from .budget import TrustBudget
 from .deps import DependencyTracker
-from .env.beer_game import BACKUP, MAIN, BeerGame
+from .env.beer_game import BACKUP, MAIN, BeerGame, base_stock
 from .ledger import ActionLog, Ledger, NoteLog, OfferBook
 from .types import Claim
 
@@ -77,6 +77,7 @@ class MemoryView:
     blocked: list[tuple[str, int, float, str]]
     failures: list[tuple[str, int, tuple[str, ...]]]
     orders: list[tuple[int, str, int, int, int]] = field(default_factory=list)
+    target: int = 0
     defense: str = "obt"
     raw_messages: list[str] = field(default_factory=list)   # only filled for the no-defense baseline
 
@@ -112,7 +113,8 @@ def build_view(*, game: BeerGame, ledger: Ledger, offers: OfferBook, actions: Ac
         offer=offer, ledger_cards=ledger_cards, track=track, notes=note_rows, blocked=blocked,
         failures=failures, defense=defense,
         orders=[(o.round, o.supplier, o.qty, o.received, o.promised_round)
-                for o in list(game.orders.values())[-history:]])
+                for o in list(game.orders.values())[-history:]],
+        target=base_stock(cfg, cfg.main_lead))
 
 
 def _money(x: float) -> str:
@@ -126,6 +128,8 @@ def render(v: MemoryView) -> str:
     L.append(f"STATE: inventory {v.inventory}, backlog {v.backlog}, expected arrivals "
              f"S_main {v.pipeline.get(MAIN, 0)}, S_backup {v.pipeline.get(BACKUP, 0)}; "
              f"inventory position {v.position}")
+    L.append(f"To bring the position up to the {v.target}-unit target you need {max(0, v.target - v.position)} "
+             f"more units this round, from S_main and S_backup combined.")
     L.append("Recent demand (oldest to newest): " + (", ".join(map(str, v.recent_demand)) or "none yet"))
     L.append("Costs so far: " + ", ".join(f"{k} {_money(x)}" for k, x in v.costs.items()))
     b, m = v.terms[BACKUP], v.terms[MAIN]
@@ -141,6 +145,12 @@ def render(v: MemoryView) -> str:
                  f"pending {tr.pending}; trust budget B={_money(tr.budget)} (cold start {_money(tr.b0)}), "
                  f"pending exposure P={_money(tr.pending_exposure)}, headroom {_money(tr.headroom)}; "
                  f"last failure: {'none' if tr.last_failure is None else f'round {tr.last_failure}'}.")
+        price = m["nominal_price"]
+        projected = max(tr.budget, tr.b0 + tr.pending_exposure)
+        L.append(f"BUDGET MATH (computed by code): largest S_main lot that fits your headroom now: "
+                 f"{int(tr.headroom // price)} units at {_money(price)}. If your pending S_main orders are "
+                 f"honored, B becomes about {_money(projected)}, which fits a lot of about "
+                 f"{int(projected // price)} units once nothing is pending.")
         L.append("CURRENT S_main OFFER (valid this round only; cite these ids to accept):")
         L += [f"  {c.line()}" for c in v.offer] or ["  (no offer)"]
         if v.ledger_cards:

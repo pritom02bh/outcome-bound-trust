@@ -3,9 +3,9 @@ from functools import lru_cache
 
 import pytest
 
-from obt.agent import ScriptedClaimBuyer, base_stock
+from obt.agent import BackupOnlyBuyer, ScriptedClaimBuyer
 from obt.attacks.suppliers import SCENARIOS, make_supplier, scenario_name
-from obt.env.beer_game import BACKUP, MAIN, OFFER_PHRASINGS, GameConfig, offer_text
+from obt.env.beer_game import MAIN, OFFER_PHRASINGS, GameConfig, offer_text
 from obt.extractor import RuleExtractor
 from obt.sim import Sim, SimConfig, loss_from_lies
 from obt.types import Message
@@ -148,13 +148,5 @@ def test_obt_loss_small_vs_spend(n):
 
 
 def test_honest_obt_beats_backup_only():
-    class BackupOnly:
-        target = base_stock(G, G.backup_lead)
-
-        def act(self, view, api):
-            need = self.target - view.position
-            if need > 0:
-                api.order(BACKUP, qty=need)
-
-    backup = Sim(SimConfig(), 1, make_supplier(1, G, 1), BackupOnly()).run()
+    backup = Sim(SimConfig(), 1, make_supplier(1, G, 1), BackupOnlyBuyer(G)).run()
     assert run(1).total_cost < backup.total_cost

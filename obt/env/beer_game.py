@@ -6,6 +6,7 @@ delivery promise a direct loss.
 """
 from __future__ import annotations
 
+import math
 import random
 from dataclasses import dataclass, field
 
@@ -31,6 +32,12 @@ class GameConfig:
     # Buyer stops expecting an order this many rounds after its promised arrival.
     write_off_grace: int = 1
     default_lot: int = 20
+
+
+def base_stock(cfg: GameConfig, lead: int, z: float = 1.65) -> int:
+    """Order-up-to level covering demand over lead time + one review round."""
+    n = lead + 1
+    return math.ceil(cfg.demand_mean * n + z * cfg.demand_sd * math.sqrt(n))
 
 
 def demand_series(cfg: GameConfig, seed: int) -> list[int]:

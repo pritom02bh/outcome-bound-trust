@@ -53,3 +53,9 @@
 - `obt/extractor.py`: `LLMExtractor` with a flat JSON schema validated by pydantic; bad JSON/schema -> UNTESTABLE; bad slot values -> that claim UNTESTABLE.
 - `obt/memory_view.py`: `render(view)` -> agent prompt text from structured fields only; raw messages only for the `none`/`selfcheck` baselines.
 - `tests/test_extractor_view.py`: fake-backend schema tests; I5: structural (memory_view/agent never import gateway/Message), canary run (injection supplier with unique canaries; spy buyer records every rendered context; no canary/raw substring under OBT, present under `none` as positive control), slot smuggling blocked; live ollama smoke test marked `llm`.
+
+### Stage 8 plan
+- `obt/agent.py`: `LLMBuyer(llm, cfg, defense)` builds its prompt only from `render(view)`; JSON decision `{s_main_order: {cite, qty} | null, backup_qty, next_lot_request, note, note_cites}` validated by pydantic. OBT: order cites offer ids (qty/value derived by code); if the gate blocks, one follow-up call with the reason code to re-plan backup. `none`/`provenance`: orders by qty, no citations. `selfcheck`: extra LLM "is S_main trustworthy?" veto before each S_main order (logged as BLOCKED `SELF_CHECK`). Unparseable output -> no S_main order, base-stock backup fallback, counted in metrics.
+- `obt/sim.py`: `BuyerAPI.veto` for the selfcheck baseline; buyer stats in metrics.
+- `eval/stage8.py`: honest scenario, LLM buyer under OBT vs scripted backup-only on the same seed; writes `runs/stage8_*.json`.
+- `tests/test_llm_buyer.py`: fake-backend tests (citations passed through, value never from the LLM, block -> re-plan call, bad JSON fallback, selfcheck veto, prompt has no raw text under OBT). Acceptance run on gpt-oss:20b (dev on gemma3:12b while it downloads).

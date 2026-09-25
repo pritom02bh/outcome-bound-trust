@@ -79,12 +79,15 @@ class BuyerAPI:
             price = max(prices) if prices else cfg.main_price
         else:
             return None
+        value = round(max(qty, 0) * price, 6) if kind == "ORDER" else float(qty)
+        a = Action(action_id=f"a{s._n + 1}", kind=kind, counterparty=counterparty, value=value,
+                   cited_claims=cited, round=t, qty=max(qty, 0) if kind == "ORDER" else 0)
         if kind == "ORDER" and qty <= 0:
-            return None
-        value = round(qty * price, 6) if kind == "ORDER" else float(qty)
+            # An empty order is a no-op, unless its citations are bad: then let the
+            # gate block it so the agent gets the reason code back.
+            if not cited or not s.gate.enforce or s.gate.allow(a, t)[0]:
+                return None
         s._n += 1
-        a = Action(action_id=f"a{s._n}", kind=kind, counterparty=counterparty, value=value,
-                   cited_claims=cited, round=t, qty=qty if kind == "ORDER" else 0)
 
         def execute(act: Action) -> None:
             if act.kind == "ORDER":
@@ -93,6 +96,17 @@ class BuyerAPI:
                 s.game.pay(act.counterparty, act.value)
 
         rec = s.gate.submit(a, t, execute)
+        self.round_actions.append(rec)
+        return rec
+
+    def veto(self, counterparty: str, qty: int, reason: str) -> Action:
+        """Record an order the buyer's own check refused (selfcheck baseline)."""
+        s = self._sim
+        s._n += 1
+        a = Action(action_id=f"a{s._n}", kind="ORDER", counterparty=counterparty,
+                   value=round(qty * s.cfg.game.main_price, 6), round=s.game.round, qty=max(0, int(qty)))
+        s.actions.append(a)
+        rec = s.actions.transition(a.action_id, "BLOCKED", s.game.round, reason)
         self.round_actions.append(rec)
         return rec
 
@@ -180,8 +194,11 @@ class Sim:
     def run(self) -> SimResult:
         while not self.game.done:
             self.step()
+        m = self.metrics()
+        if hasattr(self.buyer, "stats"):
+            m["buyer"] = dict(self.buyer.stats)
         return SimResult(self.scenario, self.cfg.defense, self.seed, self.game.total_cost,
-                         dict(self.game.costs), self.trace, self.metrics())
+                         dict(self.game.costs), self.trace, m)
 
     def metrics(self) -> dict:
         acts = list(self.actions)
