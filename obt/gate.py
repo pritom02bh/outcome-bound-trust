@@ -10,11 +10,13 @@ from .types import Action, Claim
 
 class Gate:
     def __init__(self, ledger: Ledger, actions: ActionLog, budget: TrustBudget,
-                 offers: OfferBook | None = None) -> None:
+                 offers: OfferBook | None = None, enforce: bool = True) -> None:
         self.ledger = ledger
         self.actions = actions
         self.budget = budget
         self.offers = offers if offers is not None else OfferBook()
+        # enforce=False is the no-defense / provenance baseline: same bookkeeping, no checks.
+        self.enforce = enforce
 
     def _lookup(self, k: str) -> Claim | None:
         return self.ledger.get(k) or self.offers.get(k)
@@ -38,21 +40,21 @@ class Gate:
     def submit(self, a: Action, now: int, execute: Callable[[Action], None] | None = None) -> Action:
         """Log, gate, and (if allowed) execute one action. Returns its final record."""
         self.actions.append(a)
-        ok, reason = self.allow(a, now)
+        ok, reason = self.allow(a, now) if self.enforce else (True, "UNGATED")
         if not ok:
             return self.actions.transition(a.action_id, "BLOCKED", now, reason)
         cited = list(dict.fromkeys(a.cited_claims))
         if a.counterparty != self.budget.cfg.backup:
             # D4: the offer is now relied on, so it becomes a ledger claim the verifier will test.
             for k in cited:
-                if k not in self.ledger:
+                if k not in self.ledger and k in self.offers:
                     self.ledger.append(self.offers.take(k), round_=now)
         if execute is not None:
             execute(a)
-        done = self.actions.transition(a.action_id, "EXECUTED", now, "OK")
+        done = self.actions.transition(a.action_id, "EXECUTED", now, reason)
         if a.counterparty != self.budget.cfg.backup:
             for k in cited:
                 # D1: only PENDING claims take on exposure.
-                if self.ledger[k].status == "PENDING":
+                if k in self.ledger and self.ledger[k].status == "PENDING":
                     self.ledger.add_exposure(k, a.value, now)
         return done

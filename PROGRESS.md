@@ -6,7 +6,7 @@
 | 3 Verifier | DONE | DELIVERY/PRICE template registry, deadline-ordered step with sync listeners, receipt allocation against double counting (D9); pass/fail/boundary tests. |
 | 4 Budget + gate | DONE | B(c) with cool-down (D3), P(c), §6 gate + offer staging (D4); hypothesis state machine checks I1 and I2, and catches gate mutants. |
 | 5 Dependency tracker | DONE | Verifier listener flags citing actions + notes inside the failing step, replan hooks, late notes flagged on entry; I4 hypothesis machine (found + fixed duplicate-citation bug). |
-| 6 Scripted attackers | TODO | |
+| 6 Scripted attackers | DONE | Gateway, rule extractor, offer book, sim loop + BuyerAPI, pulse-scripted buyer (D10), scenarios 1-10; deterministic traces for obt/none, per-scenario checks, OBT loss < no-defense loss. |
 | 7 Extractor + memory view | TODO | |
 | 8 LLM buyer agent | TODO | |
 | 9 TLA+ spec | TODO | |
@@ -38,3 +38,12 @@
 ### Stage 5 plan
 - `obt/deps.py`: `DependencyTracker(ledger, actions, notes, verifier)` subscribes to verifier resolutions; on FAILED flags every EXECUTED/PROPOSED action and every note citing the claim inside the verifier step, then fires replan hooks with a `FailureEvent`. `add_note` flags at once if a cited claim is already FAILED.
 - `tests/test_deps.py`: flags in the same step (flagged_round == failing round, before `step` returns), passing claims flag nothing, blocked actions untouched, hook fires once per failure, late note citing a FAILED claim is flagged; hypothesis state machine asserting I4 after every step.
+
+### Stage 6 plan
+- `obt/extractor.py`: `Extractor` base (`extract(msg) -> list[Claim]`, invalid spec -> UNTESTABLE, nothing -> one UNTESTABLE) and deterministic `RuleExtractor` (regex over supplier phrasings). LLM extractor comes in stage 7.
+- `obt/gateway.py`: authenticated receive, append-only raw audit log, extraction into the offer book.
+- `obt/memory_view.py`: structured `MemoryView` (state, offer cards, track record, B/P/headroom, notes, blocks, failures). Rendering + I5 test in stage 7.
+- `obt/sim.py`: round loop (arrivals/demand -> verifier+deps -> offer -> buyer acts through a `BuyerAPI` that gates each order -> notes/request), defenses `obt` and `none`, per-round trace, loss-from-lies helper.
+- `obt/agent.py`: `ScriptedClaimBuyer` (base-stock need, accepts main offer if price <= backup and lot <= need + slack, headroom-aware request under OBT, backup covers the rest).
+- `obt/attacks/suppliers.py`: scenarios 1-10 from DESIGN §9 + `make_supplier(n, cfg, seed)`.
+- `tests/test_scenarios.py`: every scenario x {obt, none} produces an identical trace on rerun; per-scenario behaviour checks (which claims fail, UNTESTABLE blocks, far deadlines stay pending, I1 holds every round under OBT, OBT loss <= none loss for lying scenarios).
