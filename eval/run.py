@@ -54,6 +54,10 @@ class HardStop(Exception):
     pass
 
 
+class InvariantViolation(RuntimeError):
+    """A run broke a runtime-monitored invariant. FIXES STOP rule: never ignore this."""
+
+
 def make_llm(ec: EvalConfig, tag: str, meter: CostMeter, fake=None) -> LLM:
     return LLM(ec.backend, ec.model, run_tag=tag, meter=meter, fake=fake,
                cache_dir=RUNS / "cache" if ec.cache else None,
@@ -248,13 +252,18 @@ def run_eval(ec: EvalConfig, out_dir: Path, meter: CostMeter | None = None, fake
         stopped = f"{type(e).__name__}: {e}"
         print("HARD STOP:", stopped, flush=True)
     summary = summarize(results) if results else {}
-    report = {"config": {k: (list(v) if isinstance(v, tuple) else str(v) if isinstance(v, Path) else v)
+    violations = sum(r["metrics"]["invariant_violations"]["count"] for r in results)
+    report = {"invariant_violations": violations,"config": {k: (list(v) if isinstance(v, tuple) else str(v) if isinstance(v, Path) else v)
                          for k, v in ec.__dict__.items()},
               "n_runs": len(results), "stopped": stopped, "summary": summary, "extractor": ext,
               "paid_spend_usd": {"before": spent0, "after": meter.spent(), "cap": ec.cap_usd}}
     (out_dir / "summary.json").write_text(json.dumps(report, indent=1, default=str))
     if summary:
-        (out_dir / "summary.md").write_text(markdown(summary, ext))
+        (out_dir / "summary.md").write_text(markdown(summary, ext) + f"\ninvariant violations: {violations}\n")
+    print(f"invariant violations: {violations}", flush=True)
+    if violations:
+        bad = [(r["name"], r["defense"], r["seed"]) for r in results if r["metrics"]["invariant_violations"]["count"]]
+        raise InvariantViolation(f"{violations} runtime invariant violations in {bad}")
     return report
 
 

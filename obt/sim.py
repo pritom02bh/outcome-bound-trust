@@ -18,6 +18,7 @@ from .gate import Gate
 from .gateway import Gateway
 from .ledger import ActionLog, Ledger, NoteLog
 from .memory_view import MemoryView, build_view
+from .monitor import Monitor
 from .types import Action, Note
 from .verifier import Verifier
 
@@ -116,13 +117,19 @@ class BuyerAPI:
 
 
 class _Phases:
-    """Adapter so beer_game.step() drives Sim.phase_* in ROUND_ORDER."""
+    """Adapter so beer_game.step() drives Sim.phase_* in ROUND_ORDER, with the runtime
+    invariant monitor checked after every phase (F6)."""
 
     def __init__(self, sim: "Sim") -> None:
         self._sim = sim
 
     def __getattr__(self, name: str):
-        return getattr(self._sim, f"phase_{name}")
+        sim = self._sim
+
+        def run() -> None:
+            getattr(sim, f"phase_{name}")()
+            sim.monitor.after(name)
+        return run
 
 
 @dataclass
@@ -167,6 +174,7 @@ class Sim:
         self.phase_log: list[tuple[str, int]] = []
         self.rerouted_qty = 0
         self.shortfall_qty = 0
+        self.monitor = Monitor(self)
 
     def next_id(self, prefix: str) -> str:
         self._n += 1
@@ -365,6 +373,7 @@ class Sim:
             "max_P": max((r["P"] for r in self.trace), default=0.0),
             "rerouted_units": self.rerouted_qty,
             "shortfall_rerouted_units": self.shortfall_qty,
+            "invariant_violations": self.monitor.summary(),
         }
 
 

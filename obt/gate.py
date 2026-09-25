@@ -7,6 +7,7 @@ Nothing else in the system writes exposure.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Callable
 
 from .budget import TrustBudget
@@ -14,6 +15,21 @@ from .ledger import ActionLog, Ledger
 from .types import Action, Claim
 
 PRICE_EPS = 1e-9
+
+
+@dataclass
+class GateSnapshot:
+    """What the gate saw just before deciding one action. Read by the I1 runtime monitor."""
+    action: Action
+    now: int
+    claims: dict[str, Claim]
+    P: float
+    B: float
+    paid: float
+    ref: Action | None
+    min_lead: int
+    executed: bool = False
+    reason: str = ""
 
 
 class Gate:
@@ -25,6 +41,7 @@ class Gate:
         # enforce=False is the no-defense / provenance baseline: same bookkeeping, no checks.
         self.enforce = enforce
         self.min_lead = dict(min_lead or {})
+        self.decisions: list[GateSnapshot] = []
 
     def lookup(self, k: str) -> Claim | None:
         return self.ledger.get(k)
@@ -79,12 +96,21 @@ class Gate:
     def decide(self, a: Action, now: int) -> Action:
         """Round phase 7: log, gate and commit one action. Allowed actions count toward P(c) and use up
         claim capacity at once, so later proposals in the same round see them."""
+        ref = self.actions.get(a.ref_order) if a.ref_order else None
+        snap = GateSnapshot(action=a, now=now,
+                            claims={k: c for k in a.cited_claims if (c := self.ledger.get(k)) is not None},
+                            P=self.budget.pending(a.counterparty), B=self.budget.B(a.counterparty, now),
+                            paid=self.paid_so_far(ref.action_id) if ref else 0.0, ref=ref,
+                            min_lead=self.min_lead.get(a.counterparty, 0))
+        self.decisions.append(snap)
         self.actions.append(a)
         ok, reason = self.allow(a, now) if self.enforce else (True, "UNGATED")
+        snap.reason = reason
         if not ok:
             return self.actions.transition(a.action_id, "BLOCKED", now, reason)
         if a.kind == "ORDER" and a.counterparty != self.budget.cfg.backup:
             self._consume(a, now)
+        snap.executed = True
         return self.actions.transition(a.action_id, "EXECUTED", now, reason)
 
     def _consume(self, a: Action, now: int) -> None:
