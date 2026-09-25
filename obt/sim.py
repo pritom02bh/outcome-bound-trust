@@ -166,6 +166,7 @@ class Sim:
         self._pay_order: dict[str, str] = {}     # PAYMENT action id -> env order id
         self.phase_log: list[tuple[str, int]] = []
         self.rerouted_qty = 0
+        self.shortfall_qty = 0
 
     def next_id(self, prefix: str) -> str:
         self._n += 1
@@ -203,7 +204,25 @@ class Sim:
         return self.budget.B(MAIN, t), self.budget.pending(MAIN)
 
     def phase_remediate(self) -> None:
-        self.deps.process(self._resolved, self.game.round)
+        """Phase 4 (F4): order each failed DELIVERY claim's unallocated shortfall from backup, then
+        flag everything citing it (I4). Code does this, whatever the buyer does afterwards."""
+        g = self.game
+        self._remediation: list[Action] = []
+        if self.cfg.defense == "obt":
+            for c in self._resolved:
+                if c.status != "FAILED" or c.template != "DELIVERY":
+                    continue
+                short = c.consumed - self.verifier.allocated(c.claim_id)
+                if short <= 0:
+                    continue
+                a = Action(action_id=self.next_id("a"), kind="ORDER", counterparty=BACKUP, qty=short,
+                           unit_price=self.cfg.game.backup_price,
+                           value=round(short * self.cfg.game.backup_price, 6), round=g.round)
+                rec = self.gate.decide(a, g.round)
+                self._place(rec, g.round + self.cfg.game.backup_lead)
+                self._remediation.append(rec)
+                self.shortfall_qty += short
+        self.deps.process(self._resolved, g.round)
         self._log("remediate")
 
     def phase_messages(self) -> None:
@@ -296,6 +315,8 @@ class Sim:
             "actions": [(a.kind, a.counterparty, a.qty, a.value, a.status, a.reason, a.cited_claims)
                         for a in api.round_actions],
             "rerouted_orders": self._rerouted,
+            "remediation": [(a.kind, a.counterparty, a.qty, a.value, a.status, a.reason, a.cited_claims)
+                            for a in self._remediation],
             "B": round(self.budget.B(MAIN, t), 6), "P": round(self.budget.pending(MAIN), 6),
             "cost": round(g.total_cost, 6),
             "phases": phases,
@@ -343,6 +364,7 @@ class Sim:
             "max_B": max((r["B"] for r in self.trace), default=0.0),
             "max_P": max((r["P"] for r in self.trace), default=0.0),
             "rerouted_units": self.rerouted_qty,
+            "shortfall_rerouted_units": self.shortfall_qty,
         }
 
 

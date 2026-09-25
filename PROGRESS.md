@@ -77,7 +77,7 @@
 | F1 Fixed round order | DONE | `ROUND_ORDER` + `step()` in beer_game drive `Sim.phase_*`; gate decides after all proposals and commits at once; blocked ORDER qty rerouted to backup (replaces LLM replan); invoices posted next round; DESIGN §5 updated. Scenario-8 loss threshold xfail until F2. |
 | F2 Gate claim-action binding | DONE | FIXES table gate (capacity, EDF consumption, exposure = consumed x claimed price, OVER_CLAIM/PRICE_MISMATCH/CLAIM_MISMATCH incl. lead time/OVERPAY), claims straight to ledger with LAPSED (D11), gated capped invoice payments (D14), H=8 cap (D15); D2 closed. Scripted: honest 0 FAILED, all lying scenarios OBT loss <= $197. |
 | F3 Verifier allocation + grace | DONE | Units credited on arrival to earliest-deadline PENDING DELIVERY claim still owed (at most one claim per unit, `credits()` for I7); resolve at by_round+δ (SimConfig.grace, default 0); partial/late fail; PRICE window check. |
-| F4 Remediation in code | TODO | |
+| F4 Remediation in code | DONE | Phase 4 re-orders failed DELIVERY shortfall (consumed − credited) from backup before I4 flags; phase 8 reroutes blocked ORDER qty; both proven with a buyer that ignores feedback; OBT-only (D16). |
 | F5 Extractor hardening | TODO | |
 | F6 Invariants: spec, monitors, mutants | TODO | |
 | F7 Loss bound | TODO | |

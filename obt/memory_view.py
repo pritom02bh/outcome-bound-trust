@@ -162,7 +162,8 @@ def render(v: MemoryView) -> str:
             L.append("RECENT S_main CLAIMS YOU RELIED ON:")
             L += [f"  {c.line()}" for c in v.ledger_cards[-8:]]
         if v.failures:
-            L.append("FAILED CLAIMS (replan: anything citing them is flagged):")
+            L.append("FAILED CLAIMS (anything citing them is flagged; code already re-ordered each failed "
+                     "delivery's missing units from S_backup, so don't re-order them yourself):")
             L += [f"  {cid} failed at round {r}; flagged actions: {', '.join(acts) or 'none'}"
                   for cid, r, acts in v.failures]
     else:

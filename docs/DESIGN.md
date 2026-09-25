@@ -77,7 +77,7 @@ Either template resolves LAPSED instead if `consumed = 0`. A message the extract
 - **Verifier.** Each round (phase 2), credits newly arrived units to DELIVERY claims (earliest deadline first), then resolves every PENDING claim that is due: DELIVERY at `by_round + δ`, PRICE at `valid_until`.
 - **Trust budget.** Per counterparty, computed in code (§6).
 - **Gate.** Checks each proposed action against the rules (§6). Blocked actions return to the agent with a reason code.
-- **Dependency tracker.** When a claim fails, flags every action and note citing it in the same step and fires a replan hook.
+- **Dependency tracker + remediation (round phase 4).** When a DELIVERY claim fails, code first orders its unallocated shortfall (`consumed − credited units`) from backup, then flags every action and note citing the claim in the same step, and the agent sees the failure in its view. Blocked ORDER quantity is likewise re-ordered from backup by code in phase 8. The LLM is never relied on to remediate.
 
 **Round order (single source of truth: `obt/env/beer_game.py: ROUND_ORDER`, `step()`).** Every round runs exactly:
 

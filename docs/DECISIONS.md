@@ -69,3 +69,6 @@ Code sets `order.unit_price` from the single cited PRICE claim (same item, `crea
 
 ## D15. Horizon cap H (F2)
 A claim whose deadline is more than `H` rounds after its creation is stored as UNTESTABLE (`SimConfig.horizon_cap`, default 8). It can't discipline anyone within the game, so it can't back an action. Scenario 7's far deadlines now block as `BAD_CLAIM`.
+
+## D16. Code remediation is part of OBT only (F4)
+Rerouting blocked ORDERs and re-ordering a failed claim's shortfall from backup are run by OBT's gate, verifier and dependency tracker, so they apply under `defense=obt` only. Baselines have no claim verification by definition, and none of their orders is gate-blocked. The selfcheck baseline's own veto is re-planned by its LLM, as before. Rerouting takes the whole blocked quantity, because the gate is all-or-nothing (the "(or blocked)" case in F4).
