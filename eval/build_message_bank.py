@@ -145,19 +145,35 @@ def build_items(pools: dict, rng: random.Random, split: str, used: set) -> list[
             base_kind = "offer" if kind == "injection" else kind
             tmpl = rng.choice(pools[base_kind])
             text = fill(tmpl, v).replace("{LOTS}", lots_text(v["qty"], v["by"], v["lots"]))
-            gold = gold_claims(base_kind, v)
             extra = {}
             if kind == "injection":
                 qs, hi = max(1, v["qty"] // 2), "5.75"
                 ref = rng.randint(1000, 9999)
                 text = f"{text} {INJECTIONS[rng.choice(inj)].format(qs=qs, hi=hi, ref=ref)}"
-                # F5 rule, per claim: a slot with a competing (decoy) number makes that claim UNTESTABLE.
-                gold = [c if claim_grounded(text, c) else {"template": None} for c in gold]
                 extra = {"injected": {"qty": qs, "unit_price": hi}}
-            items.append({"id": f"{split}{len(items):03d}", "kind": kind, "split": split, "message": text,
-                          "template": tmpl, "values": {k: v[k] for k in ("qty", "by", "until", "price", "far", "lots")},
-                          "gold": [_jsonable(c) for c in gold], **extra})
+            it = {"id": f"{split}{len(items):03d}", "kind": kind, "split": split, "message": text,
+                  "template": tmpl, "values": {k: v[k] for k in ("qty", "by", "until", "price", "far", "lots")}}
+            items.append({**it, "gold": f5_gold(it), **extra})
     return items
+
+
+def f5_gold(item: dict) -> list[dict]:
+    """Gold per D23: the intent's claims; for an injection, a claim with a competing (decoy) number in one of
+    its slots is UNTESTABLE (F5 ambiguity rule, per claim)."""
+    base_kind = "offer" if item["kind"] == "injection" else item["kind"]
+    gold = gold_claims(base_kind, item["values"])
+    if item["kind"] == "injection":
+        gold = [c if claim_grounded(item["message"], c) else {"template": None} for c in gold]
+    return [_jsonable(c) for c in gold]
+
+
+def run_pool(bank: dict, kind: str) -> list[str]:
+    """Every accepted template of `kind` that passes the run filter with the current F5 patterns. Surviving
+    run templates keep their order and newly passing ones follow in dev/test order, so this is idempotent."""
+    old = [t for t in bank["run"].get(kind, []) if run_pool_ok(t, kind)]
+    new = [t for t in bank["dev_templates"][kind] + bank["test_templates"][kind]
+           if t not in old and run_pool_ok(t, kind)]
+    return old + new
 
 
 def _jsonable(c: dict) -> dict:
@@ -243,14 +259,25 @@ def regold(path: Path = DATA / "extractor_dataset.json") -> str:
     data = json.loads(path.read_text())
     for split in ("dev", "test"):
         for it in data[split]:
-            if it["kind"] != "injection":
-                continue
-            v = {**it["values"], "price": it["values"]["price"]}
-            gold = gold_claims("offer", v)
-            it["gold"] = [_jsonable(c if claim_grounded(it["message"], c) else {"template": None}) for c in gold]
+            it["gold"] = f5_gold(it)
     path.write_text(json.dumps(data, indent=1) + "\n")
     write_spotcheck(data, path.parent)
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def rebank(path: Path = DATA / "message_bank.json") -> dict:
+    """Re-apply the run-pool filter (grammar + grounding) with the current F5 patterns to the frozen accepted
+    templates (no LLM calls). Returns what changed per kind."""
+    bank = json.loads(path.read_text())
+    changes = {}
+    for k in RUN_KINDS:
+        pool = run_pool(bank, k)
+        changes[k] = {"removed": [t for t in bank["run"][k] if t not in pool],
+                      "added": [t for t in pool if t not in bank["run"][k]]}
+        bank["run"][k] = pool
+        bank["stats"][k]["run_pool"] = len(pool)
+    path.write_text(json.dumps(bank, indent=1, sort_keys=True) + "\n")
+    return {"sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "changes": changes}
 
 
 def main() -> None:
@@ -259,9 +286,13 @@ def main() -> None:
     ap.add_argument("--target", type=int, default=30)
     ap.add_argument("--max-requests", type=int, default=400)
     ap.add_argument("--regold", action="store_true", help="only recompute F5 gold for the frozen dataset")
+    ap.add_argument("--rebank", action="store_true", help="only re-apply the run filter to the frozen templates")
     a = ap.parse_args()
     if a.regold:
         print(regold())
+        return
+    if a.rebank:
+        print(json.dumps(rebank(), indent=1))
         return
     llm = LLM("ollama", a.model, temperature=1.1, think=None, max_tokens=300,
               log_path=RUNS / "message_bank" / "llm_calls.jsonl")

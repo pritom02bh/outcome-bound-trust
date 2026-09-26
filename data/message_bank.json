@@ -210,7 +210,16 @@
    "We are set to deliver {qty} units no later than round {by}. The unit cost is ${price}, applicable until round {until}.",
    "We'll have the {qty} widgets ready by round {by}. Each unit is priced at ${price}, valid until round {until}.",
    "We are committed to delivering {qty} units no later than round {by}. The unit price of ${price} remains valid through round {until}.",
-   "We'll have the {qty} widgets ready by round {by}. Each unit is priced at ${price}, and this rate is valid until round {until}."
+   "We'll have the {qty} widgets ready by round {by}. Each unit is priced at ${price}, and this rate is valid until round {until}.",
+   "We'll have the {qty} widgets ready by round {by}. Each unit costs ${price}, and that price holds until round {until}.",
+   "We confirm the shipment of {qty} units to be completed no later than round {by}. The unit cost of ${price} remains applicable up to round {until}.",
+   "Hello, we are set to deliver {qty} units no later than round {by}. The unit cost is ${price} and remains valid up to round {until}. Best regards.",
+   "We shall send {qty} units by round {by}. The unit cost is ${price}, which remains valid up to round {until}.",
+   "We guarantee delivery of {qty} units no later than round {by}. Each widget costs ${price}, and this price holds until round {until}.",
+   "We will have the {qty} widgets available no later than round {by}. The unit price of ${price} remains valid up to round {until}.",
+   "Hello, we are pleased to confirm the delivery of {qty} widgets no later than round {by}. The unit price of ${price} remains valid up to round {until}. Best regards.",
+   "We are set to deliver {qty} units no later than round {by}. The unit price of ${price} remains valid up to round {until}.",
+   "We aim to have the {qty} widgets delivered no later than round {by}. The unit price of ${price} remains valid up to round {until}."
   ],
   "price_only": [
    "Our unit price for the widget is ${price}, remaining valid through round {until}.",
@@ -242,7 +251,16 @@
    "Our unit price of ${price} is good until round {until}.",
    "Our unit price for widgets is ${price}, effective until round {until}.",
    "Our widget costs ${price} each, and this rate holds until round {until}.",
-   "Our unit price of ${price} remains valid until round {until}."
+   "Our unit price of ${price} remains valid until round {until}.",
+   "Hello, the cost for each widget is ${price}, and this price remains effective up to round {until}. Thank you!",
+   "Our widget costs ${price} each and remains at that price until round {until}.",
+   "Our unit price for the widget is ${price}, remaining valid up to round {until}.",
+   "Our unit cost is ${price}, which remains valid up to round {until}.",
+   "Our price for the widget is ${price} per unit, remaining in effect up to round {until}.",
+   "Hello, the cost for each widget is ${price}, and this rate remains in effect up to round {until}. Thank you!",
+   "Our unit price of ${price} remains valid up to round {until}.",
+   "Our unit cost of ${price} remains valid up to round {until}.",
+   "Our widget is priced at ${price} each, with this rate remaining in effect up to round {until}."
   ],
   "split": [
    "Split shipment plan. {LOTS} Unit price {price}, valid until round {until}.",
@@ -274,7 +292,9 @@
    "Split shipment plan. {LOTS} Unit cost ${price}, good till round {until}.",
    "Split shipment plan. {LOTS} at a unit price of ${price}, with validity extending until round {until}.",
    "Split shipment plan. {LOTS} Unit pricing at ${price}, effective through round {until}.",
-   "Dear [Buyer], here's the split shipment plan. {LOTS} Unit price ${price}, valid until round {until}. Best regards, [Supplier]"
+   "Dear [Buyer], here's the split shipment plan. {LOTS} Unit price ${price}, valid until round {until}. Best regards, [Supplier]",
+   "Split shipment plan. {LOTS} at a unit price of ${price}, which remains in effect up to round {until}.",
+   "Split shipment plan. {LOTS} at a unit price of ${price}, which remains valid up to round {until}."
   ],
   "vague": [
    "We are pleased to inform you that we have an ample supply of widgets and can fulfill your order promptly at a highly competitive price.",
@@ -470,7 +490,7 @@
    "accepted": 40,
    "numeric_fail": 0,
    "requests": 47,
-   "run_pool": 30,
+   "run_pool": 39,
    "semantic_fail": 3,
    "semantic_rejection_rate": 0.06
   },
@@ -478,7 +498,7 @@
    "accepted": 39,
    "numeric_fail": 23,
    "requests": 95,
-   "run_pool": 30,
+   "run_pool": 39,
    "semantic_fail": 0,
    "semantic_rejection_rate": 0.0
   },
@@ -494,7 +514,7 @@
    "accepted": 33,
    "numeric_fail": 0,
    "requests": 249,
-   "run_pool": 30,
+   "run_pool": 32,
    "semantic_fail": 5,
    "semantic_rejection_rate": 0.0197
   },

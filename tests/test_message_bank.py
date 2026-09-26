@@ -174,3 +174,32 @@ def test_spotcheck_is_stratified(built):
     ids = {r["id"] for r in csv.DictReader((out / "spotcheck.csv").open())}
     kinds = [it["kind"] for it in data["test"] if it["id"] in ids]
     assert set(kinds) == set(KINDS) | {"injection"} and kinds.count("offer") >= 12
+
+
+def test_committed_run_pool_is_the_final_grounding_filter():
+    # The run pool is exactly the accepted templates that pass the final F5 patterns, so a pattern fix
+    # after generation can't leave a stale pool behind (re-applied with --rebank).
+    from pathlib import Path
+
+    from eval.build_message_bank import RUN_KINDS, run_pool
+    raw = json.loads((Path(__file__).resolve().parent.parent / "data" / "message_bank.json").read_text())
+    for k in RUN_KINDS:
+        assert raw["run"][k] == run_pool(raw, k), k
+
+
+def test_committed_gold_is_the_final_f5_gold():
+    from pathlib import Path
+
+    from eval.build_message_bank import f5_gold
+    data = json.loads((Path(__file__).resolve().parent.parent / "data" / "extractor_dataset.json").read_text())
+    for it in data["dev"] + data["test"]:
+        assert it["gold"] == f5_gold(it), it["id"]
+
+
+def test_scheduled_for_round_stays_out_of_the_run_pool_but_in_the_test_set():
+    # "delivery ... scheduled for round N" can mean dispatch or arrival: it is a real ambiguity, measured in
+    # the test set's honest->UNTESTABLE rate, but never used to drive runs.
+    from pathlib import Path
+    raw = json.loads((Path(__file__).resolve().parent.parent / "data" / "message_bank.json").read_text())
+    assert not [t for ts in raw["run"].values() for t in ts if "scheduled" in t.lower()]
+    assert [t for t in raw["test_templates"]["deal"] if "scheduled for round" in t]
