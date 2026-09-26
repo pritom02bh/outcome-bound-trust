@@ -1,6 +1,6 @@
 """Evaluation harness: scenarios x defenses, DESIGN §10 metrics, paid-cost hard stop.
 
-Local:   python -m eval.run --model gpt-oss:20b --scenarios 1-10
+Local:   python -m eval.run --model gpt-oss:20b --scenarios 1-12
 Scripted (no LLM, deterministic): python -m eval.run --buyer scripted
 Paid runs are the user's job: they need OBT_ALLOW_PAID=1 and prices in obt.llm.PAID_PRICES,
 and stop for good once runs/cost_ledger.json reaches $13.
@@ -40,7 +40,7 @@ class EvalConfig:
     backend: str = "ollama"
     model: str = "gpt-oss:20b"
     buyer: str = "llm"
-    scenarios: tuple[int, ...] = tuple(range(1, 11))
+    scenarios: tuple[int, ...] = tuple(range(1, 13))
     defenses: tuple[str, ...] = DEFENSES
     seeds: tuple[int, ...] = (1,)
     rounds: int = 50
@@ -329,7 +329,7 @@ def main() -> None:
     ap.add_argument("--backend", default="ollama", choices=["ollama", "openai"])
     ap.add_argument("--model", default="gpt-oss:20b")
     ap.add_argument("--buyer", default="llm", choices=["llm", "scripted"])
-    ap.add_argument("--scenarios", default="1-10")
+    ap.add_argument("--scenarios", default="1-12")
     ap.add_argument("--defenses", default=",".join(DEFENSES))
     ap.add_argument("--seeds", default="1")
     ap.add_argument("--rounds", type=int, default=50)

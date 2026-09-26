@@ -61,10 +61,10 @@ class BuyerAPI:
 
     def headroom(self) -> Decimal:
         s = self._sim
-        return s.budget.headroom(MAIN, s.game.round)
+        return s.budget.headroom(s.main_id, s.game.round)
 
     def pending(self) -> Decimal:
-        return self._sim.budget.pending(MAIN)
+        return self._sim.budget.pending(self._sim.main_id)
 
     def order(self, counterparty: str, cited_claims=(), qty: int = 0) -> Action | None:
         """Propose an ORDER. Decided by the gate after the buyer finishes (round phase 7)."""
@@ -77,7 +77,7 @@ class BuyerAPI:
             cited = ()
             price = to_money(cfg.backup_price)
             promised = t + cfg.backup_lead
-        elif counterparty == MAIN:
+        elif counterparty in s.main_ids:
             found = [s.ledger.get(k) for k in cited]
             dels = [c for c in found if c is not None and c.template == "DELIVERY"]
             prices = [c.slots["unit_price"] for c in found if c is not None and c.template == "PRICE"]
@@ -155,18 +155,22 @@ class Sim:
         self.seed = seed
         self.scenario = scenario
         self.main = main
+        # A supplier may hold several authenticated identities (scenario 12). Each has its own ledger
+        # history and budget; `main_id` is the one it currently speaks as.
+        self.main_ids: tuple[str, ...] = tuple(getattr(main, "identities", ()) or (MAIN,))
         self.buyer = buyer
-        self.game = BeerGame(cfg.game, seed, {MAIN: main, BACKUP: BackupSupplier(cfg.game)})
+        self.game = BeerGame(cfg.game, seed, {**{i: main for i in self.main_ids}, BACKUP: BackupSupplier(cfg.game)})
         self.ledger = Ledger()
         self.actions = ActionLog()
         self.notes = NoteLog()
         self.budget = TrustBudget(self.ledger, self.actions, cfg.budget_cfg())
         # Only OBT enforces the gate; selfcheck adds its own LLM veto on top of an open gate.
         self.gate = Gate(self.ledger, self.actions, self.budget, enforce=cfg.defense == "obt",
-                         min_lead={MAIN: cfg.game.main_lead})
+                         min_lead={i: cfg.game.main_lead for i in self.main_ids})
         self.verifier = Verifier(self.ledger, self.game.oracles, cfg.allocate_receipts, grace=cfg.grace)
         self.deps = DependencyTracker(self.ledger, self.actions, self.notes, self.verifier, auto=False)
-        self.gateway = Gateway(extractor or RuleExtractor(), self.ledger, {MAIN}, horizon_cap=cfg.horizon_cap)
+        self.gateway = Gateway(extractor or RuleExtractor(), self.ledger, set(self.main_ids),
+                               horizon_cap=cfg.horizon_cap)
         self.trace: list[dict] = []
         self.request_qty = 0
         self._n = 0
@@ -183,13 +187,18 @@ class Sim:
         self.reroutes: list[dict] = []
         self.monitor = Monitor(self)
 
+    @property
+    def main_id(self) -> str:
+        return getattr(self.main, "identity", MAIN)
+
     def next_id(self, prefix: str) -> str:
         self._n += 1
         return f"{prefix}{self._n}"
 
     def view(self) -> MemoryView:
         v = build_view(game=self.game, ledger=self.ledger, actions=self.actions,
-                       notes=self.notes, budget=self.budget, deps=self.deps, defense=self.cfg.defense)
+                       notes=self.notes, budget=self.budget, deps=self.deps, defense=self.cfg.defense,
+                       main_id=self.main_id, main_ids=self.main_ids)
         if self.cfg.defense in ("none", "selfcheck"):
             # Baselines (a)/(b) keep raw supplier messages in memory; OBT never does.
             v.raw_messages = [f"[round {m.round}] {m.text}"
@@ -216,7 +225,7 @@ class Sim:
         self._log("budget")
 
     def budget_state(self, t: int) -> tuple[Decimal, Decimal]:
-        return self.budget.B(MAIN, t), self.budget.pending(MAIN)
+        return self.budget.B(self.main_id, t), self.budget.pending(self.main_id)
 
     def phase_remediate(self) -> None:
         """Phase 4 (F4): order each failed DELIVERY claim's unallocated shortfall from backup, then
@@ -243,7 +252,8 @@ class Sim:
     def phase_messages(self) -> None:
         t = self.game.round
         text = self.main.offer_message(t, self.request_qty)
-        self._offer_claims = self.gateway.receive(MAIN, t, text) if text else []
+        # The identity is read after the message: a Sybil supplier switches while composing it.
+        self._offer_claims = self.gateway.receive(self.main_id, t, text) if text else []
         self._log("messages")
 
     def phase_propose(self) -> None:
@@ -261,7 +271,7 @@ class Sim:
             order = self.actions.get(ref) if ref else None
             # The env's float invoice enters the security path through the one rounding rule (D19).
             amount = to_money(inv.total)
-            if self.cfg.defense == "obt" and inv.supplier == MAIN and order is not None and order.unit_price:
+            if self.cfg.defense == "obt" and inv.supplier in self.main_ids and order is not None and order.unit_price:
                 amount = min(amount, order.qty * order.unit_price)
             a = Action(action_id=self.next_id("a"), kind="PAYMENT", counterparty=inv.supplier,
                        value=amount, round=g.round, ref_order=ref,
@@ -297,7 +307,7 @@ class Sim:
                     g.pay_invoice(self._pay_order[a.action_id], float(a.value))
                     self.payments_made.append({"round": g.round, "order_id": self._pay_order[a.action_id],
                                                "amount": float(a.value)})
-            elif a.status == "BLOCKED" and a.kind == "ORDER" and a.counterparty == MAIN and a.qty > 0 \
+            elif a.status == "BLOCKED" and a.kind == "ORDER" and a.counterparty in self.main_ids and a.qty > 0 \
                     and a.reason not in ("SELF_CHECK",):
                 reroutes.append(a)
         for a in reroutes:
@@ -342,7 +352,8 @@ class Sim:
             "rerouted_orders": self._rerouted,
             "remediation": [(a.kind, a.counterparty, a.qty, float(a.value), a.status, a.reason, a.cited_claims)
                             for a in self._remediation],
-            "B": float(self.budget.B(MAIN, t)), "P": float(self.budget.pending(MAIN)),
+            "B": float(self.budget.B(self.main_id, t)), "P": float(self.budget.pending(self.main_id)),
+            "main_id": self.main_id,
             "cost": round(g.total_cost, 6),
             "phases": phases,
         }
@@ -360,7 +371,7 @@ class Sim:
 
     def metrics(self) -> dict:
         acts = list(self.actions)
-        main = [a for a in acts if a.counterparty == MAIN and a.kind == "ORDER"]
+        main = [a for a in acts if a.counterparty in self.main_ids and a.kind == "ORDER"]
         blocked: dict[str, int] = {}
         for a in main:
             if a.status == "BLOCKED":
@@ -370,7 +381,7 @@ class Sim:
             (k := self.ledger.get(c)) is not None and k.status == "PASSED" and (k.resolved_round or 0) <= a.round
             for c in a.cited_claims))
         paid_main = float(sum((a.value for a in main if a.was_executed), ZERO))
-        received_main = sum(r.qty for r in self.game.oracles.receipts() if r.supplier == MAIN)
+        received_main = sum(r.qty for r in self.game.oracles.receipts() if r.supplier in self.main_ids)
         ordered_main = sum(a.qty for a in main if a.was_executed and a.kind == "ORDER")
         return {
             "main_orders_executed": sum(1 for a in main if a.was_executed),

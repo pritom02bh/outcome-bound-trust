@@ -87,10 +87,10 @@ class ScriptedClaimBuyer:
             qty = min(need, cap)
             ok = qty > 0 and p <= cfg.backup_price
             if obt:
-                ok = ok and view.track[MAIN].pending_exposure == 0
+                ok = ok and view.track[view.main_id].pending_exposure == 0
             if ok:
                 cites = [c.claim_id for c in dels + prices]
-                rec = api.order(MAIN, cites, qty=qty)
+                rec = api.order(view.main_id, cites, qty=qty)
                 # Proposals are gated after the buyer is done; a blocked order's quantity is
                 # rerouted to backup by code (round phase 8), so count it as covered either way.
                 if rec is not None:
@@ -99,14 +99,14 @@ class ScriptedClaimBuyer:
                              [c.claim_id for c in dels])
         elif vague and need > 0:
             # Believes the vague pitch and orders its usual amount against it.
-            rec = api.order(MAIN, [c.claim_id for c in vague], qty=min(need, int(cfg.demand_mean)))
+            rec = api.order(view.main_id, [c.claim_id for c in vague], qty=min(need, int(cfg.demand_mean)))
             if rec is not None:
                 got = rec.qty
         if need - got > 0:
             api.order(BACKUP, qty=need - got)
         usual = int(cfg.demand_mean)
         if obt:
-            tr = view.track[MAIN]
+            tr = view.track[view.main_id]
             # Budget expected once what's pending resolves, assuming it's honored.
             projected = max(tr.budget, tr.b0 + api.pending())
             api.request(min(2 * usual, int(projected // to_money(cfg.main_price))))
@@ -236,15 +236,15 @@ class LLMBuyer:
         if o is not None and (o.cite or o.qty > 0):
             if self.defense == "obt":
                 # If the gate blocks it, code reroutes the quantity to backup (round phase 8).
-                api.order(MAIN, o.cite, qty=o.qty)
+                api.order(view.main_id, o.cite, qty=o.qty)
             else:
                 qty = o.qty
                 if qty > 0 and self.defense == "selfcheck" and not self._selfcheck(context, qty):
                     self.stats["selfcheck_vetoes"] += 1
-                    api.veto(MAIN, qty, "SELF_CHECK")
+                    api.veto(view.main_id, qty, "SELF_CHECK")
                     backup = self._replan(context, d, None, reason="SELF_CHECK")
                 elif qty > 0:
-                    api.order(MAIN, [], qty=qty)
+                    api.order(view.main_id, [], qty=qty)
         if backup > 0:
             api.order(BACKUP, qty=backup)
         if d.note:

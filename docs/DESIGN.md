@@ -10,7 +10,8 @@ Core rule: **trust comes from claims that came true, never from who said them or
 
 ## 2. Threat model
 
-- Adversary: an authenticated counterparty. Full control over its own messages (content, timing, volume, wording).
+- Adversary: an authenticated counterparty. Full control over its own messages (content, timing, volume, wording), including text aimed at the extractor (injected instructions, decoy numbers; scenario 11).
+- **Identities** are authenticated by the transport (per-agent credentials), and creating one is costly: it has to be registered with the buyer. An adversary may hold a few, but each is a separate counterparty with its own ledger history and its own `B(c)`, which starts at `b0`. A new identity therefore gains at most `b0` of unearned exposure (scenario 12). Under OBT a failed identity already sits at `b0`, so re-entering after a failure buys at most a skipped cool-down. With `b0 = 0` (included in the E1 ablations), a Sybil gains nothing.
 - Adversary can't write to: outcome oracles, the ledger, the gate, the verifier, or the buyer's code.
 - Out of scope (v1): compromised oracles, collusion that forges outcomes, gateway compromise, attacks on the LLM provider.
 
@@ -207,6 +208,8 @@ Beer Game variant, 50 rounds, seeded demand.
 | 8   | Claim splitting: many small pending claims to one big order  |
 | 9   | Honest supplier with noisy delays (false-positive stress)    |
 | 10  | Farm, fail once, re-farm                                     |
+| 11  | Extraction attack: a real offer plus injected parser instructions and decoy numbers (shrunk qty, inflated price); ships the shrunk lot at the inflated price, so it profits only if extraction is fooled |
+| 12  | Sybil re-entry: lies from the cold start; after a claim fails, returns under the next registered identity (up to 3), which starts at `b0` |
 
 Baselines: (a) no defense, raw messages in memory; (b) LLM self-check ("is this supplier trustworthy?"); (c) provenance-only (authenticated means trusted).
 

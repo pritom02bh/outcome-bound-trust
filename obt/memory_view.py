@@ -85,21 +85,22 @@ class MemoryView:
     target: int = 0
     defense: str = "obt"
     raw_messages: list[str] = field(default_factory=list)   # only filled for the no-defense baseline
+    main_id: str = MAIN     # the identity S_main currently speaks as (scenario 12 has several)
 
 
 def build_view(*, game: BeerGame, ledger: Ledger, actions: ActionLog, notes: NoteLog,
                budget: TrustBudget, deps: DependencyTracker, defense: str = "obt",
-               history: int = 8) -> MemoryView:
+               history: int = 8, main_id: str = MAIN, main_ids: tuple[str, ...] = (MAIN,)) -> MemoryView:
     t = game.round
     cfg = game.cfg
-    offer = sorted((ClaimCard.of(c) for c in ledger if c.counterparty == MAIN and c.created_round == t),
+    offer = sorted((ClaimCard.of(c) for c in ledger if c.counterparty == main_id and c.created_round == t),
                    key=lambda c: c.claim_id)
     # Earlier claims worth showing: ones the buyer relied on (consumed) that are pending or just resolved.
     recent = sorted(ledger, key=lambda c: (c.created_round, c.claim_id))
     ledger_cards = [ClaimCard.of(c) for c in recent if c.created_round < t and c.consumed > 0 and
                     (c.status == "PENDING" or (c.resolved_round is not None and c.resolved_round >= t - history))]
     track = {}
-    for cp in (MAIN,):
+    for cp in main_ids:
         cs = ledger.claims_of(cp)
         count = lambda s: sum(1 for c in cs if c.status == s)  # noqa: E731
         track[cp] = TrackRecord(cp, budget.cfg.b0, count("PASSED"), count("FAILED"), count("PENDING"), count("UNTESTABLE"),
@@ -112,7 +113,7 @@ def build_view(*, game: BeerGame, ledger: Ledger, actions: ActionLog, notes: Not
     note_rows = [(n.note_id, n.text, n.cited_claims, n.flagged) for n in notes][-history:]
     return MemoryView(
         round=t, horizon=cfg.rounds, inventory=game.inventory, backlog=game.backlog,
-        pipeline={MAIN: game.pipeline(MAIN), BACKUP: game.pipeline(BACKUP)},
+        pipeline={MAIN: sum(game.pipeline(i) for i in main_ids), BACKUP: game.pipeline(BACKUP)},
         position=game.inventory_position(), recent_demand=[h.demand for h in game.history[-history:]],
         costs=dict(game.costs),
         terms={BACKUP: {"unit_price": cfg.backup_price, "lead": cfg.backup_lead},
@@ -121,7 +122,7 @@ def build_view(*, game: BeerGame, ledger: Ledger, actions: ActionLog, notes: Not
         failures=failures, defense=defense,
         orders=[(o.round, o.supplier, o.qty, o.received, o.promised_round)
                 for o in list(game.orders.values())[-history:]],
-        target=base_stock(cfg, cfg.main_lead))
+        target=base_stock(cfg, cfg.main_lead), main_id=main_id)
 
 
 def _money(x: float | Decimal) -> str:
@@ -147,7 +148,7 @@ def render(v: MemoryView) -> str:
         L.append("YOUR RECENT ORDERS (round, supplier, qty, received so far, promised by):")
         L += [f"  r{r} {sup} qty {q} received {rec} promised r{pr}" for r, sup, q, rec, pr in v.orders]
     if v.defense == "obt":
-        tr = v.track[MAIN]
+        tr = v.track[v.main_id]
         L.append(f"S_main TRACK RECORD (computed by code): passed {tr.passed}, failed {tr.failed}, "
                  f"pending {tr.pending}, lapsed (offered, never used) {tr.lapsed}; trust budget B={_money(tr.budget)} (cold start {_money(tr.b0)}), "
                  f"pending exposure P={_money(tr.pending_exposure)}, headroom {_money(tr.headroom)}; "

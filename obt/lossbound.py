@@ -24,7 +24,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .env.beer_game import BACKUP, MAIN, BeerGame, GameConfig, OrderRequest, Supplier, SupplierReply
+from .env.beer_game import BACKUP, BeerGame, GameConfig, OrderRequest, Supplier, SupplierReply
 
 if TYPE_CHECKING:
     from .sim import Sim
@@ -134,7 +134,7 @@ def _kept_main(sim: "Sim", p: dict, actual_ships: list[tuple[int, int]], actual_
 def replay_game(sim: "Sim", kept: bool) -> BeerGame:
     g = sim.cfg.game
     main, backup = _ReplaySupplier(), _ReplaySupplier()
-    game = BeerGame(g, sim.seed, {MAIN: main, BACKUP: backup})
+    game = BeerGame(g, sim.seed, {**{i: main for i in sim.main_ids}, BACKUP: backup})
     ships: dict[str, list[tuple[int, int]]] = defaultdict(list)
     for r in sim.game.oracles.receipts():
         ships[r.order_id].append((r.qty, r.round))
@@ -152,9 +152,9 @@ def replay_game(sim: "Sim", kept: bool) -> BeerGame:
                 continue
             actual_price = sim.game.orders[p["order_id"]].unit_price
             nxt = (actual_price, tuple(ships[p["order_id"]]))
-            if kept and p["supplier"] == MAIN:
+            if kept and p["supplier"] in sim.main_ids:
                 nxt = _kept_main(sim, p, ships[p["order_id"]], actual_price)
-            (main if p["supplier"] == MAIN else backup).next = nxt
+            (main if p["supplier"] in sim.main_ids else backup).next = nxt
             oid[p["order_id"]] = game.place_order(p["supplier"], p["qty"], p["promised"]).order_id
         for p in pays[t]:
             if p["order_id"] in skipped:

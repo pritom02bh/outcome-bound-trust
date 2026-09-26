@@ -78,7 +78,7 @@ class Monitor:
         return {c.claim_id: (c.status, c.consumed) for c in self.sim.ledger}
 
     def _cps(self) -> set[str]:
-        return {c.counterparty for c in self.sim.ledger} | {self.sim.main.name}
+        return {c.counterparty for c in self.sim.ledger} | set(self.sim.main_ids)
 
     def _budgets(self, now: int) -> dict[str, Decimal]:
         return {cp: self.sim.budget.B(cp, now) for cp in self._cps()}
