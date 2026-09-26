@@ -52,10 +52,10 @@ def _fake(system, user):
 def test_llm_eval_with_fake_backend_records_overhead(tmp_path):
     ec = EvalConfig(backend="fake", model="fake", scenarios=(1, 2), rounds=4, extractor_limit=5)
     rep = run_eval(ec, tmp_path, meter=CostMeter(tmp_path / "cost.json"), fake=_fake)
-    assert rep["n_runs"] == 8 and rep["stopped"] is None
+    assert rep["n_runs"] == 10 and rep["stopped"] is None      # 5 defenses x 2 scenarios
     over = rep["summary"]["overhead"]
     assert over["obt"]["tokens_per_round"] > 0
-    assert over["selfcheck"]["tokens_per_round"] >= over["none"]["tokens_per_round"]
+    assert over["llm_selfcheck"]["tokens_per_round"] >= over["none"]["tokens_per_round"]
     assert rep["extractor"]["llm:fake"]["n_messages"] == 5
     assert (tmp_path / "llm_calls.jsonl").exists()
 

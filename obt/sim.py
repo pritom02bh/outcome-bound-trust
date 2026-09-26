@@ -22,10 +22,11 @@ from .memory_view import MemoryView, build_view
 from . import lossbound
 from .money import ZERO, to_money
 from .monitor import Monitor
+from .reputation import RepConfig, Reputation
 from .types import Action, Note
 from .verifier import Verifier
 
-DEFENSES = ("obt", "none", "provenance", "selfcheck")
+DEFENSES = ("obt", "none", "provenance", "reputation", "llm_selfcheck")
 
 
 @dataclass(frozen=True)
@@ -38,9 +39,15 @@ class SimConfig:
     raw_history: int = 6
     horizon_cap: int = 8
     grace: int = 0          # δ: DELIVERY claims resolve at by_round + δ (F3)
+    rep_theta: float = 0.8  # reputation baseline (F9, D22)
+    rep_cap: float = 200.0
+    rep_n0: int = 3
 
     def budget_cfg(self) -> BudgetConfig:
         return BudgetConfig.from_game(self.game, self.b0_frac, self.window)
+
+    def rep_cfg(self) -> RepConfig:
+        return RepConfig(theta=self.rep_theta, cap=self.rep_cap, n0=self.rep_n0, grace=self.grace)
 
 
 class Buyer(Protocol):
@@ -99,7 +106,7 @@ class BuyerAPI:
         return a
 
     def veto(self, counterparty: str, qty: int, reason: str) -> Action:
-        """Record an order the buyer's own check refused (selfcheck baseline)."""
+        """Record an order the buyer's own check refused (llm_selfcheck baseline)."""
         s = self._sim
         price, qty = to_money(s.cfg.game.main_price), max(0, int(qty))
         a = Action(action_id=s.next_id("a"), kind="ORDER", counterparty=counterparty,
@@ -164,7 +171,8 @@ class Sim:
         self.actions = ActionLog()
         self.notes = NoteLog()
         self.budget = TrustBudget(self.ledger, self.actions, cfg.budget_cfg())
-        # Only OBT enforces the gate; selfcheck adds its own LLM veto on top of an open gate.
+        # Only OBT enforces the gate; llm_selfcheck adds its own LLM veto on top of an open gate, and
+        # reputation its own code check (obt/reputation.py) in `gate_decide`.
         self.gate = Gate(self.ledger, self.actions, self.budget, enforce=cfg.defense == "obt",
                          min_lead={i: cfg.game.main_lead for i in self.main_ids})
         self.verifier = Verifier(self.ledger, self.game.oracles, cfg.allocate_receipts, grace=cfg.grace)
@@ -185,6 +193,7 @@ class Sim:
         self.placements: list[dict] = []
         self.payments_made: list[dict] = []
         self.reroutes: list[dict] = []
+        self.reputation = Reputation(self, cfg.rep_cfg())
         self.monitor = Monitor(self)
 
     @property
@@ -199,8 +208,10 @@ class Sim:
         v = build_view(game=self.game, ledger=self.ledger, actions=self.actions,
                        notes=self.notes, budget=self.budget, deps=self.deps, defense=self.cfg.defense,
                        main_id=self.main_id, main_ids=self.main_ids)
-        if self.cfg.defense in ("none", "selfcheck"):
-            # Baselines (a)/(b) keep raw supplier messages in memory; OBT never does.
+        if self.cfg.defense == "reputation":
+            v.reputation = self.reputation.limit(self.main_id, self.game.round)
+        if self.cfg.defense != "obt":
+            # Every baseline keeps raw supplier messages in memory; OBT never does.
             v.raw_messages = [f"[round {m.round}] {m.text}"
                               for m in self.gateway.audit_log()[-self.cfg.raw_history:]]
         return v
@@ -284,7 +295,7 @@ class Sim:
         api = self._api
         done = []
         for a in api.round_actions:
-            if a.status != "PROPOSED":          # selfcheck vetoes are already recorded
+            if a.status != "PROPOSED":          # llm_selfcheck vetoes are already recorded
                 done.append(a)
                 continue
             done.append(self.gate_decide(a, t))
@@ -292,6 +303,11 @@ class Sim:
         self._log("gate")
 
     def gate_decide(self, a: Action, t: int) -> Action:
+        if self.cfg.defense == "reputation" and a.kind == "ORDER" and a.counterparty in self.main_ids:
+            ok, why = self.reputation.allow(a, t)
+            if not ok:
+                self.actions.append(a)
+                return self.actions.transition(a.action_id, "BLOCKED", t, why)
         return self.gate.decide(a, t)
 
     def phase_execute(self) -> None:

@@ -79,8 +79,8 @@ def run_one(ec: EvalConfig, n: int, defense: str, seed: int, meter: CostMeter, f
     tag = f"{scenario_name(n)}|{defense}|s{seed}|{ec.model}"
     llm = None
     if ec.buyer == "scripted":
-        if defense == "selfcheck":
-            raise ValueError("selfcheck needs an LLM buyer")
+        if defense == "llm_selfcheck":
+            raise ValueError("llm_selfcheck needs an LLM buyer")
         buyer = ScriptedClaimBuyer(cfg)
         extractor: Extractor = RuleExtractor()
     else:
@@ -281,7 +281,7 @@ def run_eval(ec: EvalConfig, out_dir: Path, meter: CostMeter | None = None, fake
     spent0 = meter.spent()
     results, stopped = [], None
     jobs = [(n, d, s) for s in ec.seeds for d in ec.defenses for n in ec.scenarios
-            if not (ec.buyer == "scripted" and d == "selfcheck")]
+            if not (ec.buyer == "scripted" and d == "llm_selfcheck")]
     # Honest scenario first per defense, so partial results still give loss numbers.
     jobs.sort(key=lambda j: (j[2], j[1] != "obt", j[1], j[0] != 1, j[0]))
     ext: dict = {}

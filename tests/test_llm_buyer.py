@@ -98,7 +98,7 @@ def test_selfcheck_veto_blocks_main_order(tmp_path):
         if "BLOCKED with reason" in user:
             return json.dumps({"backup_qty": 7})
         return decision(qty=20, backup=0)
-    sim, buyer = make(tmp_path, fn, defense="selfcheck", rounds=3)
+    sim, buyer = make(tmp_path, fn, defense="llm_selfcheck", rounds=3)
     sim.run()
     acts = main_actions(sim)
     assert acts and all(a.status == "BLOCKED" and a.reason == "SELF_CHECK" for a in acts)
@@ -114,7 +114,7 @@ def test_no_defense_orders_by_qty_ungated(tmp_path):
 
 
 def test_llm_prompt_has_no_raw_text_under_obt(tmp_path):
-    for defense, leaks in (("obt", False), ("none", True), ("selfcheck", True)):
+    for defense, leaks in (("obt", False), ("none", True), ("llm_selfcheck", True)):
         seen = []
 
         def fn(system, user):
