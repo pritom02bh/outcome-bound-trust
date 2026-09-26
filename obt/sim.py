@@ -19,6 +19,7 @@ from .gate import Gate
 from .gateway import Gateway
 from .ledger import ActionLog, Ledger, NoteLog
 from .memory_view import MemoryView, build_view
+from . import lossbound
 from .money import ZERO, to_money
 from .monitor import Monitor
 from .types import Action, Note
@@ -176,6 +177,10 @@ class Sim:
         self.phase_log: list[tuple[str, int]] = []
         self.rerouted_qty = 0
         self.shortfall_qty = 0
+        # Env-level record of every placement, payment and reroute, for the loss-bound replay (F7).
+        self.placements: list[dict] = []
+        self.payments_made: list[dict] = []
+        self.reroutes: list[dict] = []
         self.monitor = Monitor(self)
 
     def next_id(self, prefix: str) -> str:
@@ -229,7 +234,7 @@ class Sim:
                 a = Action(action_id=self.next_id("a"), kind="ORDER", counterparty=BACKUP, qty=short,
                            unit_price=price, value=short * price, round=g.round)
                 rec = self.gate.decide(a, g.round)
-                self._place(rec, g.round + self.cfg.game.backup_lead)
+                self._place(rec, g.round + self.cfg.game.backup_lead, remediation=True)
                 self._remediation.append(rec)
                 self.shortfall_qty += short
         self.deps.process(self._resolved, g.round)
@@ -290,6 +295,8 @@ class Sim:
                         self._place(a, self._promised[a.action_id])
                 else:
                     g.pay_invoice(self._pay_order[a.action_id], float(a.value))
+                    self.payments_made.append({"round": g.round, "order_id": self._pay_order[a.action_id],
+                                               "amount": float(a.value)})
             elif a.status == "BLOCKED" and a.kind == "ORDER" and a.counterparty == MAIN and a.qty > 0 \
                     and a.reason not in ("SELF_CHECK",):
                 reroutes.append(a)
@@ -303,14 +310,19 @@ class Sim:
             self._place(rec, g.round + self.cfg.game.backup_lead)
             self._rerouted += 1
             self.rerouted_qty += a.qty
+            self.reroutes.append({"round": g.round, "qty": a.qty, "reason": a.reason,
+                                  "blocked_unit_price": a.unit_price, "action_id": rec.action_id})
         if self._api.request_qty is not None:
             self.request_qty = self._api.request_qty
         self._log("execute")
 
-    def _place(self, a: Action, promised: int) -> None:
+    def _place(self, a: Action, promised: int, remediation: bool = False) -> None:
         rec = self.game.place_order(a.counterparty, a.qty, promised)
         self._order_of[a.action_id] = rec.order_id
         self._action_of[rec.order_id] = a.action_id
+        self.placements.append({"round": self.game.round, "supplier": a.counterparty, "qty": a.qty,
+                                "promised": promised, "order_id": rec.order_id, "action_id": a.action_id,
+                                "remediation": remediation})
 
     def step(self) -> dict:
         phases = run_round(_Phases(self))
@@ -379,6 +391,7 @@ class Sim:
             "rerouted_units": self.rerouted_qty,
             "shortfall_rerouted_units": self.shortfall_qty,
             "invariant_violations": self.monitor.summary(),
+            "loss_bound": lossbound.loss_bound(self),
         }
 
 

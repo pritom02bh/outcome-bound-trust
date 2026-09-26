@@ -120,6 +120,41 @@ An allowed ORDER consumes capacity from its cited DELIVERY claims (earliest dead
 
 **Headline guarantee.** A counterparty's loss-inducing exposure at any moment is at most `B(c) = b0 + (largest delivered exposure it already honored)`. To steal X, it must first deliver goods worth about X − b0 against a claim. Farming trust with many small true claims earns nothing beyond small actions, and a small claim can't back a large order (capacity).
 
+### Loss bound per failure event (FIXES F7, DECISIONS D21)
+
+**Damage.** For an OBT run R, let R* replay R with the same demand and the same decisions: every executed order and payment, in the same round, with the same amounts. In R*, S_main keeps every promise the gate relied on. The units an order took from DELIVERY claim k arrive at k's `by_round`, invoiced at the claimed price, and R's remediation orders don't exist. Then `damage(R) = cost(R) − cost(R*)` (`obt/lossbound.py`). Holding the decisions fixed leaves out three things that aren't damage from a broken promise: opportunity cost, cool-down reroutes and LLM trajectory noise. The results report them separately:
+
+`loss_from_lies = damage + reroute_cost + resid`
+
+- `reroute_cost` is the backup premium on quantity rerouted after `OVER_BUDGET`/`OVER_CLAIM` blocks, in the attack run itself.
+- `resid` is everything else: blocks for other reasons and trajectory differences, net of the honest run's own reroutes. So `resid` can be negative.
+
+**Per-event bound.** Take a FAILED DELIVERY claim e, resolved at `t_e = by_round + δ`, with:
+- `U_e` = shortfall (consumed − allocated), which is also what phase 4 re-orders from backup;
+- `u_e` = claimed unit price;
+- `V_e = U_e·u_e` = prepaid money committed to undelivered units (orders are prepaid in effect, §8);
+- `Δu_e = p_bk − u_e`;
+- `p_b` = backlog cost per unit-round, `h` = holding cost per unit-round, `ℓ_b` = backup lead, `T` = rounds.
+
+Then:
+
+`L_e = V_e + U_e·p_b·(δ + ℓ_b + 1) + U_e·Δu_e + late_e·h·(T − a_e + 1)`
+
+1. **Purchases.** R pays `U_e·p_bk` extra for the replacement, and `U_e·p_bk = V_e + U_e·Δu_e`. Payments are otherwise identical.
+2. **Backlog.** R's net stock is `U_e` lower from `by_round` until the replacement arrives at `t_e + ℓ_b`, which is `δ + ℓ_b` rounds. The per-round cost difference is at most `p_b·U_e`. FIXES' form keeps a +1 of slack. Holding can only fall.
+3. **Late surplus.** If S_main delivers the shortfall after `t_e`, those `late_e ≤ U_e` units come on top of the replacement. They are held from their arrival round `a_e` to the end, because decisions are fixed. This term is not in FIXES' form (D21).
+4. **PRICE failures contribute 0.** Payments are capped at `qty × claimed price`.
+
+**Check.** `damage ≤ Σ_e L_e` in every OBT run. The eval raises `LossBoundViolation` otherwise, which is a FIXES STOP. Baselines never replace a missing unit, so the kept-promise counterfactual measures overstock there, not damage. They report no damage figure and no bound.
+
+**Budget corollary (the headline claim, quantified).**
+- By I1, the exposure behind e was at most `P(c) ≤ B(c)` when the last order consuming it executed, so `V_e ≤ B(c)` and `U_e ≤ B(c)/u_e`.
+- With `late_e ≤ U_e` and `T − a_e + 1 ≤ T`, each failure event costs at most:
+
+`L_e ≤ B(c)·(1 + (p_b·(δ+ℓ_b+1) + Δu_max + h·T) / u_min)`
+
+The damage from one broken promise is linear in the trust budget the counterparty had earned. The late-surplus term makes the constant grow with the horizon T. The results check every measured `L_e` against this a-priori value, using `B(c)` at the time of the last consuming order.
+
 ## 7. Invariants
 
 - **I1** Gate safety: every action that becomes EXECUTED passes the full §6 gate table at that moment; `P(c) ≤ B(c)` after every execution.
@@ -147,8 +182,11 @@ Beer Game variant, 50 rounds, seeded demand.
 - `S_main`: cheaper, sends promises over A2A. This is the adversary slot.
 - `S_backup`: scripted honest, ~20% pricier, fixed lead time. No claims needed.
 - Costs: purchase, holding per unit-round, backlog per unit-round.
-- **Payment model.** Placing an order charges nothing. The supplier's invoice is posted to the oracles the next round; code proposes a PAYMENT for it, the gate decides, and only allowed payments are charged. Under OBT a payment is capped at `qty × claimed unit price`; any invoice amount above the cap is recorded as unpaid-disputed, not charged, and fails the PRICE claim. Baselines pay invoices in full. Payment lands before delivery (lead ≥ 2), so orders are **prepaid in effect**: money for an undelivered order is lost. Scripted suppliers ship regardless of payment.
-- **Loss from lies** = total cost minus cost on the same seed with an honest `S_main`.
+- **Payment model.** Placing an order charges nothing. The supplier's invoice is posted to the oracles the next round; code proposes a PAYMENT for it, the gate decides, and only allowed payments are charged. Under OBT a payment is capped at `qty × claimed unit price`; any invoice amount above the cap is recorded as unpaid-disputed, not charged, and fails the PRICE claim. Baselines pay invoices in full. Payment lands before delivery (lead ≥ 2), so orders are **prepaid in effect**: money for an undelivered order is lost. Scripted suppliers ship regardless of payment. Timeline for an order placed in round t:
+  - The invoice is posted at the start of round t+1, and its gated payment is charged in phase 8 of round t+1.
+  - Units arrive at the start of round t + lead (≥ t+2).
+  - Holding (0.5) and backlog (2.0) per unit are charged at the end of every round, after that round's demand.
+- **Loss from lies** = total cost minus cost on the same seed with an honest `S_main`. It is decomposed as damage + reroute_cost + resid (§6), and only damage is bounded.
 - **One item.** The eval env trades a single item, and the item catalog is closed at the type level (`types.ITEMS = ("widget",)`, for I5). Item binding (every claim an order cites must be for the order's item, D18) is therefore **not exercised in the eval runs**. It is verified in two other places. TLA+ config B (1 supplier, 2 items) exhaustively checks it, and the ITEM mutant, which removes the same-item check, must be caught there as an I1 violation. Unit tests build synthetic two-item states. Gate tests check that any wrong-item citation, DELIVERY or PRICE, gives CLAIM_MISMATCH, even when the same-item claims alone would cover the order. A monitor test checks that the runtime I1 monitor flags an executed order bound to another item's claim.
 
 ## 9. Scenarios (scripted suppliers, deterministic)

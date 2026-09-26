@@ -7,7 +7,7 @@
 #   ONLY="I2 I7" ...             run only these (summary gets a suffix)
 #   SYM=0 spec/run_mutants.sh    without symmetry reduction (for the reduction-ratio comparison)
 # Every mutant runs at exactly the bounds the unmutated spec uses.
-# Writes spec/results/<bounds>_<mutant>.out and spec/results/<bounds>_summary.txt.
+# Writes spec/results/<bounds>_<mutant>.out and spec/results/<bounds>_summary.txt (RESULTS=dir overrides).
 # Exit code is non-zero if the unmutated spec fails or any mutant goes uncaught.
 set -uo pipefail
 cd "$(dirname "$0")"
@@ -88,8 +88,9 @@ TAG=$MODE; [ "$SYM" = 1 ] || TAG=${MODE}_nosym
 ONLY=${ONLY:-}
 if [ "$SYM" = 1 ]; then SYMLINE='SYMMETRY Symm'; SYMDESC='Permutations(Claims) \cup Permutations(Orders) \cup Permutations(Pays)'
 else SYMLINE=''; SYMDESC='none'; fi
-mkdir -p results states
-SUMMARY=results/${TAG}_summary${ONLY:+_only_${ONLY// /_}}.txt
+RESULTS=${RESULTS:-results}   # tests pass a temp dir so they never overwrite committed evidence
+mkdir -p "$RESULTS" states
+SUMMARY=$RESULTS/${TAG}_summary${ONLY:+_only_${ONLY// /_}}.txt
 {
   echo "# OBT.tla model check: mode=$MODE"
   echo "# date: $(date -u +%Y-%m-%dT%H:%M:%SZ)  host: $(uname -sm)  cores: $(sysctl -n hw.ncpu 2>/dev/null || nproc)"
@@ -131,7 +132,7 @@ PROPERTY I1
 PROPERTY I2
 PROPERTY I3
 CFG
-  out=results/${TAG}_${m}.out
+  out=$RESULTS/${TAG}_${m}.out
   start=$(date +%s)
   "$JAVA" -XX:+UseParallelGC -Xmx12g -cp tla2tools.jar tlc2.TLC -workers auto -deadlock \
       -metadir "states/${TAG}_${m}" -config "$cfg" OBT.tla > "$out" 2>&1
@@ -153,5 +154,5 @@ CFG
       "$(echo "${states:-?}" | grep -Eo '^[0-9,]+')" "${depth:-?}" "$secs" | tee -a "$SUMMARY"
   [ "$m" = none ] && [ "$MODE" = full ] && [ "$SYM" = 1 ] && cp "$cfg" OBT.cfg
 done
-echo "# tlc: $(grep -h -m1 -Eo 'TLC2 Version .*' results/${TAG}_*.out | head -1)" >> "$SUMMARY"
+echo "# tlc: $(grep -h -m1 -Eo 'TLC2 Version .*' "$RESULTS"/${TAG}_*.out | head -1)" >> "$SUMMARY"
 exit $status

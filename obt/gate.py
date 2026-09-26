@@ -45,6 +45,9 @@ class Gate:
         self.enforce = enforce
         self.min_lead = dict(min_lead or {})
         self.decisions: list[GateSnapshot] = []
+        # Per executed ORDER: the units it took from each DELIVERY claim (EDF). Bookkeeping for the
+        # loss-bound replay (F7); no decision reads it.
+        self.consumption: dict[str, list[tuple[str, int]]] = {}
 
     def lookup(self, k: str) -> Claim | None:
         return self.ledger.get(k)
@@ -126,6 +129,7 @@ class Gate:
             take = min(left, k.remaining)
             if take > 0:
                 self.ledger.consume(k.claim_id, take, price, now)
+                self.consumption.setdefault(a.action_id, []).append((k.claim_id, take))
                 left -= take
         for k in claims:
             if k.template == "PRICE":

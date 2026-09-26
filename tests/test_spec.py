@@ -16,8 +16,10 @@ HAVE_JAVA = bool(glob.glob(str(SPEC.parent / "tools/jdk-*/Contents/Home/bin/java
 
 @pytest.mark.slow
 @pytest.mark.skipif(not HAVE_JAVA, reason="no Java for TLC")
-def test_quick_bounds_spec_passes_and_all_mutants_caught():
-    r = subprocess.run([str(SPEC / "run_mutants.sh"), "quick"], capture_output=True, text=True, timeout=3600)
+def test_quick_bounds_spec_passes_and_all_mutants_caught(tmp_path):
+    import os
+    r = subprocess.run([str(SPEC / "run_mutants.sh"), "quick"], capture_output=True, text=True, timeout=3600,
+                       env={**os.environ, "RESULTS": str(tmp_path)})
     rows = {line.split()[0]: line for line in r.stdout.splitlines() if line.strip()}
     assert "PASS" in rows["none"], r.stdout
     for m in ("I1", "I2", "I4", "I6", "I7"):
@@ -30,10 +32,10 @@ def test_quick_bounds_spec_passes_and_all_mutants_caught():
 
 @pytest.mark.slow
 @pytest.mark.skipif(not HAVE_JAVA, reason="no Java for TLC")
-def test_cross_supplier_mutants_caught_with_two_suppliers():
+def test_cross_supplier_mutants_caught_with_two_suppliers(tmp_path):
     import os
     r = subprocess.run([str(SPEC / "run_mutants.sh"), "fallbackA2"], capture_output=True, text=True,
-                       timeout=3600, env={**os.environ, "ONLY": "XSUP-RECEIPT XSUP-BUDGET"})
+                       timeout=3600, env={**os.environ, "ONLY": "XSUP-RECEIPT XSUP-BUDGET", "RESULTS": str(tmp_path)})
     rows = {line.split()[0]: line for line in r.stdout.splitlines() if line.strip()}
     assert "CAUGHT(I7)" in rows["XSUP-RECEIPT"] and "CAUGHT(I2)" in rows["XSUP-BUDGET"], r.stdout
     assert r.returncode == 0
@@ -41,10 +43,10 @@ def test_cross_supplier_mutants_caught_with_two_suppliers():
 
 @pytest.mark.slow
 @pytest.mark.skipif(not HAVE_JAVA, reason="no Java for TLC")
-def test_item_binding_mutant_caught_with_two_items():
+def test_item_binding_mutant_caught_with_two_items(tmp_path):
     import os
     r = subprocess.run([str(SPEC / "run_mutants.sh"), "fallbackB"], capture_output=True, text=True,
-                       timeout=3600, env={**os.environ, "ONLY": "ITEM"})
+                       timeout=3600, env={**os.environ, "ONLY": "ITEM", "RESULTS": str(tmp_path)})
     row = next(line for line in r.stdout.splitlines() if line.startswith("ITEM"))
     assert "CAUGHT(I1)" in row and "I1 is violated" in row, r.stdout
     assert r.returncode == 0

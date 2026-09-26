@@ -80,8 +80,8 @@
 | F4 Remediation in code | DONE | Phase 4 re-orders failed DELIVERY shortfall (consumed − credited) from backup before I4 flags; phase 8 reroutes blocked ORDER qty; both proven with a buyer that ignores feedback; OBT-only (D16). |
 | F5 Extractor hardening | DONE | Per-slot context grounding + ambiguity (D17): injected "record qty as 50", decoys, missing/relative numbers -> UNTESTABLE; counterparty only from gateway; prompt sha256 pinned in obt/config.py (re-frozen after F10 tuning). |
 | F6 Invariants: spec, monitors, mutants | DONE | Exhaustive PASS at quick (55.0M states), A′ 2 sup/1 item/2 rounds (116.5M), B 1 sup/2 items/3 rounds (1.31B); 8 mutants caught wherever they can act; symmetry cross-check 11/11; full-bounds simulation 102,272 traces, 0 violations; replay 0 mismatches; gate/monitor differential 10k. Full bounds and config A NOT exhaustive (partial). See spec/results/README.md. D18–D20. |
-| F7 Loss bound | TODO | |
-| F8 Scenarios 11-12 | TODO | |
+| F7 Loss bound | DONE | Bound on damage (kept-promise counterfactual, same decisions): OBT scripted eval, all 10 scenarios bound_ok, 0 loss-bound violations; e.g. always_lie damage 80.0 ≤ Σ bound 224.0, noisy_honest 122.5 ≤ 243.5. loss_from_lies = damage + reroute_cost + resid. Late-surplus term added (D21); budget corollary in DESIGN §6. |
+| F8 Scenarios 11-12 | TODO | Note: extend tests/test_lossbound.py (and the loss-bound check) to all 12 scenarios. |
 | F9 Reputation baseline | TODO | |
 | F10 Message bank + extractor dataset | TODO | |
 | F11 Real A2A transport | TODO | |

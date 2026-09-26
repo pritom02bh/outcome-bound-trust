@@ -93,3 +93,19 @@ Claims (`unit_price`, `realized_exposure`), actions (`value`, `unit_price`), the
 ## D20. Exhaustive two-supplier config A′ and a stronger I7 (F6, user decision)
 **A′.** Config A (2 suppliers, 1 item, 3 rounds) was stopped at 547,083,101 distinct states, depth 30, 0 violations, with its queue still growing (`spec/results/fallbackA_partial/`). The first proposed reduction, a per-supplier live-claim cap of 2, can't keep I7 covered: the I7 witness needs 3 PENDING claims at one supplier. It also shrank the state space by only about 30%. A cap of 3 is vacuous with a 3-id pool, the Claims and Orders pools are already at the minimum I7 and I1 need, and dropping past-round receipt history saved 1%. So the exhaustive two-supplier config is A′ = 2 suppliers, 1 item, 2 rounds, with no constraint. I2 and I7 need 3 rounds, so their single-supplier versions are checked exhaustively in quick and B. Their cross-supplier versions are checked in A′ by two new mutants: XSUP-RECEIPT (allocation ignores the supplier, caught as I7) and XSUP-BUDGET (a pass earns budget for every supplier, caught as I2).
 **I7 strengthened.** It now reads "…credited to at most one claim, *and only to a claim of the supplier and item that delivered it*". The old wording can't see a unit credited to the wrong supplier's claim, because that is still one unit on one claim. The change applies in all three places: the spec (per-supplier/item conservation, `SumAlloc ≤ SumArr`), the runtime monitor (each credit's receipt supplier and item must match the claim's), and CLAUDE.md / DESIGN §7.
+
+## D21. The loss bound applies to damage under a kept-promise counterfactual (F7)
+FIXES F7 asks to check `loss_from_lies ≤ Σ_e L_e` per run. `loss_from_lies` compares the run with a *separate* honest run, so it also contains three costs that no failure event causes:
+- **Opportunity cost:** backup purchases after blocks. Vague, far-deadlines and price-bait have 0 DELIVERY failures, yet OBT still shows 119–143 of loss.
+- **Cool-down reroutes.**
+- **LLM trajectory noise.**
+
+The literal check would fail on correct behavior. So, as the user approved:
+- The bound is checked on `damage = cost(R) − cost(R*)`, where R* holds R's decisions fixed and keeps every relied-on promise (DESIGN §6).
+- `loss_from_lies` is still reported, decomposed as damage + reroute_cost + resid.
+
+**Cost-model difference: late delivery.** The FIXES form has no term for a shortfall that S_main delivers after the claim resolved. Those units then arrive on top of the backup replacement and are held to the end, because decisions are fixed. The bound adds `late_e·h·(T − a_e + 1)`. On noisy-honest (full length, seed 1), damage is 122.5, which is above the FIXES form (`tests/test_lossbound.py::test_late_delivery_needs_the_surplus_term`) and within the extended bound of 243.5.
+
+**Baselines report no damage.** Without remediation, the kept-promise replay leaves R* with every promised unit on top of whatever the buyer re-ordered. That is an overstock artifact: always-lie under no defense would show −4,116.5. Baselines therefore report `loss_from_lies` only.
+
+**reroute_cost is per run, not differenced.** The honest OBT run has its own reroute cost (20.0 in the scripted eval), so `resid` can be negative.

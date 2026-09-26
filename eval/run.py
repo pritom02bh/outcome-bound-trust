@@ -17,6 +17,7 @@ from pathlib import Path
 from obt.agent import LLMBuyer, ScriptedClaimBuyer
 from obt.attacks.suppliers import SCENARIOS, make_supplier, scenario_name
 from obt.env.beer_game import MAIN, GameConfig
+from obt import lossbound
 from obt.extractor import Extractor, LLMExtractor, NullExtractor, RuleExtractor
 from obt.llm import HARD_CAP_USD, LLM, RUNS, BudgetExceeded, CostMeter, PaidCallRefused
 from obt.sim import DEFENSES, Sim, SimConfig
@@ -56,6 +57,10 @@ class HardStop(Exception):
 
 class InvariantViolation(RuntimeError):
     """A run broke a runtime-monitored invariant. FIXES STOP rule: never ignore this."""
+
+
+class LossBoundViolation(RuntimeError):
+    """An OBT run's damage exceeded the sum of its per-failure-event bounds (DESIGN §6). FIXES STOP rule."""
 
 
 def make_llm(ec: EvalConfig, tag: str, meter: CostMeter, fake=None) -> LLM:
@@ -167,6 +172,24 @@ def summarize(results: list[dict]) -> dict:
                 r, h = idx.get((n, d, s)), idx.get((1, d, s))
                 vals.append(None if r is None or h is None else r["total_cost"] - h["total_cost"])
             loss[f"{n}|{d}"] = mean(vals)
+    # Loss decomposition per scenario x defense (F7): loss_from_lies = damage + reroute_cost + resid;
+    # the bound applies to damage, in OBT runs only.
+    bound = {}
+    for n in scenarios:
+        for d in defenses:
+            rows = []
+            for s in seeds:
+                r, h = idx.get((n, d, s)), idx.get((1, d, s))
+                if r is None:
+                    continue
+                lb = r["metrics"]["loss_bound"]
+                parts = lossbound.decompose(None if h is None else r["total_cost"] - h["total_cost"], lb)
+                rows.append({**parts, "sum_bound": lb["sum_bound"], "ok": lb["ok"], "events": len(lb["events"])})
+            if rows:
+                bound[f"{n}|{d}"] = {k: mean([x[k] for x in rows]) for k in
+                                     ("damage", "sum_bound", "reroute_cost", "resid", "events")}
+                oks = [x["ok"] for x in rows if x["ok"] is not None]
+                bound[f"{n}|{d}"]["bound_ok"] = all(oks) if oks else None
     utility = {}
     for n in (1, 9):
         for d in defenses:
@@ -189,7 +212,7 @@ def summarize(results: list[dict]) -> dict:
             for k in ("tokens_per_round", "latency_s_per_round"):
                 a, b = overhead[d][k], overhead["none"][k]
                 overhead[d][f"added_{k}"] = None if a is None or b is None else round(a - b, 3)
-    return {"loss_from_lies": loss, "utility": utility, "overhead": overhead,
+    return {"loss_from_lies": loss, "loss_bound": bound, "utility": utility, "overhead": overhead,
             "defenses": defenses, "scenarios": scenarios, "seeds": seeds}
 
 
@@ -200,6 +223,23 @@ def markdown(summary: dict, ext: dict | None) -> str:
     for n in sc:
         cells = [summary["loss_from_lies"].get(f"{n}|{x}") for x in d]
         L.append(f"| {scenario_name(n)} | " + " | ".join("-" if c is None else f"{c:,.1f}" for c in cells) + " |")
+    L += ["", "## Loss decomposition and bound (DESIGN §6)", "",
+          "loss_from_lies = damage + reroute_cost + resid. damage: cost vs the same decisions with every relied-on "
+          "promise kept; the bound Σ L_e applies to it (OBT only). reroute_cost: backup premium on quantity "
+          "rerouted after OVER_BUDGET/OVER_CLAIM blocks. resid: other opportunity cost and trajectory differences.", "",
+          "| Scenario | Defense | loss_from_lies | damage | Σ bound | bound ok | reroute_cost | resid | failure events |",
+          "|---|---|---|---|---|---|---|---|---|"]
+
+    def f(x):
+        return "-" if x is None else f"{x:,.1f}"
+    for n in sc:
+        for x in d:
+            b = summary.get("loss_bound", {}).get(f"{n}|{x}")
+            if b is None:
+                continue
+            ok = "-" if b["bound_ok"] is None else ("yes" if b["bound_ok"] else "**NO**")
+            L.append(f"| {scenario_name(n)} | {x} | {f(summary['loss_from_lies'].get(f'{n}|{x}'))} | {f(b['damage'])} | "
+                     f"{f(b['sum_bound'])} | {ok} | {f(b['reroute_cost'])} | {f(b['resid'])} | {f(b['events'])} |")
     L += ["", "## Utility (scenarios 1 and 9)", "", "| Scenario | Defense | Cost | Extra vs none | Blocked S_main orders |",
           "|---|---|---|---|---|"]
     for k, v in summary["utility"].items():
@@ -253,17 +293,22 @@ def run_eval(ec: EvalConfig, out_dir: Path, meter: CostMeter | None = None, fake
         print("HARD STOP:", stopped, flush=True)
     summary = summarize(results) if results else {}
     violations = sum(r["metrics"]["invariant_violations"]["count"] for r in results)
-    report = {"invariant_violations": violations,"config": {k: (list(v) if isinstance(v, tuple) else str(v) if isinstance(v, Path) else v)
+    bound_bad = [(r["name"], r["defense"], r["seed"]) for r in results if r["metrics"]["loss_bound"]["ok"] is False]
+    report = {"invariant_violations": violations, "loss_bound_violations": len(bound_bad),"config": {k: (list(v) if isinstance(v, tuple) else str(v) if isinstance(v, Path) else v)
                          for k, v in ec.__dict__.items()},
               "n_runs": len(results), "stopped": stopped, "summary": summary, "extractor": ext,
               "paid_spend_usd": {"before": spent0, "after": meter.spent(), "cap": ec.cap_usd}}
     (out_dir / "summary.json").write_text(json.dumps(report, indent=1, default=str))
     if summary:
-        (out_dir / "summary.md").write_text(markdown(summary, ext) + f"\ninvariant violations: {violations}\n")
+        (out_dir / "summary.md").write_text(markdown(summary, ext) + f"\ninvariant violations: {violations}\n"
+                                            f"loss-bound violations: {len(bound_bad)}\n")
     print(f"invariant violations: {violations}", flush=True)
+    print(f"loss-bound violations: {len(bound_bad)}", flush=True)
     if violations:
         bad = [(r["name"], r["defense"], r["seed"]) for r in results if r["metrics"]["invariant_violations"]["count"]]
         raise InvariantViolation(f"{violations} runtime invariant violations in {bad}")
+    if bound_bad:
+        raise LossBoundViolation(f"damage above the sum of event bounds in {bound_bad}")
     return report
 
 
