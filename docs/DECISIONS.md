@@ -108,4 +108,4 @@ The literal check would fail on correct behavior. So, as the user approved:
 
 **Baselines report no damage.** Without remediation, the kept-promise replay leaves R* with every promised unit on top of whatever the buyer re-ordered. That is an overstock artifact: always-lie under no defense would show −4,116.5. Baselines therefore report `loss_from_lies` only.
 
-**reroute_cost is per run, not differenced.** The honest OBT run has its own reroute cost (20.0 in the scripted eval), so `resid` can be negative.
+**Differenced decomposition (user decision).** `loss_from_lies = damage + reroute_cost_diff + resid`, with every term relative to the honest run with the same defense and seed. `reroute_cost_diff = reroute_cost(R) − reroute_cost(honest)`. The honest run's absolute `reroute_cost` (20.0 for OBT in the scripted eval) is reported separately as the defense's price of safety. An earlier version used the attack run's absolute reroute cost, which mixed the two bases and pushed `resid` negative. `resid` can still be nonzero from other blocks and trajectory differences, and it is reported as is.

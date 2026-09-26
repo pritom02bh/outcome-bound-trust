@@ -100,13 +100,36 @@ def test_late_delivery_needs_the_surplus_term():
 # ------------------------------------------------------------------ decomposition
 
 @pytest.mark.parametrize("n", sorted(SCENARIOS))
-def test_loss_decomposes(runs, n):
+def test_loss_decomposes_on_a_differenced_basis(runs, n):
     sim, res = runs[n]
     honest = runs[1][1]
     loss = loss_from_lies(res, honest)
-    lb = res.metrics["loss_bound"]
-    parts = lossbound.decompose(loss, lb)
-    assert parts["damage"] + parts["reroute_cost"] + parts["resid"] == pytest.approx(loss, abs=EPS)
+    lb, hb = res.metrics["loss_bound"], honest.metrics["loss_bound"]
+    parts = lossbound.decompose(loss, lb, hb)
+    assert parts["reroute_cost_diff"] == pytest.approx(lb["reroute_cost"] - hb["reroute_cost"])
+    assert parts["damage"] + parts["reroute_cost_diff"] + parts["resid"] == pytest.approx(loss, abs=EPS)
+
+
+def test_honest_run_decomposes_to_zero(runs):
+    # Same run on both sides: every differenced term is 0; its own reroute cost is the price of safety.
+    honest = runs[1][1]
+    parts = lossbound.decompose(loss_from_lies(honest, honest), honest.metrics["loss_bound"],
+                                honest.metrics["loss_bound"])
+    assert parts == {"damage": 0.0, "reroute_cost_diff": 0.0, "resid": 0.0}
+    assert honest.metrics["loss_bound"]["reroute_cost"] > 0
+
+
+def test_summary_reports_price_of_safety(tmp_path):
+    from eval.run import EvalConfig, run_eval
+    ec = EvalConfig(buyer="scripted", scenarios=(1, 2), defenses=("obt", "none"), rounds=30, extractor_eval=False)
+    rep = run_eval(ec, tmp_path)["summary"]
+    honest = [r for r in map(__import__("json").loads, (tmp_path / "results.jsonl").read_text().splitlines())
+              if r["scenario"] == 1]
+    for r in honest:
+        assert rep["price_of_safety"][r["defense"]] == pytest.approx(r["metrics"]["loss_bound"]["reroute_cost"])
+    b = rep["loss_bound"]["2|obt"]
+    assert b["damage"] + b["reroute_cost_diff"] + b["resid"] == pytest.approx(rep["loss_from_lies"]["2|obt"], abs=0.01)
+    assert "price of safety" in (tmp_path / "summary.md").read_text().lower()
 
 
 def test_reroute_cost_hand_count_price_bait(runs):
@@ -123,7 +146,7 @@ def test_baselines_have_no_damage_measure_or_bound():
     sim, res = run(2, "none")
     lb = res.metrics["loss_bound"]
     assert lb["damage"] is None and lb["sum_bound"] is None and lb["ok"] is None
-    assert lossbound.decompose(1000.0, lb)["resid"] is None
+    assert lossbound.decompose(1000.0, lb, lb)["resid"] is None
 
 
 # ------------------------------------------------------------------ STOP wiring
