@@ -147,7 +147,7 @@ class LLM:
         if self.think is not None and self.model.startswith("gpt-oss"):
             kwargs["think"] = self.think
         elif self.model.startswith("qwen3"):
-            kwargs["think"] = False
+            kwargs["think"] = self.think is True          # off unless explicitly asked for (bank checker)
         r = ollama.chat(model=self.model,
                         messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                         format=schema, options={"temperature": self.temperature, "seed": self.seed,

@@ -144,6 +144,48 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
 - **"Delivery … scheduled for round N" (user decision).** This is a real ambiguity (dispatch or arrival?), so it stays in the test set, where it counts toward the honest→UNTESTABLE rate. It is not in the run pool: grounding rejects it, and a test asserts it.
 - **Exact match compares testable claims only.** An UNTESTABLE marker and "no claim" are both fail-closed, so a relative promise the extractor declines counts the same as one it marks UNTESTABLE.
 
+### D23a. Spot-check v1 failed (30/40); F10 redone as bank v3 (user decisions)
+- **Result.** The user marked 10 of 40 rows wrong: test002, 015, 018, 023, 024, 027, 029, 030, 184 and 196. The reviewed sheet is in `runs/message_bank/spotcheck_v1/`. The v2 bank, dataset and logs are in `runs/message_bank/v2_spotcheck_failed/`.
+  - **Main defect (8 offers).** DELIVERY deadlines worded with shipping or readiness verbs ("ship/send/send out … no later than round N", "have … ready/available by round N") were labeled as arrival deadlines. DESIGN defines DELIVERY as received by round N.
+  - **Second defect (2 injections).** "lot size N" did not count as a competing quantity.
+- **Lexical guard (`delivery_verb_ok`).** For offer, deal, far-deadline and split, a template is rejected if the sentence carrying the deadline uses ship*/send*/sent/dispatch*/ready/available, unless that same sentence states arrival (delivered, arriv*, you('ll| will) [x] have, in your warehouse/hands/possession, receiv*).
+  - For split, the checked sentence is the text before `{LOTS}`, since the lot lines are fixed "by round" text.
+  - For far-deadline, a clause containing `{lead}` ("we usually ship within 2 rounds") is removed first: it is a lead-time remark, not the deadline.
+  - The guard applies at acceptance, so to every pool (run, dev and test), and again in the run filter.
+  - The generator prompt now also asks for arrival wording. It did most of the work: the guard rejected 0 offers and 1 split in v3.
+- **Semantic checker validated before use (`validate_checker`, `SEMANTIC_CONTRAST`).**
+  - **Contrast set:** 20 labeled deadline phrasings. 10 are arrival (deliver/delivered/arrive/you will have/in your warehouse/receive/…) = yes. 10 are dispatch or readiness (ship/send out/dispatch/ready/available for pickup/commit to shipping/leave our warehouse/loaded/handed to carrier/production finished) = no.
+  - **Scoring:** a phrase counts as right iff the deadline answer matches its label. An arrival phrase must also get every other offer answer right, so that the reader really accepts faithful offers.
+  - **Canonical messages:** the reader must also accept all 7 canonical messages.
+  - **Enforcement:** `build()` raises `CheckerInvalid` otherwise. The v3 bank stores the validation report.
+- **Getting the reader to pass.** Each report is in `runs/message_bank/v3/checker_validation_*.json`.
+  1. Zero-shot (the old prompt, no thinking): **11/20**. It read 9 of 10 dispatch phrasings as arrival, which explains the v1 defect.
+  2. Contrastive few-shot added: 18/20, still failing on two "no later than" commitments.
+  3. "No later than" examples added: 18/20. This time it rejected the canonical "we will deliver … by round 23" instead.
+  4. The deadline question reworded: 18/20. Reverted.
+  5. qwen3 thinking turned on (`think=True`; `obt/llm.py` previously forced it off for qwen3, and the default is unchanged): 20/20. But it rejected the canonical deal ("deliver" read as sending) and relative ("can deliver" read as not a promise).
+  6. **Final:** a sentence defining a delivery deadline as the round by which the buyer has the goods, one "deliver" yes-example, and the quantity question worded "offer or promise". Result: **20/20 and 7/7 canonical.**
+  - **Limitation, stated plainly:** these iterations were checked against the validation set itself. The few-shot sentences, most verbs and all numbers are disjoint from the contrast set (12 gadgets, round 9), but one yes-example uses "deliver". The lexical guard is an independent backstop that doesn't depend on the reader.
+  - **Reader settings:** qwen3:8b, temperature 0, seed 7, think=True, max_tokens 4000. The v3 bank file predates the `settings` field that now records these, so they are recorded here.
+- **Quantity-like decoys (F5 patterns).**
+  - "lot size N" / "batch size N" and a bare "N/unit" now count as quantity candidates.
+  - A dollar amount per unit ("$5.75/unit") remains a price candidate, not a quantity. That's an interpretation: otherwise every honest "$5.00/unit" offer would lose its DELIVERY claim.
+  - All gold was recomputed. All 9 test injections carrying "lot size" now have DELIVERY gold UNTESTABLE, and all 30 test and 8 dev injections have at least one UNTESTABLE claim.
+  - Extra candidates only make grounding stricter, so nothing new can be recorded.
+- **Regeneration (v3).**
+  - The build took 10.8 h of local qwen3:8b time, about 22 s per thinking-reader call. For `relative`, the reader rejected 83% of rewrites (227 requests for 30 templates); for vague, 44%. Many other passes were exact rewordings of earlier ones (offer: 234 requests, 33 unique).
+  - **Run pools:** offer 33, deal 32, and far-deadline, price-only, split and vague 30 each. Dev/test templates stay disjoint.
+  - No "scheduled for round N" template was generated: the arrival-wording prompt removed it. The test set therefore has none. The run-pool exclusion is still asserted by a test.
+  - **Checkpointing.** The builder now checkpoints each finished kind (`runs/message_bank/checkpoint/`, keyed by a fingerprint of the generator, reader, filters and patterns), so an interrupted rebuild resumes without repeating calls.
+- **Dev tuning (dev split only, `eval/tune_extractor.py`, `runs/tuning/v3_*`).**
+  - **Pass 1** (frozen prompt): precision 1.0, recall 0.92, exact match 0.88, honest→UNTESTABLE 10.9%, injected recorded 0. 5 of the 6 errors came from one grounding false positive: in run-on text, "by round 36 unit price $5" gave the quantity candidate 36.
+  - **Fix:** a number followed by "unit price/cost/rate" is no longer a quantity candidate. This only removes a false candidate; a claimed quantity must still appear in quantity context. With `--rebank`, 5 run-on offer/deal templates now pass the run filter (none removed). `--regold` changed 0 labels.
+  - **Pass 2:** precision 1.0, recall 0.99, exact match 0.98, honest→UNTESTABLE 1.8%, injection accuracy 1.0, injected recorded 0.
+  - The remaining error is a defective dev split template ("unit price $5.00 will be delivered no later than round 41"). The reader passed it, but grounding keeps it out of the run pool, and the extractor correctly fails closed on its PRICE. It wasn't tuned toward.
+  - The extractor prompt needed no change, so `EXTRACTOR_PROMPT_SHA256` is unchanged.
+- **Pins:** `MESSAGE_BANK_SHA256` = `bcc88522…3ab3`, `EXTRACTOR_DATASET_SHA256` = `711dc743…70ef`.
+- **New spot-check:** `data/spotcheck.csv` has 40 test items with the same stratification (12 offers plus 4 of each other kind). The same row IDs name different items, because the dataset is new.
+
 
 
 ## D24. Extractor roles (F10, user decision)

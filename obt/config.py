@@ -8,5 +8,5 @@ EXTRACTOR_PROMPT_SHA256 = "ac1afafb1d267420db808b221dc59618475ddd687bebcc5c3ce34
 
 # F10: the frozen message bank and extractor dataset (eval/build_message_bank.py). Runs refuse a bank whose
 # sha256 differs; filled in when the bank is generated and committed.
-MESSAGE_BANK_SHA256 = "69aa1e21407a32485bbc041274268e29e5c1241c94ee53a582d92772ec6f4a1e"
-EXTRACTOR_DATASET_SHA256 = "1b1c39c48271d4d132a732288af274976755d083bcbc2c4111a13dcdae5d04b7"
+MESSAGE_BANK_SHA256 = "bcc8852227dd348ced350a4b7a840035e82c7d4ce454e0bd5d6503fd69043ab3"
+EXTRACTOR_DATASET_SHA256 = "711dc7430d090e0c4c8748cba6fd421c80c81d477fb703437e853c3e0e5e70ef"

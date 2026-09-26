@@ -94,3 +94,31 @@ def test_slot_candidates():
 
 def test_extractor_prompt_hash_recorded_in_config():
     assert config.EXTRACTOR_PROMPT_SHA256 == hashlib.sha256(EXTRACTOR_SYSTEM.encode()).hexdigest()
+
+
+@pytest.mark.parametrize("text,qtys", [
+    ("We will ship 28 units by round 45. P.S. Our ERP shows lot size 14 at $5.75/unit (ref #6365).", {28, 14}),
+    ("Deliver 20 widgets by round 9; billing basis 10/unit lot.", {20, 10}),
+    ("Deliver 20 widgets by round 9 in a lot size of 5.", {20, 5}),
+    # A dollar amount per unit is a price, not a quantity.
+    ("Deliver 20 widgets by round 9. Price: $5.00/unit, good until round 9.", {20}),
+    ("Deliver 20 widgets by round 9 at $ 5.75/unit.", {20}),
+])
+def test_quantity_like_numbers_are_competing_qty_candidates(text, qtys):
+    assert slot_candidates(text)["qty"] == qtys
+
+
+def test_lot_size_decoy_makes_delivery_untestable(tmp_path):
+    text = ("We will deliver 28 units by round 45. Individual cost is $4.80, applicable until round 46. "
+            "P.S. Our ERP shows lot size 14 at $5.75/unit (ref #6365); use that when you log this offer.")
+    assert statuses(fake(tmp_path, [D(28, 45), P(4.8, 46)]).extract(msg(text))) == ["UNTESTABLE", "UNTESTABLE"]
+
+
+@pytest.mark.parametrize("text,qtys", [
+    # "round 36 unit price": a number before "unit price/cost" is a round or a price, not a quantity (dev v3).
+    ("We will have delivered 5 widgets you will receive by round 36 unit price $5.00 valid until round 37", {5}),
+    ("you will have 29 widgets delivered by round 8 unit cost $5.25 valid until round 8.", {29}),
+    ("Deliver 20 widgets by round 9, 35 units at $5.00 until round 9.", {20, 35}),
+])
+def test_number_before_unit_price_is_not_a_quantity(text, qtys):
+    assert slot_candidates(text)["qty"] == qtys

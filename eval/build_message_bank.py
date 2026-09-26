@@ -19,10 +19,12 @@ import subprocess
 from decimal import Decimal
 from pathlib import Path
 
+from obt import extractor, message_bank
 from obt.llm import LLM, RUNS
 from obt.llm import parse_json
-from obt.message_bank import (CANONICAL, INJECTIONS, KINDS, SEMANTIC_QUESTIONS, SEMANTIC_SYSTEM, claim_grounded, fill,
-                              gold_claims, grammar_ok, lots_text, numeric_ok, run_pool_ok, templatize)
+from obt.message_bank import (CANONICAL, INJECTIONS, KINDS, SEMANTIC_CONTRAST, SEMANTIC_QUESTIONS, SEMANTIC_SYSTEM,
+                              claim_grounded, delivery_verb_ok, fill, gold_claims, grammar_ok, lots_text, numeric_ok,
+                              run_pool_ok, templatize)
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 STYLES = ("formal business email", "friendly and casual", "terse, like a text message", "enthusiastic sales pitch",
@@ -44,7 +46,9 @@ def prompt(kind: str, style: str) -> str:
     return (f"Rewrite the message below in fresh wording. Style: {style}.\n"
             f"Vary the wording and the sentence structure.\n"
             f"Rules: keep every promise and its exact meaning. A delivery deadline stays a deadline by which the "
-            f"buyer has the goods (by / no later than), never a shipping or dispatch date. A price's validity stays "
+            f"buyer has the goods (by / no later than), never a shipping or dispatch date: say it with arrival "
+            f"wording (deliver, delivered, arrive, you will have, receive), never with ship, send, dispatch, ready "
+            f"or available. A price's validity stays "
             f"an end date for that price. Refer to time in rounds. Use exactly these numbers, each exactly once, "
             f"written as "
             f"digits: {nums}; do not add any other number or digit (no dates, times, or counts).{spec.extra}\n\n"
@@ -67,16 +71,49 @@ CANONICAL_LOTS = "Lot 1: 12 widgets by round 23; Lot 2: 12 widgets by round 23; 
 
 def semantic_ok(checker: LLM, text: str, kind: str) -> bool:
     """A separate, fixed-prompt reading must answer every per-slot question as the intent says (D23)."""
+    return _answers(checker, text, kind) == [want for _, want in SEMANTIC_QUESTIONS[kind]]
+
+
+class CheckerInvalid(RuntimeError):
+    """The semantic reader mislabels the contrast set, so it may not filter the bank."""
+
+
+def _answers(checker: LLM, text: str, kind: str) -> list[str] | None:
     qs = SEMANTIC_QUESTIONS[kind]
     msg = text.replace("{LOTS}", CANONICAL_LOTS)
     user = "Message:\n<<<\n" + msg + "\n>>>\nQuestions:\n" + "\n".join(f"{i + 1}. {q}" for i, (q, _) in
                                                                    enumerate(qs))
     try:
-        got = [a.strip().lower() for a in parse_json(checker.chat(SEMANTIC_SYSTEM, user, schema=SEMANTIC_SCHEMA,
-                                                                  purpose=f"semantic:{kind}").text)["answers"]]
+        return [a.strip().lower() for a in parse_json(checker.chat(SEMANTIC_SYSTEM, user, schema=SEMANTIC_SCHEMA,
+                                                                   purpose=f"semantic:{kind}").text)["answers"]]
     except Exception:
-        return False
-    return got == [want for _, want in qs]
+        return None
+
+
+def validate_checker(checker: LLM) -> dict:
+    """Run the reader on the 20-phrase contrast set (D23). A phrase is right iff the deadline answer matches
+    its label; an arrival phrase must also get every other offer answer right, so the reader actually accepts
+    faithful offers. (A dispatch phrase is rejected by a "no" on the deadline whatever else it answers.)
+    Raises CheckerInvalid unless all 20 are right and all seven canonical messages are accepted."""
+    wants = [want for _, want in SEMANTIC_QUESTIONS["offer"]]
+    errors = []
+    for text, by_want in SEMANTIC_CONTRAST:
+        want = wants[:1] + [by_want] + wants[2:]
+        got = _answers(checker, text, "offer")
+        ok = got is not None and len(got) == len(want) and got[1] == by_want and (by_want == "no" or got == want)
+        if not ok:
+            errors.append({"message": text, "want": want, "got": got})
+    # The reader must also accept every kind's canonical message, or it would reject faithful rewrites.
+    canonical_errors = []
+    for kind, spec in KINDS.items():
+        got = _answers(checker, spec.base, kind)
+        if got != [want for _, want in SEMANTIC_QUESTIONS[kind]]:
+            canonical_errors.append({"kind": kind, "got": got})
+    report = {"n": len(SEMANTIC_CONTRAST), "correct": len(SEMANTIC_CONTRAST) - len(errors), "errors": errors,
+              "canonical_accepted": len(KINDS) - len(canonical_errors), "canonical_errors": canonical_errors}
+    if errors or canonical_errors:
+        raise CheckerInvalid(json.dumps(report, indent=1))
+    return report
 
 
 def _norm(t: str) -> str:
@@ -88,7 +125,7 @@ def generate(llm: LLM, kind: str, target: int, max_requests: int, log: list, che
     seen: set[str] = {_norm(templatize(KINDS[kind].base, kind))}      # the canonical base itself doesn't count
     run_ok: list[str] = []
     requests = 0
-    tallies = {"numeric_fail": 0, "semantic_fail": 0, "checked": 0}
+    tallies = {"numeric_fail": 0, "verb_fail": 0, "grammar_fail": 0, "unneeded": 0, "semantic_fail": 0, "checked": 0}
     need_run = KINDS[kind].testable and kind in RUN_KINDS
     while requests < max_requests and (len(accepted) < target or (need_run and len(run_ok) < target)):
         style = STYLES[requests % len(STYLES)]
@@ -99,6 +136,15 @@ def generate(llm: LLM, kind: str, target: int, max_requests: int, log: list, che
             text = clean(llm.chat(SYSTEM, prompt(kind, style), purpose=f"bank:{kind}").text)
             if not numeric_ok(text, kind):
                 tallies["numeric_fail"] += 1
+                continue
+            if not delivery_verb_ok(templatize(text, kind), kind):
+                tallies["verb_fail"] += 1
+                continue
+            if not grammar_ok(templatize(text, kind), kind):     # cheap checks first: the reader is slow
+                tallies["grammar_fail"] += 1
+                continue
+            if len(accepted) >= target and not run_pool_ok(templatize(text, kind), kind):
+                tallies["unneeded"] += 1                  # only run-pool templates are still wanted
                 continue
             tallies["checked"] += 1
             if checker is not None and not semantic_ok(checker, text, kind):
@@ -216,11 +262,45 @@ def _digest(model: str) -> str:
         return ""
 
 
+def _fingerprint(llm: LLM, checker: LLM | None, kind: str, target: int, max_requests: int) -> str:
+    """Everything a kind's generation depends on; a checkpoint is reused only if this matches."""
+    blob = [llm.backend, llm.model, llm.temperature, SYSTEM, list(STYLES), prompt(kind, STYLES[0]), target,
+            max_requests, RUN_KINDS, None if checker is None else [checker.model, checker.temperature, checker.seed,
+                                                                   checker.think, SEMANTIC_SYSTEM,
+                                                                   SEMANTIC_QUESTIONS[kind]],
+            # The filters and F5 patterns live in these modules; any edit to them invalidates the checkpoint.
+            [hashlib.sha256(Path(m.__file__).read_bytes()).hexdigest() for m in (message_bank, extractor)]]
+    return hashlib.sha256(json.dumps(blob, sort_keys=True, default=str).encode()).hexdigest()
+
+
+def _generate_or_resume(llm: LLM, kind: str, target: int, max_requests: int, log: list, checker: LLM | None,
+                        checkpoint: Path | None) -> dict:
+    fp = _fingerprint(llm, checker, kind, target, max_requests)
+    f = checkpoint / f"{kind}.json" if checkpoint else None
+    if f is not None and f.exists():
+        saved = json.loads(f.read_text())
+        if saved["fingerprint"] == fp:
+            log += saved["log"]
+            return saved["gen"]
+    kind_log: list = []
+    g = generate(llm, kind, target, max_requests, kind_log, checker)
+    log += kind_log
+    if f is not None:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        tmp = f.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"fingerprint": fp, "gen": g, "log": kind_log}, indent=1))
+        tmp.replace(f)
+    return g
+
+
 def build(llm: LLM, out: Path = DATA, target: int = 30, max_requests: int = 200, seed: int = 20260926,
-          checker: LLM | None = None) -> dict:
+          checker: LLM | None = None, checkpoint: Path | None = None) -> dict:
     out.mkdir(parents=True, exist_ok=True)
+    # The reader filters the bank only after it labels the whole contrast set correctly (raises otherwise).
+    validation = validate_checker(checker) if checker is not None else None
     log: list = []
-    gen = {k: generate(llm, k, target, max_requests, log, checker) for k in KINDS}
+    # Each finished kind is checkpointed, so an interrupted build resumes without redoing hours of calls.
+    gen = {k: _generate_or_resume(llm, k, target, max_requests, log, checker, checkpoint) for k in KINDS}
     rng = random.Random(seed)
     pools = {"dev": {}, "test": {}}
     for k, g in gen.items():
@@ -237,11 +317,17 @@ def build(llm: LLM, out: Path = DATA, target: int = 30, max_requests: int = 200,
                           "system": SYSTEM, "styles": list(STYLES), "target": target, "max_requests": max_requests,
                           "seed": seed, "canonical": CANONICAL},
             "stats": {k: {"requests": g["requests"], "accepted": len(g["accepted"]), "run_pool": len(g["run"]),
-                          "numeric_fail": g["numeric_fail"], "semantic_fail": g["semantic_fail"],
+                          "numeric_fail": g["numeric_fail"], "verb_fail": g["verb_fail"],
+                          "grammar_fail": g["grammar_fail"], "unneeded": g["unneeded"],
+                          "semantic_fail": g["semantic_fail"],
                           "semantic_rejection_rate": round(g["semantic_fail"] / g["checked"], 4) if g["checked"]
                           else None} for k, g in gen.items()},
             "semantic_check": {"model": checker.model if checker else None, "system": SEMANTIC_SYSTEM,
-                               "questions": {k: [list(q) for q in v] for k, v in SEMANTIC_QUESTIONS.items()}},
+                               "settings": None if checker is None else {"temperature": checker.temperature,
+                                                                         "seed": checker.seed, "think": checker.think,
+                                                                         "max_tokens": checker.max_tokens},
+                               "questions": {k: [list(q) for q in v] for k, v in SEMANTIC_QUESTIONS.items()},
+                               "contrast_validation": validation},
             "run": {k: gen[k]["run"] for k in RUN_KINDS},
             "dev_templates": pools["dev"], "test_templates": pools["test"],
             "injections": list(INJECTIONS), "injection_split": {"dev": [0, 1], "test": [2, 3, 4, 5]},
@@ -296,10 +382,12 @@ def main() -> None:
         return
     llm = LLM("ollama", a.model, temperature=1.1, think=None, max_tokens=300,
               log_path=RUNS / "message_bank" / "llm_calls.jsonl")
-    # A separate reader: same local model, fixed prompt, deterministic (temperature 0, fixed seed).
-    checker = LLM("ollama", a.model, temperature=0.0, seed=7, think=None, max_tokens=200,
+    # A separate reader: same local model, fixed prompt, deterministic (temperature 0, fixed seed). Thinking
+    # is on: without it the reader failed the contrast set (D23).
+    checker = LLM("ollama", a.model, temperature=0.0, seed=7, think=True, max_tokens=4000,
                   log_path=RUNS / "message_bank" / "llm_calls.jsonl")
-    print(json.dumps(build(llm, target=a.target, max_requests=a.max_requests, checker=checker), indent=1))
+    print(json.dumps(build(llm, target=a.target, max_requests=a.max_requests, checker=checker,
+                           checkpoint=RUNS / "message_bank" / "checkpoint"), indent=1))
 
 
 if __name__ == "__main__":

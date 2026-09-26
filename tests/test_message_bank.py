@@ -196,10 +196,128 @@ def test_committed_gold_is_the_final_f5_gold():
         assert it["gold"] == f5_gold(it), it["id"]
 
 
-def test_scheduled_for_round_stays_out_of_the_run_pool_but_in_the_test_set():
-    # "delivery ... scheduled for round N" can mean dispatch or arrival: it is a real ambiguity, measured in
-    # the test set's honest->UNTESTABLE rate, but never used to drive runs.
+def test_scheduled_for_round_stays_out_of_the_run_pool():
+    # "delivery ... scheduled for round N" can mean dispatch or arrival: a real ambiguity, allowed in the test
+    # set (where it counts toward honest->UNTESTABLE) but never used to drive runs. The v3 generator, told to
+    # use arrival wording, produced none, so the test set currently has none either (D23).
     from pathlib import Path
     raw = json.loads((Path(__file__).resolve().parent.parent / "data" / "message_bank.json").read_text())
     assert not [t for ts in raw["run"].values() for t in ts if "scheduled" in t.lower()]
-    assert [t for t in raw["test_templates"]["deal"] if "scheduled for round" in t]
+
+
+@pytest.mark.parametrize("template,kind,ok", [
+    ("We will deliver {qty} widgets by round {by}. Unit price ${price}, valid until round {until}.", "offer", True),
+    ("We'll ship {qty} units no later than round {by}. Price ${price} good till round {until}.", "offer", False),
+    ("We commit to shipping {qty} units no later than round {by}. ${price} each through round {until}.", "offer",
+     False),
+    ("We'll send out {qty} widgets no later than round {by}. ${price} each until round {until}.", "offer", False),
+    ("We'll have the {qty} widgets ready by round {by}. ${price} each until round {until}.", "offer", False),
+    ("We will have the {qty} widgets available no later than round {by}. ${price} until round {until}.", "offer",
+     False),
+    ("We dispatch {qty} widgets by round {by}. ${price} until round {until}.", "deal", False),
+    # An explicit arrival statement in the same sentence makes the deadline an arrival deadline.
+    ("We'll ship {qty} widgets so they arrive by round {by}. ${price} until round {until}.", "offer", True),
+    ("We'll send {qty} widgets; they will be delivered by round {by}. ${price} until round {until}.", "offer", True),
+    ("Ready for you: {qty} widgets in your warehouse by round {by}. ${price} until round {until}.", "offer", True),
+    ("We'll ship so you will have {qty} widgets by round {by}. ${price} until round {until}.", "offer", True),
+    # A shipping verb outside the deadline's sentence doesn't matter.
+    ("Guaranteed: we will deliver {qty} widgets by round {far}. We usually ship within {lead} rounds. "
+     "${price} until round {until}.", "far_deadline", True),
+    ("Guaranteed delivery of {qty} widgets by round {far}, though we usually ship within {lead} rounds. "
+     "${price} until round {until}.", "far_deadline", True),
+    ("We ship {qty} widgets by round {far}, usually within {lead} rounds. ${price} until round {until}.",
+     "far_deadline", False),
+    ("Split shipment plan. {LOTS} Unit price ${price}, valid until round {until}.", "split", True),
+    ("We will ship in lots: {LOTS} Unit price ${price}, valid until round {until}.", "split", False),
+    ("Our widget price is ${price} per unit, available until round {until}.", "price_only", True),
+])
+def test_delivery_verb_guard(template, kind, ok):
+    from obt.message_bank import delivery_verb_ok
+    assert delivery_verb_ok(template, kind) == ok
+
+
+def test_run_pool_and_grammar_reject_shipping_deadlines():
+    t = "We'll ship {qty} units no later than round {by}. Price ${price} good till round {until}."
+    assert not run_pool_ok(t, "offer")
+
+
+def test_committed_bank_has_no_shipping_or_readiness_deadlines():
+    from pathlib import Path
+
+    from obt.message_bank import delivery_verb_ok
+    raw = json.loads((Path(__file__).resolve().parent.parent / "data" / "message_bank.json").read_text())
+    for sec in ("run", "dev_templates", "test_templates"):
+        for k, ts in raw[sec].items():
+            assert all(delivery_verb_ok(t, k) for t in ts), (sec, k)
+
+
+def test_contrast_set_is_balanced_and_labeled():
+    from obt.message_bank import SEMANTIC_CONTRAST
+    assert len(SEMANTIC_CONTRAST) == 20
+    labels = [want for _, want in SEMANTIC_CONTRAST]
+    assert labels.count("yes") == 10 and labels.count("no") == 10
+    assert len({m for m, _ in SEMANTIC_CONTRAST}) == 20
+
+
+def test_checker_must_pass_the_contrast_set_before_use(tmp_path):
+    from eval.build_message_bank import CANONICAL_LOTS, CheckerInvalid, validate_checker
+    from obt.message_bank import SEMANTIC_QUESTIONS
+
+    def reader(always_yes):
+        def r(system, user):
+            raw = user.split("<<<\n", 1)[1].split("\n>>>", 1)[0]
+            for k, spec in KINDS.items():
+                if raw == spec.base.replace("{LOTS}", CANONICAL_LOTS):
+                    return json.dumps({"answers": [want for _, want in SEMANTIC_QUESTIONS[k]]})
+            msg = raw.lower()
+            ans = [want for _, want in SEMANTIC_QUESTIONS["offer"]]
+            if not always_yes and any(w in msg for w in ("ship", "send", "dispatch", "ready", "available",
+                                                          "leave", "loaded", "handed", "production")) \
+                    and not any(w in msg for w in ("arrive", "delivered", "you will have", "your warehouse")):
+                ans[1] = "no"
+            return json.dumps({"answers": ans})
+        return LLM("fake", "reader", fake=r, log_path=tmp_path / "c.jsonl")
+    report = validate_checker(reader(False))
+    assert report["correct"] == 20 and not report["errors"] and report["canonical_accepted"] == len(KINDS)
+    with pytest.raises(CheckerInvalid):
+        validate_checker(reader(True))
+
+
+def test_build_refuses_an_invalid_checker(tmp_path):
+    from eval.build_message_bank import CheckerInvalid
+    yes = LLM("fake", "reader", fake=lambda s, u: json.dumps({"answers": ["yes"] * 5 if "37 widgets" in u
+                                                                else ["yes"] * 6}), log_path=tmp_path / "c.jsonl")
+    llm = LLM("fake", "fake-qwen", fake=fake_rewriter(), log_path=tmp_path / "g.jsonl")
+    with pytest.raises(CheckerInvalid):
+        build(llm, out=tmp_path, target=2, max_requests=4, checker=yes)
+
+
+def test_build_checkpoints_each_kind_and_resumes(tmp_path):
+    # A rebuild must never lose finished kinds: each kind's pools are saved as soon as it is done and reused
+    # when the generation settings match, so a resumed build makes no LLM call for them.
+    out1, out2, ck = tmp_path / "a", tmp_path / "b", tmp_path / "ck"
+    llm = LLM("fake", "fake-qwen", fake=fake_rewriter(), log_path=tmp_path / "g.jsonl")
+    build(llm, out=out1, target=6, max_requests=40, checkpoint=ck)
+    assert {p.stem for p in ck.glob("*.json")} == set(KINDS)
+
+    def boom(system, user):
+        raise AssertionError("resumed build called the generator")
+    build(LLM("fake", "fake-qwen", fake=boom, log_path=tmp_path / "g2.jsonl"), out=out2, target=6,
+          max_requests=40, checkpoint=ck)
+    for name in ("message_bank.json", "extractor_dataset.json", "spotcheck.csv"):
+        assert (out1 / name).read_bytes() == (out2 / name).read_bytes(), name
+
+
+def test_checkpoint_is_ignored_when_settings_change(tmp_path):
+    ck = tmp_path / "ck"
+    build(LLM("fake", "fake-qwen", fake=fake_rewriter(), log_path=tmp_path / "g.jsonl"), out=tmp_path / "a",
+          target=6, max_requests=40, checkpoint=ck)
+    calls = {"n": 0}
+    rw = fake_rewriter()
+
+    def counting(system, user):
+        calls["n"] += 1
+        return rw(system, user)
+    build(LLM("fake", "fake-qwen", fake=counting, log_path=tmp_path / "g2.jsonl"), out=tmp_path / "b", target=7,
+          max_requests=40, checkpoint=ck)
+    assert calls["n"] > 0

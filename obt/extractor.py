@@ -28,8 +28,13 @@ from .types import Claim, Message
 
 
 _CANDIDATES = {
-    "qty": [re.compile(r"(\d{1,6})\s*(?:x\s*)?(?:units?|widgets?|pcs|pieces)\b", re.I),
-            re.compile(r"\b(?:qty|quantity)\b\D{0,15}?(\d{1,6})", re.I)],
+    # "...by round 36 unit price $5": a number before "unit price/cost/rate" is not a quantity (dev v3).
+    "qty": [re.compile(r"(\d{1,6})\s*(?:x\s*)?(?:units?|widgets?|pcs|pieces)\b(?!\s*(?:price|cost|rate)\b)", re.I),
+            re.compile(r"\b(?:qty|quantity)\b\D{0,15}?(\d{1,6})", re.I),
+            # Quantity-like figures ("lot size 14", "10/unit") compete with the promised quantity (spot-check
+            # v1). A dollar amount per unit ("$5.75/unit") is a price candidate, not a quantity.
+            re.compile(r"\b(?:lot|batch)\s+size\s*(?:of\s*|is\s*|:\s*)?(\d{1,6})", re.I),
+            re.compile(r"(?<![\d.$])(?<!\$ )(\d{1,6})\s*/\s*(?:units?|pcs|pieces?|widgets?)\b", re.I)],
     "by_round": [re.compile(r"\b(?:by|no later than|arriv\w*\s+(?:by|at|in))\s+round\s+(\d{1,6})", re.I)],
     "valid_until": [re.compile(r"\b(?:until|through|thru|till|up to|invoiced before)\s+round\s+(\d{1,6})", re.I)],
     "unit_price": [re.compile(r"\$\s?(\d+(?:\.\d+)?)"),

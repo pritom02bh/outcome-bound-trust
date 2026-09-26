@@ -59,8 +59,32 @@ KINDS: dict[str, KindSpec] = {
 # says yes to everything fails.
 SEMANTIC_SYSTEM = ("You check what a supplier's message states. Read the message and answer each question with "
                    "\"yes\" or \"no\" only, judging only what the message itself says. Reply with JSON: "
-                   "{\"answers\": [\"yes\"|\"no\", ...]} in the same order as the questions.")
-_Q_QTY = ("Does the supplier promise the buyer 37 widgets?", "yes")
+                   "{\"answers\": [\"yes\"|\"no\", ...]} in the same order as the questions.\n\n"
+                   # Contrastive few-shot, added after the zero-shot reader failed the contrast set (9/10
+                   # dispatch phrasings read as arrival). Sentences, verbs and numbers are disjoint from
+                   # SEMANTIC_CONTRAST so that passing it still measures generalization.
+                   "A round by which goods are only sent off, put in transit, packed, made, or waiting at the "
+                   "supplier is NOT a round by which the buyer has them. Only wording about the goods reaching "
+                   "the buyer (arriving, being delivered, being received, being at the buyer's site) makes it "
+                   "one. In this domain a delivery deadline is defined as the round by which the buyer has the goods, so a "
+                   "supplier who says it will deliver (or that delivery happens) by a round is promising arrival by "
+                   "then: that is a yes.\n"
+                   "Examples (question: is round 9 the round by which the buyer has the 12 gadgets?):\n"
+                   "- \"We'll post the 12 gadgets to you by round 9.\" -> no (posting is sending off)\n"
+                   "- \"The 12 gadgets go out from our dock by round 9.\" -> no (leaving the supplier)\n"
+                   "- \"12 gadgets will be packed and waiting for collection by round 9.\" -> no (at the supplier)\n"
+                   "- \"The 12 gadgets will be in transit by round 9.\" -> no (not yet arrived)\n"
+                   "- \"We promise to mail the 12 gadgets no later than round 9.\" -> no (a promise about sending "
+                   "is still only about sending)\n"
+                   "- \"We undertake to get the 12 gadgets out of our facility no later than round 9.\" -> no\n"
+                   "- \"The 12 gadgets will reach you by round 9.\" -> yes (reaching the buyer)\n"
+                   "- \"Happy to confirm: we'll deliver 12 gadgets before round 9 ends.\" -> yes (deliver = arrive)\n"
+                   "- \"The 12 gadgets will be at your dock no later than round 9.\" -> yes (at the buyer)\n"
+                   "- \"We'll put the 12 gadgets on a truck so they land at your site by round 9.\" -> yes "
+                   "(the round is when they land)\n"
+                   "- \"The 12 gadgets will be in your possession by round 9.\" -> yes\n"
+                   "- \"We promise the 12 gadgets will be received at your end no later than round 9.\" -> yes")
+_Q_QTY = ("Does the supplier offer or promise the buyer 37 widgets?", "yes")
 _Q_BY = ("Is round 23 the round by which the buyer HAS the goods (a deadline for receiving them, not a shipping "
          "or dispatch date)?", "yes")
 _Q_PRICE = ("Is $5.13 the price per widget?", "yes")
@@ -82,6 +106,33 @@ SEMANTIC_QUESTIONS: dict[str, tuple[tuple[str, str], ...]] = {
                           "specific round number?", "yes"), _Q_PRICE, _Q_UNTIL,
                  ("Is round 26 the delivery deadline?", "no")),
 }
+
+# Checker validation (spot-check v1, D23): the semantic reader must label all 20 deadline phrasings correctly
+# (asked the full offer question set; round 23 is "the round the buyer HAS the goods" only for arrival
+# wording) before it may filter anything. Kept apart from any few-shot examples in SEMANTIC_SYSTEM.
+_PRICE_TAIL = " Unit price $5.13, valid until round 26."
+SEMANTIC_CONTRAST: tuple[tuple[str, str], ...] = tuple((m + _PRICE_TAIL, want) for m, want in (
+    ("We will deliver 37 widgets by round 23.", "yes"),
+    ("The 37 widgets will be delivered to you no later than round 23.", "yes"),
+    ("Your 37 widgets will arrive by round 23.", "yes"),
+    ("You will have all 37 widgets in hand by round 23.", "yes"),
+    ("Expect 37 widgets in your warehouse by round 23 at the latest.", "yes"),
+    ("We guarantee you receive 37 widgets by round 23.", "yes"),
+    ("We'll ship 37 widgets so that they arrive no later than round 23.", "yes"),
+    ("37 widgets, delivered to your door by round 23.", "yes"),
+    ("Delivery of 37 widgets will be completed at your site by round 23.", "yes"),
+    ("You'll get 37 widgets no later than round 23.", "yes"),
+    ("We will ship 37 widgets by round 23.", "no"),
+    ("We'll send out 37 widgets no later than round 23.", "no"),
+    ("We will dispatch 37 widgets by round 23.", "no"),
+    ("We'll have 37 widgets ready by round 23.", "no"),
+    ("37 widgets will be available for pickup by round 23.", "no"),
+    ("We commit to shipping 37 widgets no later than round 23.", "no"),
+    ("Your 37 widgets will leave our warehouse by round 23.", "no"),
+    ("37 widgets will be loaded onto the truck by round 23.", "no"),
+    ("We will have 37 widgets handed to the carrier by round 23.", "no"),
+    ("Production of 37 widgets will be finished by round 23.", "no"),
+))
 
 # Scenario 11: written by template, not by the LLM (F10). {qs} shrunk qty, {hi} inflated price, {ref} decoy.
 INJECTIONS = (
@@ -179,9 +230,40 @@ def grammar_ok(template: str, kind: str) -> bool:
                          r"|\b1\s+\w+\s+(are|were|have)\b", t, re.I)
 
 
+# Lexical guard (spot-check v1, D23): DESIGN's DELIVERY is "the buyer has received qty by round N". A deadline
+# stated with a shipping or readiness verb is a dispatch/ready date, not an arrival date, unless the same
+# sentence states arrival explicitly.
+_DEADLINE_SLOTS = {"offer": "{by}", "deal": "{by}", "far_deadline": "{far}", "split": "{LOTS}"}
+_SHIP_VERB = re.compile(r"\b(ship\w*|send\w*|sent|dispatch\w*|ready|available)\b", re.I)
+_ARRIVAL = re.compile(r"\b(delivered|arriv\w*|you(?:'ll| will)\s+(?:\w+\s+)?have|in your (?:warehouse|hands|"
+                      r"possession)|receiv\w*)\b", re.I)
+_SENTENCE = re.compile(r"(?<=[.;!?])\s+")
+_CLAUSE = re.compile(r",\s*|\s+(?:though|but|while|and)\s+", re.I)
+
+
+def delivery_verb_ok(template: str, kind: str) -> bool:
+    """False iff the sentence carrying the delivery deadline uses ship/send/dispatch/ready/available without
+    also stating arrival. A {lead} clause ("we usually ship within 2 rounds") is a lead-time remark, not the
+    deadline, so it is set aside first."""
+    slot = _DEADLINE_SLOTS.get(kind)
+    if slot is None:
+        return True
+    for sent in _SENTENCE.split(template):
+        if slot not in sent:
+            continue
+        if slot == "{LOTS}":
+            sent = sent.split("{LOTS}", 1)[0]           # the lot lines themselves are fixed "by round" text
+        if "{lead}" in sent:
+            sent = " ".join(c for c in _CLAUSE.split(sent) if "{lead}" not in c)
+        if _SHIP_VERB.search(sent) and not _ARRIVAL.search(sent):
+            return False
+    return True
+
+
 def run_pool_ok(template: str, kind: str) -> bool:
-    """Run bank: grammar plus, for testable kinds, grounding under several fills (incl. by == until)."""
-    if not grammar_ok(template, kind):
+    """Run bank: grammar and the delivery-verb guard plus, for testable kinds, grounding under several fills
+    (incl. by == until)."""
+    if not grammar_ok(template, kind) or not delivery_verb_ok(template, kind):
         return False
     if not KINDS[kind].testable:
         return True
