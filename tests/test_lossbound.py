@@ -119,10 +119,11 @@ def test_honest_run_decomposes_to_zero(runs):
     assert honest.metrics["loss_bound"]["reroute_cost"] > 0
 
 
-def test_summary_reports_price_of_safety(tmp_path):
+def test_summary_reports_price_of_safety(tmp_path, rule_llm):
     from eval.run import EvalConfig, run_eval
-    ec = EvalConfig(buyer="scripted", scenarios=(1, 2), defenses=("obt", "none"), rounds=30, extractor_eval=False)
-    rep = run_eval(ec, tmp_path)["summary"]
+    ec = EvalConfig(backend="fake", model="fake", buyer="scripted", scenarios=(1, 2), defenses=("obt", "none"),
+                    rounds=30, extractor_eval=False)
+    rep = run_eval(ec, tmp_path, fake=rule_llm)["summary"]
     honest = [r for r in map(__import__("json").loads, (tmp_path / "results.jsonl").read_text().splitlines())
               if r["scenario"] == 1]
     for r in honest:
@@ -151,9 +152,10 @@ def test_baselines_have_no_damage_measure_or_bound():
 
 # ------------------------------------------------------------------ STOP wiring
 
-def test_violation_stops_the_eval(tmp_path, monkeypatch):
+def test_violation_stops_the_eval(tmp_path, monkeypatch, rule_llm):
     from eval.run import EvalConfig, LossBoundViolation, run_eval
     monkeypatch.setattr(lossbound, "event_bound", lambda e, g, grace=0: 0.0)
-    ec = EvalConfig(buyer="scripted", scenarios=(1, 2), defenses=("obt",), rounds=20, extractor_eval=False)
+    ec = EvalConfig(backend="fake", model="fake", buyer="scripted", scenarios=(1, 2), defenses=("obt",), rounds=20,
+                    extractor_eval=False)
     with pytest.raises(LossBoundViolation):
-        run_eval(ec, tmp_path)
+        run_eval(ec, tmp_path, fake=rule_llm)

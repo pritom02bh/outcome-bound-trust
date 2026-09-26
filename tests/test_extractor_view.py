@@ -249,3 +249,43 @@ def test_live_extractor_is_schema_valid_or_untestable(tmp_path):
     assert [c.status for c in ex.extract(msg(vague))] == ["UNTESTABLE"]
     rows = (tmp_path / "calls.jsonl").read_text().splitlines()
     assert len(rows) == 2 and json.loads(rows[0])["completion_tokens"] > 0
+
+
+# ------------------------------------------------------------------ persistent extraction cache
+
+def test_extraction_cache_is_persistent_and_keyed(tmp_path):
+    from obt.extractor import ExtractionCache
+    n = {"calls": 0}
+
+    def count(s, u):
+        n["calls"] += 1
+        return GOOD
+    llm = LLM("fake", "m", fake=count, log_path=tmp_path / "c.jsonl")
+    ex = LLMExtractor(llm, ExtractionCache(tmp_path / "x", "m", "d1"))
+    a = ex.extract(msg(rnd=7))
+    b = LLMExtractor(llm, ExtractionCache(tmp_path / "x", "m", "d1")).extract(msg(rnd=30))   # new instance, new round
+    assert n["calls"] == 1                                          # same text: served from disk
+    assert [c.slots for c in a] == [c.slots for c in b] and b[0].created_round == 30
+    LLMExtractor(llm, ExtractionCache(tmp_path / "x", "m", "d2")).extract(msg())               # re-pulled model
+    LLMExtractor(llm, ExtractionCache(tmp_path / "x", "m2", "d1")).extract(msg())              # other model
+    assert n["calls"] == 3
+    assert llm.by_purpose["extract"]["cache_hits"] == 1
+    rows = [json.loads(line) for line in (tmp_path / "c.jsonl").read_text().splitlines()]
+    assert sum(r["cached"] for r in rows) == 1
+
+
+def test_extraction_cache_key_includes_the_prompt(tmp_path, monkeypatch):
+    import obt.extractor as E
+    k1 = E.ExtractionCache(tmp_path, "m", "d").key("hello")
+    monkeypatch.setattr(E, "EXTRACTOR_SYSTEM", E.EXTRACTOR_SYSTEM + " changed")
+    assert E.ExtractionCache(tmp_path, "m", "d").key("hello") != k1
+
+
+def test_extractor_prompt_carries_no_round(tmp_path):
+    seen = []
+
+    def spy(s, u):
+        seen.append(u)
+        return GOOD
+    LLMExtractor(fake_llm(tmp_path, spy)).extract(msg(rnd=17))
+    assert "17" not in seen[0].replace(msg().text, "") and "round:" not in seen[0].lower()

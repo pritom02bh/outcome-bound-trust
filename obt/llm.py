@@ -133,6 +133,14 @@ class LLM:
         self._log(reply, purpose, key)
         return reply
 
+    def record_cached(self, purpose: str = "") -> None:
+        """Count a call answered from an external cache (e.g. the extraction cache): 0 tokens, 0 latency."""
+        self.calls += 1
+        p = self.by_purpose.setdefault(purpose or "?", {"calls": 0, "tokens": 0, "latency_s": 0.0})
+        p["calls"] += 1
+        p["cache_hits"] = p.get("cache_hits", 0) + 1
+        self._log(LLMReply("", 0, 0, 0.0, cached=True), purpose, "extraction-cache")
+
     def _ollama(self, system: str, user: str, schema: dict | None) -> tuple[str, int, int]:
         import ollama
         kwargs: dict = {}

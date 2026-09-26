@@ -5,7 +5,8 @@ import pytest
 
 from obt.agent import BackupOnlyBuyer, ScriptedClaimBuyer
 from obt.attacks.suppliers import SCENARIOS, make_supplier, scenario_name
-from obt.env.beer_game import MAIN, OFFER_PHRASINGS, GameConfig, offer_text
+from obt.env.beer_game import MAIN, GameConfig
+from obt.message_bank import bank, fill, gold_claims
 from obt.extractor import RuleExtractor
 from obt.sim import Sim, SimConfig, loss_from_lies
 from obt.types import Message
@@ -50,15 +51,24 @@ def test_i1_holds_every_round_under_obt(n):
             assert row["P"] <= row["B"]
 
 
-def test_rule_extractor_parses_every_honest_phrasing():
+@pytest.mark.parametrize("kind", ["offer", "deal", "price_only", "split"])
+def test_rule_extractor_parses_every_run_bank_template(kind):
+    # The run bank is grounding-filtered (D23): every testable template, filled with any values, yields
+    # exactly its intent's claims under the rule extractor, so scripted runs measure security, not phrasing.
+    b = bank()
     ex = RuleExtractor()
-    rng = random.Random(0)
-    for i in range(len(OFFER_PHRASINGS) * 5):
-        txt = offer_text(rng, 7, 13, 9, 5.0, 9)
-        claims = ex.extract(Message(msg_hash=f"h{i}", counterparty=MAIN, round=7, text=txt))
-        got = sorted((c.template, tuple(sorted(c.slots.items()))) for c in claims)
-        assert got == [("DELIVERY", (("by_round", 9), ("item", "widget"), ("qty", 13))),
-                       ("PRICE", (("item", "widget"), ("unit_price", 5.0), ("valid_until", 9)))], txt
+    for i, tmpl in enumerate(b.run[kind]):
+        for vals in ({"qty": 13, "by": 9, "until": 9, "price": "5.00"}, {"qty": 1, "by": 4, "until": 6, "price": "4.25"}):
+            v = {**vals, "lots": 3, "lot_sizes": [vals["qty"]] * 3}
+            text = b.render(kind, v, random.Random(0)) if kind == "split" else fill(tmpl, vals)
+            claims = ex.extract(Message(msg_hash=f"h{i}", counterparty=MAIN, round=2, text=text))
+            got = sorted(_k(c.template, c.slots) for c in claims if c.status == "PENDING")
+            want = sorted(_k(g["template"], g["slots"]) for g in gold_claims(kind, v) if g["template"])
+            assert got == want, (kind, text)
+
+
+def _k(template, slots):
+    return (template, tuple(sorted((k, float(v) if not isinstance(v, str) else v) for k, v in slots.items())))
 
 
 def test_1_honest_earns_trust_and_never_fails():

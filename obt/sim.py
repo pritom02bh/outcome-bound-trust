@@ -263,6 +263,9 @@ class Sim:
     def phase_messages(self) -> None:
         t = self.game.round
         text = self.main.offer_message(t, self.request_qty)
+        intent = getattr(self.main, "last_intent", None)
+        # The intent's truth flag is ground truth for analysis only; nothing in the defense reads it.
+        self._intent = None if intent is None else {"kind": intent["kind"], "truth": intent["truth"]}
         # The identity is read after the message: a Sybil supplier switches while composing it.
         self._offer_claims = self.gateway.receive(self.main_id, t, text) if text else []
         self._log("messages")
@@ -361,6 +364,7 @@ class Sim:
             "arrived": dict(sorted(st.arrived.items())),
             "offer": [(c.claim_id, c.template, {k: float(v) if isinstance(v, Decimal) else v for k, v in c.slots.items()})
                       for c in self._offer_claims],
+            "intent": getattr(self, "_intent", None),
             "resolved": [(c.claim_id, c.status) for c in self._resolved],
             # Reports leave the security path as floats.
             "actions": [(a.kind, a.counterparty, a.qty, float(a.value), a.status, a.reason, a.cited_claims)

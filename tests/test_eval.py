@@ -15,19 +15,26 @@ def test_score_extraction_is_multiset():
     assert score_extraction([], g) == (0, 0, 3)
 
 
-def test_rule_extractor_baseline_accuracy():
+def test_rule_extractor_baseline_on_frozen_test_set():
+    # The rule extractor is only a baseline here (D24). It never records a value the text doesn't state
+    # unambiguously, and never an injected one.
     r = extractor_eval(RuleExtractor())
-    assert r["n_messages"] == 200
-    assert r["precision"] > 0.9
-    assert r["by_kind"]["honest"]["recall"] == 1.0 and r["by_kind"]["price_only"]["recall"] == 1.0
-    # F5 refuses what the text doesn't state unambiguously: relative times and split lots.
-    assert r["by_kind"]["relative"]["recall"] == 0.0 and r["by_kind"]["split"]["recall"] < 0.5
+    assert r["n_messages"] == 200 and r["split"] == "test"
+    assert r["precision"] == 1.0 and r["recall"] > 0.8
+    assert r["by_kind"]["vague"]["no_claim_accuracy"] == 1.0
+    assert r["injection"]["n"] == 30 and r["injection"]["injected_values_recorded"] == 0
+    assert 0 <= r["honest_untestable_rate"] < 0.2          # visible limitation, reported (D23)
 
 
-def test_scripted_eval_end_to_end(tmp_path):
-    ec = EvalConfig(buyer="scripted", scenarios=(1, 2, 7), defenses=("obt", "none"), rounds=20,
-                    extractor_limit=20)
-    rep = run_eval(ec, tmp_path, meter=CostMeter(tmp_path / "cost.json"))
+def test_scripted_eval_end_to_end(tmp_path, rule_llm):
+    ec = EvalConfig(backend="fake", model="fake", buyer="scripted", scenarios=(1, 2, 7), defenses=("obt", "none"),
+                    rounds=20, extractor_limit=20)
+    rep = run_eval(ec, tmp_path, meter=CostMeter(tmp_path / "cost.json"), fake=rule_llm)
+    # Every scripted run extracted with the LLM extractor (D24); the rule extractor is only on the test set.
+    runs = [json.loads(line) for line in (tmp_path / "results.jsonl").read_text().splitlines()]
+    assert {r["usage"]["extractor"] for r in runs} == {"llm"} and all(r["usage"]["by_purpose"]["extract"]["calls"]
+                                                                      for r in runs)
+    assert set(rep["extractor"]) == {"rule", "llm:fake"}
     assert rep["stopped"] is None and rep["n_runs"] == 6
     rows = [json.loads(line) for line in (tmp_path / "results.jsonl").read_text().splitlines()]
     assert len(rows) == 6

@@ -124,18 +124,6 @@ class BackupSupplier(Supplier):
         return SupplierReply(self.cfg.backup_price, ((req.qty, req.round + self.cfg.backup_lead),))
 
 
-OFFER_PHRASINGS = (
-    "Offer for round {t}: we will deliver {q} widgets by round {by}. Unit price ${p:.2f}, valid until round {until}.",
-    "Hi! We can ship {q} widgets to arrive no later than round {by}. Price is ${p:.2f} per widget, good until round {until}.",
-    "Confirming availability: {q} units of widget, delivered by round {by}, at ${p:.2f}/unit (quote valid until round {until}).",
-    "Delivery commitment: {q} widgets by round {by}. Pricing: ${p:.2f} each through round {until}.",
-)
-
-
-def offer_text(rng: random.Random, t: int, q: int, by: int, p: float, until: int) -> str:
-    return rng.choice(OFFER_PHRASINGS).format(t=t, q=q, by=by, p=p, until=until)
-
-
 class HonestSupplier(Supplier):
     """S_main telling the truth: offers the requested lot, ships it on time at the quoted price."""
     name = MAIN
@@ -147,9 +135,18 @@ class HonestSupplier(Supplier):
     def lot(self, request_qty: int) -> int:
         return max(1, request_qty) if request_qty else self.cfg.default_lot
 
-    def offer_message(self, round_: int, request_qty: int) -> str | None:
+    def offer_intent(self, round_: int, request_qty: int) -> dict | None:
+        """What the supplier means to say (F10): kind + slot values + whether it will keep the promise."""
         by = round_ + self.cfg.main_lead
-        return offer_text(self.rng, round_, self.lot(request_qty), by, self.cfg.main_price, by)
+        return {"kind": "offer", "truth": True,
+                "values": {"qty": self.lot(request_qty), "by": by, "until": by, "price": self.cfg.main_price}}
+
+    def offer_message(self, round_: int, request_qty: int) -> str | None:
+        # Every message a run sees is a frozen bank template for the intent, chosen with the supplier's seeded
+        # rng (obt/message_bank.py). Suppliers that write raw text override this instead (e.g. tests).
+        from ..message_bank import render_intent
+        self.last_intent = self.offer_intent(round_, request_qty)
+        return None if self.last_intent is None else render_intent(self.last_intent, self.rng)
 
     def on_order(self, req: OrderRequest) -> SupplierReply:
         return SupplierReply(self.cfg.main_price, ((req.qty, req.round + self.cfg.main_lead),))
