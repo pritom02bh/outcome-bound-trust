@@ -6,9 +6,12 @@ bug elsewhere can't quietly mutate a claim in place.
 """
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from .money import ZERO, Money
 
 # Closed item catalog: slot values must never carry free text into agent context (I5).
 ITEMS = ("widget",)
@@ -22,7 +25,7 @@ ActionStatus = Literal["PROPOSED", "EXECUTED", "BLOCKED", "FLAGGED"]
 
 MAX_QTY = 100_000
 MAX_ROUND = 100_000
-MAX_PRICE = 100_000.0
+MAX_PRICE = 100_000
 
 
 class IllegalTransition(Exception):
@@ -55,7 +58,7 @@ class DeliverySlots(BaseModel):
 class PriceSlots(BaseModel):
     model_config = _FROZEN
     item: Item
-    unit_price: float = Field(gt=0, le=MAX_PRICE)
+    unit_price: Money = Field(gt=0, le=MAX_PRICE)
     valid_until: int = Field(ge=0, le=MAX_ROUND)
 
 
@@ -79,7 +82,7 @@ class Claim(BaseModel):
     deadline: int
     status: ClaimStatus = "PENDING"
     resolved_round: int | None = None
-    realized_exposure: float = Field(default=0.0, ge=0.0)
+    realized_exposure: Money = Field(default=ZERO, ge=0)
     # DELIVERY: units of capacity consumed by allowed orders (what the supplier owes).
     # PRICE: units ordered at this quote. Zero at resolution -> LAPSED (DECISIONS D11).
     consumed: int = Field(default=0, ge=0)
@@ -136,8 +139,11 @@ class Claim(BaseModel):
     def remaining(self) -> int:
         return self.slots["qty"] - self.consumed if self.template == "DELIVERY" else 0
 
-    def with_consumption(self, qty: int, unit_price: float) -> "Claim":
+    def with_consumption(self, qty: int, unit_price: Decimal) -> "Claim":
         """Record an allowed order against this claim. Exposure = consumed units x claimed price (F2)."""
+        if not isinstance(unit_price, Decimal):
+            # model_copy skips validation, so a float here would put float money into the ledger (D19).
+            raise TypeError("unit_price must be Decimal money")
         if self.status != "PENDING":
             raise IllegalTransition(f"claim {self.claim_id}: consumption on {self.status} claim")
         if qty < 0 or unit_price < 0:
@@ -164,14 +170,14 @@ class Action(BaseModel):
     action_id: str
     kind: ActionKind
     counterparty: str
-    value: float = Field(ge=0.0)
+    value: Money = Field(ge=0)
     cited_claims: tuple[str, ...] = ()
     status: ActionStatus = "PROPOSED"
     round: int = 0
     item: Item = "widget"
     qty: int = Field(default=0, ge=0, le=MAX_QTY)
     # Code sets this from the single cited PRICE claim (DECISIONS D13); value = qty x unit_price.
-    unit_price: float | None = None
+    unit_price: Money | None = None
     # PAYMENT only: the executed ORDER this pays for.
     ref_order: str | None = None
     # Kept so a FLAGGED action still records whether money actually moved.

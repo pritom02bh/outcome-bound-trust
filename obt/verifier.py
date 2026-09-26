@@ -19,9 +19,9 @@ from typing import Callable
 
 from .env.oracles import OracleView
 from .ledger import Ledger
+from .money import to_money
 from .types import Claim
 
-PRICE_EPS = 1e-9
 
 
 def check_delivery(claim: Claim, oracles: OracleView, grace: int = 0) -> bool:
@@ -34,7 +34,8 @@ def check_delivery(claim: Claim, oracles: OracleView, grace: int = 0) -> bool:
 def check_price(claim: Claim, oracles: OracleView) -> bool:
     s = claim.slots
     invs = oracles.invoices(claim.counterparty, s["item"], claim.created_round, s["valid_until"])
-    return all(i.unit_price <= s["unit_price"] + PRICE_EPS for i in invs)
+    # Env invoice prices are floats: they enter the security path through the one rounding rule (D19).
+    return all(to_money(i.unit_price) <= s["unit_price"] for i in invs)
 
 
 TEMPLATES: dict[str, Callable[..., bool]] = {

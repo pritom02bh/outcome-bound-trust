@@ -1,0 +1,34 @@
+{
+ "mode": "uniform",
+ "mutant": "none",
+ "seeds": [
+  20260925
+ ],
+ "batch": 1000,
+ "avg_trace_length": 52.95,
+ "tlc_cfg": "SPECIFICATION Spec\nCONSTANTS\n    Sups = {s1, s2}\n    Items = {i1, i2}\n    Claims = {k1, k2, k3}\n    Orders = {o1, o2}\n    Pays = {p1}\n    Notes = {n1}\n    MaxRound = 6\n    B0 = 1\n    MinLead = 2\n    W = 1\n    NoRef = NoRef\n    MUTANT = \"none\"\nINVARIANT TypeOK\nINVARIANT I4\nINVARIANT I6\nINVARIANT I7\nPROPERTY I1\nPROPERTY I2\nPROPERTY I3\n",
+ "traces": 1000,
+ "traces_with_decisions": 1000,
+ "traces_to_final_round": 1000,
+ "states": 52952,
+ "decisions": 2002,
+ "reasons": {
+  "ORDER:BAD_CLAIM": 133,
+  "ORDER:CLAIM_MISMATCH": 139,
+  "ORDER:NO_CITATION": 239,
+  "ORDER:OK": 2,
+  "ORDER:OVER_BUDGET": 1,
+  "ORDER:OVER_CLAIM": 1,
+  "ORDER:PRICE_MISMATCH": 15,
+  "ORDER:UNKNOWN_CLAIM": 913,
+  "ORDER:WRONG_COUNTERPARTY": 557,
+  "PAYMENT:OK": 1,
+  "PAYMENT:OVERPAY": 1
+ },
+ "spec_verdicts": {
+  "BLOCKED": 1999,
+  "EXECUTED": 3
+ },
+ "mismatch_count": 0,
+ "mismatch_examples": []
+}

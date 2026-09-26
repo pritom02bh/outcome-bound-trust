@@ -1,0 +1,22 @@
+Partial exhaustive runs at full bounds (NOT a completed verification).
+
+Bounds: Sups = {s1, s2}  Items = {i1, i2}  Claims = {k1, k2, k3}  Orders = {o1, o2}  Pays = {p1}
+        Notes = {n1}  MaxRound = 6  B0 = 1  MinLead = 2  W = 1  (full_none.cfg)
+Symmetry: Permutations(Claims) \cup Permutations(Orders) \cup Permutations(Pays)
+TLC: 2.19 of 08 August 2024 (rev 5a47802), 10 workers, -Xmx12g, Apple arm64, 10 cores.
+
+full_none_sym_stringsentinel.out   started 19:17:44, stopped 19:56:29 (38 min 45 s)
+  BFS depth reached 23; 415,521,614 distinct states; 626,472,717 states generated;
+  354,081,841 states left on queue and growing; 0 violations.
+  Spec: NoPay.ref = "none" (a string, fixed by every permutation) and the pre-D18 item rule.
+
+full_none_exhaustive_partial.out   same bounds, NoRef model value, pre-D18 item rule; stopped after ~1.5 min.
+  BFS depth 18; 8,910,678 distinct states; 0 violations.
+
+Both runs predate D18 (strict item binding): with two items their spec used the lenient rule, so their
+state spaces differ from the committed spec's. They are kept only as evidence of the exhaustive run's size.
+
+Stopped because the queue was still growing with no sign of completion. The full bounds are covered
+by random simulation instead (see ../README.md, tier 3).
+
+Both also predate D20 (I7 strengthened: credits only to the delivering supplier's claims).

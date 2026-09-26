@@ -1,0 +1,7 @@
+# OBT.tla model check: mode=fallbackA
+# date: 2026-09-25T14:27:31Z  host: Darwin arm64  cores: 10
+# tla2tools.jar sha256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+# java: openjdk version "21.0.12.1" 2026-08-18 LTS
+# bounds: Sups = {s1, s2} Items = {i1} Claims = {k1, k2, k3} Orders = {o1, o2} Pays = {p1} Notes = {n1} MaxRound = 3 B0 = 2 MinLead = 1  W = 1
+# symmetry: Permutations(Claims) \cup Permutations(Orders) \cup Permutations(Pays)
+mutant verdict            violation                         distinct_states  depth runtime_s

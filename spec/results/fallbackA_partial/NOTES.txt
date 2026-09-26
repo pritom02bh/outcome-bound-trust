@@ -1,0 +1,15 @@
+Config A, unmutated, exhaustive BFS: STOPPED, NOT a completed verification (separate non-exhaustive evidence).
+
+Bounds: Sups = {s1, s2}  Items = {i1}  Claims = {k1, k2, k3}  Orders = {o1, o2}  Pays = {p1}  Notes = {n1}
+        MaxRound = 3  B0 = 2  MinLead = 1  W = 1  (fallbackA_none.cfg), SYMMETRY Symm.
+TLC 2.19 (rev 5a47802), 10 workers, -Xmx12g, Apple arm64, 10 cores.
+
+Started 20:27:31, stopped 21:06:47 (39 min 16 s) by decision: the queue kept growing like the
+full-bounds run that never finished.
+Last progress: BFS depth 30; 547,083,101 distinct states; 811,349,332 states generated;
+188,641,957 states left on queue; 0 violations.
+
+The two-supplier config reported as exhaustive is A' = 2 suppliers, 1 item, 2 rounds (DECISIONS D20); see ../README.md.
+
+Spec: OBT.tla as of D18 (strict item binding), before D20. D20 only adds a check to I7 and mutant-only
+branches, so the unmutated state space is the same, but the strengthened I7 was not checked on these states.

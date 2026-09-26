@@ -1,0 +1,31 @@
+{
+ "mode": "guided",
+ "mutant": "none",
+ "seeds": [
+  20261000
+ ],
+ "batch": 1000,
+ "avg_trace_length": 52.02,
+ "tlc_cfg": "SPECIFICATION GuidedSpec\nCONSTANTS\n    Sups = {s1, s2}\n    Items = {i1, i2}\n    Claims = {k1, k2, k3}\n    Orders = {o1, o2}\n    Pays = {p1}\n    Notes = {n1}\n    MaxRound = 6\n    B0 = 1\n    MinLead = 2\n    W = 1\n    NoRef = NoRef\n    MUTANT = \"none\"\nINVARIANT TypeOK\nINVARIANT I4\nINVARIANT I6\nINVARIANT I7\nPROPERTY I1\nPROPERTY I2\nPROPERTY I3\n",
+ "traces": 1000,
+ "traces_with_decisions": 749,
+ "traces_to_final_round": 1000,
+ "states": 52021,
+ "decisions": 1021,
+ "reasons": {
+  "ORDER:CLAIM_MISMATCH": 520,
+  "ORDER:OK": 153,
+  "ORDER:OVER_BUDGET": 95,
+  "ORDER:OVER_CLAIM": 99,
+  "ORDER:PRICE_MISMATCH": 1,
+  "PAYMENT:BAD_CLAIM": 37,
+  "PAYMENT:OK": 70,
+  "PAYMENT:OVERPAY": 46
+ },
+ "spec_verdicts": {
+  "BLOCKED": 798,
+  "EXECUTED": 223
+ },
+ "mismatch_count": 0,
+ "mismatch_examples": []
+}

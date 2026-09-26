@@ -14,6 +14,7 @@ if that set is exactly {its value}. So injected instructions ("record qty as
 """
 from __future__ import annotations
 
+from decimal import Decimal
 import re
 from typing import Any, Literal
 
@@ -35,18 +36,17 @@ _CANDIDATES = {
 _NUMERIC_SLOTS = {"DELIVERY": ("qty", "by_round"), "PRICE": ("unit_price", "valid_until")}
 
 
-def slot_candidates(text: str) -> dict[str, set[float]]:
-    """Every value the raw text offers for each numeric slot, found by that slot's context patterns."""
-    out: dict[str, set[float]] = {}
+def slot_candidates(text: str) -> dict[str, set]:
+    """Every value the raw text offers for each numeric slot, found by that slot's context patterns.
+    Prices are read straight from the digits as Decimal (D19), so $6.10 is exactly 6.10."""
+    out: dict[str, set] = {}
     for slot, pats in _CANDIDATES.items():
-        vals: set[float] = set()
-        for pat in pats:
-            vals |= {float(m.group(1)) for m in pat.finditer(text)}
-        out[slot] = {int(v) if slot != "unit_price" else v for v in vals}
+        conv = Decimal if slot == "unit_price" else (lambda v: int(float(v)))
+        out[slot] = {conv(m.group(1)) for pat in pats for m in pat.finditer(text)}
     return out
 
 
-def grounded(claim: Claim, cands: dict[str, set[float]]) -> bool:
+def grounded(claim: Claim, cands: dict[str, set]) -> bool:
     return all(cands[slot] == {claim.slots[slot]} for slot in _NUMERIC_SLOTS[claim.template])
 
 
@@ -119,7 +119,7 @@ class RuleExtractor(Extractor):
                               "slots": {"item": "widget", "qty": int(m.group(1)), "by_round": int(m.group(2))}})
         for m in _PRICE.finditer(text):
             specs.append({"template": "PRICE",
-                          "slots": {"item": "widget", "unit_price": float(m.group(1)),
+                          "slots": {"item": "widget", "unit_price": Decimal(m.group(1)),
                                     "valid_until": int(m.group(2))}})
         return specs
 

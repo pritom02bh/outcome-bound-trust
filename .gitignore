@@ -7,3 +7,4 @@ tools/
 spec/tla2tools.jar
 spec/states/
 spec/*.out
+states/

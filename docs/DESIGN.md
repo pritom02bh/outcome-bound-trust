@@ -92,6 +92,8 @@ Either template resolves LAPSED instead if `consumed = 0`. A message the extract
 
 ## 6. Gate and budget
 
+All money in this section is exact Decimal cents, compared exactly, as in the spec's integers (DECISIONS D19). Env floats enter only through `obt.money.to_money`, which rounds half-even to a cent.
+
 Definitions per counterparty `c`:
 
 - `b0` = cold-start budget (default: 5% of per-round spend, tune in config)
@@ -108,7 +110,7 @@ Definitions per counterparty `c`:
 | any cited id not in ledger (never raises) | `UNKNOWN_CLAIM` |
 | any cited claim from another counterparty | `WRONG_COUNTERPARTY` |
 | any cited claim FAILED, UNTESTABLE or LAPSED | `BAD_CLAIM` |
-| ORDER: no cited PENDING DELIVERY claim for the item, or a cited DELIVERY claim with `by_round − now` < the supplier's minimum lead time | `CLAIM_MISMATCH` |
+| ORDER: any cited claim (DELIVERY or PRICE) for a different item than the order's (D18), or no cited PENDING DELIVERY claim, or a cited DELIVERY claim with `by_round − now` < the supplier's minimum lead time | `CLAIM_MISMATCH` |
 | ORDER: not exactly one cited PRICE claim for the item, PENDING, with `created_round ≤ now < valid_until` and unit price equal to the order's | `PRICE_MISMATCH` |
 | ORDER: `qty` > total remaining capacity of the cited DELIVERY claims | `OVER_CLAIM` |
 | PAYMENT: doesn't reference an EXECUTED order to `c`, or cumulative payments on it would exceed `qty × its claimed unit price` | `OVERPAY` |
@@ -118,13 +120,24 @@ An allowed ORDER consumes capacity from its cited DELIVERY claims (earliest dead
 
 **Headline guarantee.** A counterparty's loss-inducing exposure at any moment is at most `B(c) = b0 + (largest delivered exposure it already honored)`. To steal X, it must first deliver goods worth about X − b0 against a claim. Farming trust with many small true claims earns nothing beyond small actions, and a small claim can't back a large order (capacity).
 
-## 7. Invariants (to model-check in TLA+)
+## 7. Invariants
 
-- **I1 Gate safety.** Every EXECUTED action to a non-backup counterparty passes the full §6 table at execution time, and `P(c) ≤ B(c)` after execution.
-- **I2 Earned trust.** `B(c)` increases only in a verifier step that sets a claim of `c` to PASSED.
-- **I3 Ledger integrity.** Status changes only `PENDING → PASSED | FAILED | LAPSED` (LAPSED only when consumed = 0), only by the verifier. Terminal statuses never change.
-- **I4 Propagation.** Once claim `k` is FAILED, every action and note citing `k` is flagged in the same step.
-- **I5 Context isolation.** No raw counterparty text reaches agent context. Enforced by code structure and a unit test, not TLA+.
+- **I1** Gate safety: every action that becomes EXECUTED passes the full §6 gate table at that moment; `P(c) ≤ B(c)` after every execution.
+- **I2** Earned trust: `B(c)` rises only in a verifier step that sets a claim of `c` to PASSED.
+- **I3** Ledger integrity: only `PENDING → PASSED | FAILED | LAPSED` (LAPSED only if consumed = 0), only by the verifier; terminal statuses never change.
+- **I4** Propagation: a FAILED claim's citing actions and notes are flagged in the same step.
+- **I5** Context isolation: no raw counterparty text in agent context (unit test only).
+- **I6** Capacity: for every claim, total consumed qty ≤ claimed qty.
+- **I7** Receipt uniqueness: every received unit is credited to at most one claim, and only to a claim of the supplier and item that delivered it.
+
+**Checked three ways.**
+- **TLA+** (`spec/OBT.tla`): models the §5 phase order exactly; nondeterminism only in deliveries/invoice prices, supplier claims, and buyer proposals. I1–I3 are action properties; I4, I6, I7 are state invariants. TLC runs on small bounds via `spec/run_mutants.sh`, with the claim, order and payment id pools as symmetry sets. That is sound because every property is a safety property and no step tells ids apart. Earliest-deadline ties are nondeterministic in the spec, which over-approximates the code's claim_id tie-break. Bounds, TLC version, state counts, depths and runtimes are in `spec/results/README.md`.
+- **Mutation check**: for each of I1, I2, I4, I6, I7 one spec mutant removes the enforcing guard (budget row; cool-down floor; same-step flagging; capacity; receipt bookkeeping). Three more remove a binding. ITEM drops same-item binding (caught as I1). XSUP-RECEIPT lets allocation ignore the supplier (caught as I7). XSUP-BUDGET lets a pass earn budget for every supplier (caught as I2). TLC must find a counterexample for every mutant that can act in a config, and the unmutated spec must pass. The exhaustive results come from these configs:
+  - A′: 2 suppliers, 1 item, 2 rounds (cross-supplier binding).
+  - B: 1 supplier, 2 items, 3 rounds (cross-item binding).
+  - quick: 1 supplier, 1 item, 3 rounds.
+  Config A, with 3 rounds and 2 suppliers, did not finish; its partial run is reported separately. A symmetry cross-check backs these up, and random simulation plus spec–code trace replay cover the full bounds (2 suppliers, 2 items, 6 rounds). The full bounds are not verified exhaustively. The invariant-by-config coverage table and all outputs are in `spec/results/`.
+- **Runtime monitors** (`obt/monitor.py`): check I1–I4, I6, I7 after every phase of every run. I1 is re-derived by a second implementation of the §6 table from a pre-commit gate snapshot. Violations go into each run's metrics; the eval fails loudly if the total isn't 0.
 
 ## 8. Environment
 
@@ -136,6 +149,7 @@ Beer Game variant, 50 rounds, seeded demand.
 - Costs: purchase, holding per unit-round, backlog per unit-round.
 - **Payment model.** Placing an order charges nothing. The supplier's invoice is posted to the oracles the next round; code proposes a PAYMENT for it, the gate decides, and only allowed payments are charged. Under OBT a payment is capped at `qty × claimed unit price`; any invoice amount above the cap is recorded as unpaid-disputed, not charged, and fails the PRICE claim. Baselines pay invoices in full. Payment lands before delivery (lead ≥ 2), so orders are **prepaid in effect**: money for an undelivered order is lost. Scripted suppliers ship regardless of payment.
 - **Loss from lies** = total cost minus cost on the same seed with an honest `S_main`.
+- **One item.** The eval env trades a single item, and the item catalog is closed at the type level (`types.ITEMS = ("widget",)`, for I5). Item binding (every claim an order cites must be for the order's item, D18) is therefore **not exercised in the eval runs**. It is verified in two other places. TLA+ config B (1 supplier, 2 items) exhaustively checks it, and the ITEM mutant, which removes the same-item check, must be caught there as an I1 violation. Unit tests build synthetic two-item states. Gate tests check that any wrong-item citation, DELIVERY or PRICE, gives CLAIM_MISMATCH, even when the same-item claims alone would cover the order. A monitor test checks that the runtime I1 monitor flags an executed order bound to another item's claim.
 
 ## 9. Scenarios (scripted suppliers, deterministic)
 

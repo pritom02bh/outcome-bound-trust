@@ -1,9 +1,11 @@
+from decimal import Decimal
 import pytest
 
 from obt.env.oracles import Invoice, Oracles, Receipt
 from obt.ledger import Ledger
 from obt.types import Claim
 from obt.verifier import TEMPLATES, Verifier, check_delivery, check_price
+from obt.money import to_money
 
 CP = "S_main"
 
@@ -11,13 +13,13 @@ CP = "S_main"
 # Under D11 a claim is owed only what allowed orders consumed. These helpers build claims that
 # were fully relied on (DELIVERY: all qty consumed; PRICE: some units ordered at the quote).
 def delivery(cid="d", created=5, qty=20, by=7, cp=CP):
-    return _delivery(cid, created, qty, by, cp).with_consumption(qty, 5.0)
+    return _delivery(cid, created, qty, by, cp).with_consumption(qty, Decimal("5.00"))
 
 
 def owe(led, c):
     """Append a claim as extracted, then record the consumption the gate would have made."""
-    led.append(c.model_copy(update={"consumed": 0, "realized_exposure": 0.0}))
-    led.consume(c.claim_id, c.consumed, 5.0, c.created_round)
+    led.append(c.model_copy(update={"consumed": 0, "realized_exposure": Decimal("0.00")}))
+    led.consume(c.claim_id, c.consumed, Decimal("5.00"), c.created_round)
 
 
 def _delivery(cid, created, qty, by, cp):
@@ -26,7 +28,7 @@ def _delivery(cid, created, qty, by, cp):
 
 
 def price(cid="p", created=5, p=5.0, until=7, cp=CP):
-    return _price(cid, created, p, until, cp).with_consumption(10, p)
+    return _price(cid, created, p, until, cp).with_consumption(10, to_money(p))
 
 
 def _price(cid, created, p, until, cp):

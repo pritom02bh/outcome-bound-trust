@@ -8,6 +8,7 @@ code-rerouted blocked quantity afterwards (8).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Protocol
 
 from .budget import BudgetConfig, TrustBudget
@@ -18,6 +19,7 @@ from .gate import Gate
 from .gateway import Gateway
 from .ledger import ActionLog, Ledger, NoteLog
 from .memory_view import MemoryView, build_view
+from .money import ZERO, to_money
 from .monitor import Monitor
 from .types import Action, Note
 from .verifier import Verifier
@@ -56,11 +58,11 @@ class BuyerAPI:
         self.round_actions: list[Action] = []
         self.request_qty: int | None = None
 
-    def headroom(self) -> float:
+    def headroom(self) -> Decimal:
         s = self._sim
         return s.budget.headroom(MAIN, s.game.round)
 
-    def pending(self) -> float:
+    def pending(self) -> Decimal:
         return self._sim.budget.pending(MAIN)
 
     def order(self, counterparty: str, cited_claims=(), qty: int = 0) -> Action | None:
@@ -72,7 +74,7 @@ class BuyerAPI:
         qty = max(0, int(qty))
         if counterparty == BACKUP:
             cited = ()
-            price = cfg.backup_price
+            price = to_money(cfg.backup_price)
             promised = t + cfg.backup_lead
         elif counterparty == MAIN:
             found = [s.ledger.get(k) for k in cited]
@@ -80,13 +82,13 @@ class BuyerAPI:
             prices = [c.slots["unit_price"] for c in found if c is not None and c.template == "PRICE"]
             promised = max((c.slots["by_round"] for c in dels), default=t + cfg.main_lead)
             # Exactly one quote sets the price; anything else is left for the gate to reject.
-            price = prices[0] if len(prices) == 1 else cfg.main_price
+            price = prices[0] if len(prices) == 1 else to_money(cfg.main_price)
         else:
             return None
         if qty <= 0 and not cited:
             return None
         return self._propose(Action(action_id=s.next_id("a"), kind="ORDER", counterparty=counterparty,
-                                    qty=qty, unit_price=price, value=round(qty * price, 6),
+                                    qty=qty, unit_price=price, value=qty * price,
                                     cited_claims=cited, round=t), promised)
 
     def _propose(self, a: Action, promised: int | None = None) -> Action:
@@ -98,9 +100,9 @@ class BuyerAPI:
     def veto(self, counterparty: str, qty: int, reason: str) -> Action:
         """Record an order the buyer's own check refused (selfcheck baseline)."""
         s = self._sim
+        price, qty = to_money(s.cfg.game.main_price), max(0, int(qty))
         a = Action(action_id=s.next_id("a"), kind="ORDER", counterparty=counterparty,
-                   unit_price=s.cfg.game.main_price,
-                   value=round(qty * s.cfg.game.main_price, 6), round=s.game.round, qty=max(0, int(qty)))
+                   unit_price=price, value=qty * price, round=s.game.round, qty=qty)
         s.actions.append(a)
         rec = s.actions.transition(a.action_id, "BLOCKED", s.game.round, reason)
         self.round_actions.append(rec)
@@ -208,7 +210,7 @@ class Sim:
         self._B0, self._P0 = self.budget_state(t)
         self._log("budget")
 
-    def budget_state(self, t: int) -> tuple[float, float]:
+    def budget_state(self, t: int) -> tuple[Decimal, Decimal]:
         return self.budget.B(MAIN, t), self.budget.pending(MAIN)
 
     def phase_remediate(self) -> None:
@@ -223,9 +225,9 @@ class Sim:
                 short = c.consumed - self.verifier.allocated(c.claim_id)
                 if short <= 0:
                     continue
+                price = to_money(self.cfg.game.backup_price)
                 a = Action(action_id=self.next_id("a"), kind="ORDER", counterparty=BACKUP, qty=short,
-                           unit_price=self.cfg.game.backup_price,
-                           value=round(short * self.cfg.game.backup_price, 6), round=g.round)
+                           unit_price=price, value=short * price, round=g.round)
                 rec = self.gate.decide(a, g.round)
                 self._place(rec, g.round + self.cfg.game.backup_lead)
                 self._remediation.append(rec)
@@ -252,11 +254,12 @@ class Sim:
         for inv in g.posted_invoices:
             ref = self._action_of.get(inv.order_id)
             order = self.actions.get(ref) if ref else None
-            amount = inv.total
+            # The env's float invoice enters the security path through the one rounding rule (D19).
+            amount = to_money(inv.total)
             if self.cfg.defense == "obt" and inv.supplier == MAIN and order is not None and order.unit_price:
                 amount = min(amount, order.qty * order.unit_price)
             a = Action(action_id=self.next_id("a"), kind="PAYMENT", counterparty=inv.supplier,
-                       value=round(amount, 6), round=g.round, ref_order=ref,
+                       value=amount, round=g.round, ref_order=ref,
                        cited_claims=order.cited_claims if order is not None else ())
             self._api._propose(a)
             self._pay_order[a.action_id] = inv.order_id
@@ -286,15 +289,15 @@ class Sim:
                     if a.qty > 0:
                         self._place(a, self._promised[a.action_id])
                 else:
-                    g.pay_invoice(self._pay_order[a.action_id], a.value)
+                    g.pay_invoice(self._pay_order[a.action_id], float(a.value))
             elif a.status == "BLOCKED" and a.kind == "ORDER" and a.counterparty == MAIN and a.qty > 0 \
                     and a.reason not in ("SELF_CHECK",):
                 reroutes.append(a)
         for a in reroutes:
             # Remediation is code's job, not the LLM's: blocked quantity goes to backup now (F4).
+            price = to_money(self.cfg.game.backup_price)
             rr = Action(action_id=self.next_id("a"), kind="ORDER", counterparty=BACKUP, qty=a.qty,
-                        unit_price=self.cfg.game.backup_price, value=round(a.qty * self.cfg.game.backup_price, 6),
-                        round=g.round)
+                        unit_price=price, value=a.qty * price, round=g.round)
             rec = self.gate.decide(rr, g.round)
             self._api.round_actions.append(rec)
             self._place(rec, g.round + self.cfg.game.backup_lead)
@@ -318,14 +321,16 @@ class Sim:
         row = {
             "round": t, "demand": st.demand, "inventory": g.inventory, "backlog": g.backlog,
             "arrived": dict(sorted(st.arrived.items())),
-            "offer": [(c.claim_id, c.template, dict(c.slots)) for c in self._offer_claims],
+            "offer": [(c.claim_id, c.template, {k: float(v) if isinstance(v, Decimal) else v for k, v in c.slots.items()})
+                      for c in self._offer_claims],
             "resolved": [(c.claim_id, c.status) for c in self._resolved],
-            "actions": [(a.kind, a.counterparty, a.qty, a.value, a.status, a.reason, a.cited_claims)
+            # Reports leave the security path as floats.
+            "actions": [(a.kind, a.counterparty, a.qty, float(a.value), a.status, a.reason, a.cited_claims)
                         for a in api.round_actions],
             "rerouted_orders": self._rerouted,
-            "remediation": [(a.kind, a.counterparty, a.qty, a.value, a.status, a.reason, a.cited_claims)
+            "remediation": [(a.kind, a.counterparty, a.qty, float(a.value), a.status, a.reason, a.cited_claims)
                             for a in self._remediation],
-            "B": round(self.budget.B(MAIN, t), 6), "P": round(self.budget.pending(MAIN), 6),
+            "B": float(self.budget.B(MAIN, t)), "P": float(self.budget.pending(MAIN)),
             "cost": round(g.total_cost, 6),
             "phases": phases,
         }
@@ -352,7 +357,7 @@ class Sim:
         only_passed = sum(1 for a in main if a.was_executed and a.cited_claims and all(
             (k := self.ledger.get(c)) is not None and k.status == "PASSED" and (k.resolved_round or 0) <= a.round
             for c in a.cited_claims))
-        paid_main = sum(a.value for a in main if a.was_executed)
+        paid_main = float(sum((a.value for a in main if a.was_executed), ZERO))
         received_main = sum(r.qty for r in self.game.oracles.receipts() if r.supplier == MAIN)
         ordered_main = sum(a.qty for a in main if a.was_executed and a.kind == "ORDER")
         return {

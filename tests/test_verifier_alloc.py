@@ -1,4 +1,5 @@
 """F3: receipts are allocated to PENDING DELIVERY claims earliest-deadline first; grace δ."""
+from decimal import Decimal
 import pytest
 
 from obt.env.oracles import Invoice, Oracles, Receipt
@@ -19,7 +20,7 @@ def owe(led, cid, qty, by, created=1, consumed=None, cp=CP):
                           template="DELIVERY", slots={"item": "widget", "qty": qty, "by_round": by}))
     n = qty if consumed is None else consumed
     if n:
-        led.consume(cid, n, 5.0, created)
+        led.consume(cid, n, Decimal("5.00"), created)
 
 
 def rcv(o, rnd, qty, cp=CP):
@@ -129,7 +130,7 @@ def test_price_fails_iff_invoice_exceeds_claim_in_window():
     for cid, created, until in (("ok", 1, 5), ("bad", 1, 5), ("outside", 1, 3)):
         led.append(Claim.make(claim_id=cid, counterparty=CP, source_msg_hash="h", created_round=created,
                               template="PRICE", slots={"item": "widget", "unit_price": 5.0, "valid_until": until}))
-        led.consume(cid, 1, 5.0, 1)
+        led.consume(cid, 1, Decimal("5.00"), 1)
     o.record_invoice(Invoice(4, CP, "widget", 1, 5.0, "o1"))       # equal: fine for everyone
     run_to(v, 3)
     o.record_invoice(Invoice(4, "S_backup", "widget", 1, 9.0, "o2"))

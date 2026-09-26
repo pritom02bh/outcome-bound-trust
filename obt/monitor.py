@@ -10,15 +10,16 @@ bug (or tamper) in `Gate.allow` shows up instead of being trusted.
 """
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from .env.beer_game import BACKUP, ROUND_ORDER
+from .money import ZERO
 
 if TYPE_CHECKING:
     from .gate import GateSnapshot
     from .sim import Sim
 
-EPS = 1e-6
 _DEAD = ("FAILED", "UNTESTABLE", "LAPSED")
 
 
@@ -40,23 +41,24 @@ def table_verdict(snap: "GateSnapshot") -> tuple[bool, str]:
     if a.kind == "ORDER":
         dels = [k for k in claims if k.template == "DELIVERY"]
         live = [k for k in dels if k.status == "PENDING" and k.slots["item"] == a.item]
-        if not live or any(k.slots["by_round"] - now < snap.min_lead for k in dels):
+        if any(k.slots["item"] != a.item for k in claims) or not live \
+                or any(k.slots["by_round"] - now < snap.min_lead for k in dels):
             return False, "CLAIM_MISMATCH"
         prices = [k for k in claims if k.template == "PRICE"]
         if not (len(prices) == 1 and prices[0].status == "PENDING" and prices[0].slots["item"] == a.item
                 and prices[0].created_round <= now < prices[0].slots["valid_until"]
-                and a.unit_price is not None and abs(prices[0].slots["unit_price"] - a.unit_price) <= 1e-9
-                and abs(a.value - a.qty * a.unit_price) <= EPS):
+                and a.unit_price is not None and prices[0].slots["unit_price"] == a.unit_price
+                and a.value == a.qty * a.unit_price):
             return False, "PRICE_MISMATCH"
         if a.qty > sum(k.slots["qty"] - k.consumed for k in live):
             return False, "OVER_CLAIM"
     else:
         ref = snap.ref
         if (ref is None or ref.kind != "ORDER" or ref.counterparty != a.counterparty or not ref.was_executed
-                or ref.unit_price is None or snap.paid + a.value > ref.qty * ref.unit_price + EPS):
+                or ref.unit_price is None or snap.paid + a.value > ref.qty * ref.unit_price):
             return False, "OVERPAY"
-        inc = 0.0
-    if snap.P + inc > snap.B + EPS:
+        inc = ZERO
+    if snap.P + inc > snap.B:
         return False, "OVER_BUDGET"
     return True, "OK"
 
@@ -78,7 +80,7 @@ class Monitor:
     def _cps(self) -> set[str]:
         return {c.counterparty for c in self.sim.ledger} | {self.sim.main.name}
 
-    def _budgets(self, now: int) -> dict[str, float]:
+    def _budgets(self, now: int) -> dict[str, Decimal]:
         return {cp: self.sim.budget.B(cp, now) for cp in self._cps()}
 
     def _flag(self, inv: str, phase: str, detail: str) -> None:
@@ -109,7 +111,7 @@ class Monitor:
         self._events = len(events)
         # I2: B rises only in a verifier step that passed a claim of that counterparty.
         for cp, b in B.items():
-            if b > self._B.get(cp, b) + EPS and not (phase == "verify" and cp in passed_now):
+            if b > self._B.get(cp, b) and not (phase == "verify" and cp in passed_now):
                 self._flag("I2", phase, f"B({cp}) {self._B.get(cp):.2f} -> {b:.2f}")
         # I1: every executed decision re-checked against its pre-commit snapshot; P <= B after execution.
         decisions = s.gate.decisions
@@ -120,7 +122,7 @@ class Monitor:
                     self._flag("I1", phase, f"{snap.action.action_id} executed but table says {why}")
         if s.gate.enforce and len(decisions) > self._decisions:
             for cp in {d.action.counterparty for d in decisions[self._decisions:] if d.executed} - {BACKUP}:
-                if s.budget.pending(cp) > s.budget.B(cp, now) + EPS:
+                if s.budget.pending(cp) > s.budget.B(cp, now):
                     self._flag("I1", phase, f"P({cp}) > B({cp}) after execution")
         self._decisions = len(decisions)
         # I4: a claim that failed is flagged everywhere by the end of this round's remediate phase.
@@ -138,11 +140,15 @@ class Monitor:
         for c in s.ledger:
             if c.template == "DELIVERY" and c.consumed > c.slots["qty"]:
                 self._flag("I6", phase, f"{c.claim_id}: consumed {c.consumed} > qty {c.slots['qty']}")
-        # I7: every received unit credited to at most one claim.
+        # I7: every received unit credited to at most one claim, and only to a claim of the supplier and
+        # item that delivered it.
         per_receipt: dict[int, int] = {}
-        for idx, _cid, n in s.verifier.credits():
-            per_receipt[idx] = per_receipt.get(idx, 0) + n
         receipts = s.game.oracles.receipts()
+        for idx, cid, n in s.verifier.credits():
+            per_receipt[idx] = per_receipt.get(idx, 0) + n
+            r, c = receipts[idx], s.ledger.get(cid)
+            if c is None or c.counterparty != r.supplier or c.slots.get("item") != r.item:
+                self._flag("I7", phase, f"receipt {idx} from {r.supplier} credited to {cid}")
         for idx, n in per_receipt.items():
             if n > receipts[idx].qty:
                 self._flag("I7", phase, f"receipt {idx}: {n} units credited, {receipts[idx].qty} received")

@@ -1,0 +1,10 @@
+# OBT.tla model check: mode=quick
+# date: 2026-09-25T21:04:07Z  host: Darwin arm64  cores: 10
+# tla2tools.jar sha256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+# java: openjdk version "21.0.12.1" 2026-08-18 LTS
+# bounds: Sups = {s1} Items = {i1} Claims = {k1, k2, k3} Orders = {o1, o2} Pays = {p1} Notes = {n1} MaxRound = 3 B0 = 2 MinLead = 1  W = 1
+# symmetry: Permutations(Claims) \cup Permutations(Orders) \cup Permutations(Pays)
+mutant       verdict            violation                         distinct_states  depth runtime_s
+I2           CAUGHT(I2)         Action property I2 is violated            1965836     24         7
+I7           CAUGHT(I7)         Invariant I7 is violated                  6052792     27        20
+# tlc: TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)

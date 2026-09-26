@@ -1,0 +1,12 @@
+# OBT.tla random simulation, unmutated spec, full bounds (NOT exhaustive)
+# date: 2026-09-25T22:08:19Z  host: Darwin arm64  cores: 10
+# tlc: TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+# tla2tools.jar sha256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+# bounds:  Sups = {s1, s2} Items = {i1, i2} Claims = {k1, k2, k3} Orders = {o1, o2} Pays = {p1} Notes = {n1} MaxRound = 6 B0 = 1 MinLead = 2 W = 1 NoRef = NoRef MUTANT = "none" 
+# symmetry: none (symmetry does not apply to random simulation)
+seed:              20260925
+traces:            102272 (every trace runs to the end of the final round)
+states checked:    949168936
+max trace depth:   53 (TLCGet("level") of the last state)
+runtime_s:         3349
+violations:        0

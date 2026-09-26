@@ -8,11 +8,13 @@ fields can't carry free text either.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal
 
 from .budget import TrustBudget
 from .deps import DependencyTracker
 from .env.beer_game import BACKUP, MAIN, BeerGame, base_stock
 from .ledger import ActionLog, Ledger, NoteLog
+from .money import to_money
 from .types import Claim
 
 
@@ -50,15 +52,15 @@ class ClaimCard:
 @dataclass(frozen=True)
 class TrackRecord:
     counterparty: str
-    b0: float
+    b0: Decimal
     passed: int
     failed: int
     pending: int
     untestable: int
     lapsed: int
-    budget: float
-    pending_exposure: float
-    headroom: float
+    budget: Decimal
+    pending_exposure: Decimal
+    headroom: Decimal
     last_failure: int | None
 
 
@@ -122,7 +124,7 @@ def build_view(*, game: BeerGame, ledger: Ledger, actions: ActionLog, notes: Not
         target=base_stock(cfg, cfg.main_lead))
 
 
-def _money(x: float) -> str:
+def _money(x: float | Decimal) -> str:
     return f"${x:,.2f}"
 
 
@@ -150,7 +152,7 @@ def render(v: MemoryView) -> str:
                  f"pending {tr.pending}, lapsed (offered, never used) {tr.lapsed}; trust budget B={_money(tr.budget)} (cold start {_money(tr.b0)}), "
                  f"pending exposure P={_money(tr.pending_exposure)}, headroom {_money(tr.headroom)}; "
                  f"last failure: {'none' if tr.last_failure is None else f'round {tr.last_failure}'}.")
-        price = m["nominal_price"]
+        price = to_money(m["nominal_price"])
         projected = max(tr.budget, tr.b0 + tr.pending_exposure)
         L.append(f"BUDGET MATH (computed by code): largest S_main lot that fits your headroom now: "
                  f"{int(tr.headroom // price)} units at {_money(price)}. If your pending S_main orders are "

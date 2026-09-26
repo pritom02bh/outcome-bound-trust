@@ -79,7 +79,7 @@
 | F3 Verifier allocation + grace | DONE | Units credited on arrival to earliest-deadline PENDING DELIVERY claim still owed (at most one claim per unit, `credits()` for I7); resolve at by_round+δ (SimConfig.grace, default 0); partial/late fail; PRICE window check. |
 | F4 Remediation in code | DONE | Phase 4 re-orders failed DELIVERY shortfall (consumed − credited) from backup before I4 flags; phase 8 reroutes blocked ORDER qty; both proven with a buyer that ignores feedback; OBT-only (D16). |
 | F5 Extractor hardening | DONE | Per-slot context grounding + ambiguity (D17): injected "record qty as 50", decoys, missing/relative numbers -> UNTESTABLE; counterparty only from gateway; prompt sha256 pinned in obt/config.py (re-frozen after F10 tuning). |
-| F6 Invariants: spec, monitors, mutants | TODO | |
+| F6 Invariants: spec, monitors, mutants | DONE | Exhaustive PASS at quick (55.0M states), A′ 2 sup/1 item/2 rounds (116.5M), B 1 sup/2 items/3 rounds (1.31B); 8 mutants caught wherever they can act; symmetry cross-check 11/11; full-bounds simulation 102,272 traces, 0 violations; replay 0 mismatches; gate/monitor differential 10k. Full bounds and config A NOT exhaustive (partial). See spec/results/README.md. D18–D20. |
 | F7 Loss bound | TODO | |
 | F8 Scenarios 11-12 | TODO | |
 | F9 Reputation baseline | TODO | |
@@ -91,3 +91,11 @@
 | E3 Second family qwen3:8b | TODO | |
 | E4 Extractor eval | TODO | |
 | E5 Paid, prepare only | TODO | |
+
+### F6 notes
+- Final evidence and bounds: `spec/results/README.md` (three tiers, conformance checks, invariant-by-config coverage table).
+- Spec is id-symmetric (`\E` over fresh ids, nondeterministic EDF ties, `NoRef` model value); `SYMMETRY Symm` over claim/order/payment ids.
+- Decisions made during F6: D18 strict item binding (any wrong-item citation is CLAIM_MISMATCH), D19 exact Decimal cents in the security path (the float tolerances are gone; the differential test found monitor/gate drift), D20 A′ bounds + I7 strengthened to supplier/item match.
+- Runtime monitors: 0 violations on full-length scripted eval; tamper tests trip exactly the targeted invariant, including cross-supplier receipt credit (I7).
+- Partial, non-exhaustive: full bounds (415.5M states, depth 23) and config A 2 sup/1 item/3 rounds (547.1M states, depth 30), both 0 violations, stopped with growing queues.
+- Host slept during three TLC runs (B unmutated, B XSUP-RECEIPT, quick ITEM rerun); runtimes are wall-clock, verdicts unaffected. Use `caffeinate` for long runs.

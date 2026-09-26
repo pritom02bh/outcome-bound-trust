@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .env.beer_game import BACKUP, MAIN, BackupSupplier, BeerGame, GameConfig, Supplier, base_stock
 from .llm import LLM, parse_json
 from .memory_view import render
+from .money import to_money
 
 
 @dataclass
@@ -108,7 +109,7 @@ class ScriptedClaimBuyer:
             tr = view.track[MAIN]
             # Budget expected once what's pending resolves, assuming it's honored.
             projected = max(tr.budget, tr.b0 + api.pending())
-            api.request(min(2 * usual, int(projected // cfg.main_price)))
+            api.request(min(2 * usual, int(projected // to_money(cfg.main_price))))
         else:
             api.request(usual)
 

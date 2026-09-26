@@ -47,7 +47,7 @@ def test_i1_holds_every_round_under_obt(n):
         for a in executed:
             assert a[6], "executed S_main order without citation"
         if executed:
-            assert row["P"] <= row["B"] + 1e-9
+            assert row["P"] <= row["B"]
 
 
 def test_rule_extractor_parses_every_honest_phrasing():
@@ -72,7 +72,7 @@ def test_1_honest_earns_trust_and_never_fails():
 def test_2_always_lie_capped_at_b0():
     r = run(2)
     executed = [a for a in main_actions(r) if a[4] == "EXECUTED"]
-    assert executed and all(a[3] <= B0 + 1e-9 for a in executed)
+    assert executed and all(a[3] <= float(B0) for a in executed)
     assert r.metrics["claims"]["FAILED"] > 0 and r.metrics["flagged_actions"] > 0
     assert r.metrics["flagged_notes"] > 0
     assert r.metrics["main_units_received"] == 0

@@ -1,0 +1,35 @@
+Symmetry cross-check for OBT.tla (FIXES F6): verdicts with and without SYMMETRY Symm must match.
+Symm = Permutations(Claims) \cup Permutations(Orders) \cup Permutations(Pays); every id is a model
+value, and the only id-typed sentinel, NoRef, is a model value outside those sets (ASSUME in OBT.tla).
+Every run finished: a pass explores the whole state space, and a caught mutant stops at its first violation.
+Depth is the complete-search depth for a pass and the counterexample length for a caught mutant. TLC's
+parallel BFS doesn't guarantee a shortest counterexample, so depths may differ between columns; verdicts
+may not. PASS(no-op) means the mutant can't act at these bounds (ITEM needs 2 items, XSUP-* need 2
+suppliers) and must behave exactly like the real spec.
+
+# tla2tools.jar sha256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+# java: openjdk version "21.0.12.1" 2026-08-18 LTS
+# tlc: TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+
+Tier 1: tiny bounds, all specs. Sups={s1} Items={i1} Claims={k1,k2,k3} Orders={o1,o2} Pays={p1} Notes={n1} MaxRound=2 B0=2 MinLead=1 W=1
+mutant        verdict (sym)        verdict (no sym)       states sym  states nosym depth s/n  secs s/n match
+none          PASS                 PASS                      3836186      22587486     22/22     12/47 yes
+I1            CAUGHT(I1)           CAUGHT(I1)                1091888       9120555     21/21      4/19 yes
+I2            NOT-CAUGHT           NOT-CAUGHT                3836186      22587486     22/22     11/47 yes
+I4            CAUGHT(I4)           CAUGHT(I4)                  21561         83636     19/17       2/2 yes
+I6            CAUGHT(I6)           CAUGHT(I6)                   1577          5691     13/11       1/1 yes
+I7            NOT-CAUGHT           NOT-CAUGHT                3836186      22587486     22/22     11/47 yes
+ITEM          PASS(no-op)          PASS(no-op)               3836186      22587486     22/22     11/47 yes
+XSUP-RECEIPT  PASS(no-op)          PASS(no-op)               3836186      22587486     22/22     11/47 yes
+XSUP-BUDGET   PASS(no-op)          PASS(no-op)               3836186      22587486     22/22     12/47 yes
+
+I2 and I7 can't act in 2 rounds. I2 needs a failure and then the cool-down to expire. I7 needs two
+DELIVERY claims plus a PRICE claim at one supplier, but a supplier makes at most 2 claims per round.
+Both columns agree they aren't caught; tier 2 checks both where they can act.
+
+Tier 2: quick bounds, I2 and I7 mutants. Same as tier 1 but MaxRound=3
+mutant        verdict (sym)        verdict (no sym)       states sym  states nosym depth s/n  secs s/n match
+I2            CAUGHT(I2)           CAUGHT(I2)                1965836      10400837     24/22      7/22 yes
+I7            CAUGHT(I7)           CAUGHT(I7)                6052792      37350904     27/27     20/89 yes
+
+RESULT: all 11 verdict pairs match

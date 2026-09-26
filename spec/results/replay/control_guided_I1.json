@@ -1,0 +1,155 @@
+{
+ "mode": "guided",
+ "mutant": "I1",
+ "seeds": [
+  101,
+  102,
+  103
+ ],
+ "batch": 1000,
+ "avg_trace_length": 52.14,
+ "tlc_cfg": "SPECIFICATION GuidedSpec\nCONSTANTS\n    Sups = {s1, s2}\n    Items = {i1, i2}\n    Claims = {k1, k2, k3}\n    Orders = {o1, o2}\n    Pays = {p1}\n    Notes = {n1}\n    MaxRound = 6\n    B0 = 1\n    MinLead = 2\n    W = 1\n    NoRef = NoRef\n    MUTANT = \"I1\"\nINVARIANT TypeOK\n",
+ "traces": 3000,
+ "traces_with_decisions": 2260,
+ "traces_to_final_round": 3000,
+ "states": 156415,
+ "decisions": 3415,
+ "reasons": {
+  "ORDER:CLAIM_MISMATCH": 1603,
+  "ORDER:OK": 532,
+  "ORDER:OVER_BUDGET": 241,
+  "ORDER:OVER_CLAIM": 265,
+  "ORDER:PRICE_MISMATCH": 1,
+  "PAYMENT:BAD_CLAIM": 199,
+  "PAYMENT:OK": 168,
+  "PAYMENT:OVERPAY": 306,
+  "PAYMENT:OVER_BUDGET": 100
+ },
+ "spec_verdicts": {
+  "BLOCKED": 2474,
+  "EXECUTED": 941
+ },
+ "mismatch_count": 241,
+ "mismatch_examples": [
+  {
+   "trace": "trace_0_121",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "OVER_BUDGET"
+   ],
+   "monitor": "OVER_BUDGET"
+  },
+  {
+   "trace": "trace_0_122",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "OVER_BUDGET"
+   ],
+   "monitor": "OVER_BUDGET"
+  },
+  {
+   "trace": "trace_0_132",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "OVER_BUDGET"
+   ],
+   "monitor": "OVER_BUDGET"
+  },
+  {
+   "trace": "trace_0_166",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "OVER_BUDGET"
+   ],
+   "monitor": "OVER_BUDGET"
+  },
+  {
+   "trace": "trace_0_170",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "OVER_BUDGET"
+   ],
+   "monitor": "OVER_BUDGET"
+  },
+  {
+   "trace": "trace_0_177",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "OVER_BUDGET"
+   ],
+   "monitor": "OVER_BUDGET"
+  },
+  {
+   "trace": "trace_0_180",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "OVER_BUDGET"
+   ],
+   "monitor": "OVER_BUDGET"
+  },
+  {
+   "trace": "trace_0_21",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "OVER_BUDGET"
+   ],
+   "monitor": "OVER_BUDGET"
+  },
+  {
+   "trace": "trace_0_211",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "OVER_BUDGET"
+   ],
+   "monitor": "OVER_BUDGET"
+  },
+  {
+   "trace": "trace_0_213",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "OVER_BUDGET"
+   ],
+   "monitor": "OVER_BUDGET"
+  }
+ ]
+}

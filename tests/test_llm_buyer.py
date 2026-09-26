@@ -1,3 +1,4 @@
+from decimal import Decimal
 import json
 import re
 
@@ -53,7 +54,7 @@ def test_obt_qty_capped_by_claims_and_value_never_from_llm(tmp_path):
     for a in execd:
         price = [sim.ledger[k] for k in a.cited_claims if sim.ledger[k].template == "PRICE"][0]
         assert a.unit_price == price.slots["unit_price"] and a.value == a.qty * a.unit_price
-    assert sim.budget.B(MAIN, sim.game.round) <= 5.0 + max(a.value for a in execd)
+    assert sim.budget.B(MAIN, sim.game.round) <= Decimal("5.00") + max(a.value for a in execd)
 
 
 def test_block_is_rerouted_by_code_not_llm(tmp_path):

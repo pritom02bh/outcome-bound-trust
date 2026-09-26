@@ -1,0 +1,123 @@
+{
+ "mode": "uniform",
+ "mutant": "ITEM",
+ "seeds": [
+  201,
+  202,
+  203,
+  204,
+  205
+ ],
+ "batch": 1000,
+ "avg_trace_length": 52.95,
+ "tlc_cfg": "SPECIFICATION Spec\nCONSTANTS\n    Sups = {s1, s2}\n    Items = {i1, i2}\n    Claims = {k1, k2, k3}\n    Orders = {o1, o2}\n    Pays = {p1}\n    Notes = {n1}\n    MaxRound = 6\n    B0 = 1\n    MinLead = 2\n    W = 1\n    NoRef = NoRef\n    MUTANT = \"ITEM\"\nINVARIANT TypeOK\n",
+ "traces": 5000,
+ "traces_with_decisions": 5000,
+ "traces_to_final_round": 5000,
+ "states": 264770,
+ "decisions": 10008,
+ "reasons": {
+  "ORDER:BAD_CLAIM": 738,
+  "ORDER:CLAIM_MISMATCH": 588,
+  "ORDER:NO_CITATION": 1266,
+  "ORDER:OK": 1,
+  "ORDER:OVER_BUDGET": 1,
+  "ORDER:PRICE_MISMATCH": 49,
+  "ORDER:UNKNOWN_CLAIM": 4551,
+  "ORDER:WRONG_COUNTERPARTY": 2806,
+  "PAYMENT:BAD_CLAIM": 2,
+  "PAYMENT:OK": 2,
+  "PAYMENT:OVERPAY": 4
+ },
+ "spec_verdicts": {
+  "BLOCKED": 9998,
+  "EXECUTED": 10
+ },
+ "mismatch_count": 7,
+ "mismatch_examples": [
+  {
+   "trace": "trace_0_29",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "CLAIM_MISMATCH"
+   ],
+   "monitor": "CLAIM_MISMATCH"
+  },
+  {
+   "trace": "trace_0_655",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "CLAIM_MISMATCH"
+   ],
+   "monitor": "CLAIM_MISMATCH"
+  },
+  {
+   "trace": "trace_0_440",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "CLAIM_MISMATCH"
+   ],
+   "monitor": "CLAIM_MISMATCH"
+  },
+  {
+   "trace": "trace_0_514",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "CLAIM_MISMATCH"
+   ],
+   "monitor": "CLAIM_MISMATCH"
+  },
+  {
+   "trace": "trace_0_619",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "CLAIM_MISMATCH"
+   ],
+   "monitor": "CLAIM_MISMATCH"
+  },
+  {
+   "trace": "trace_0_661",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "CLAIM_MISMATCH"
+   ],
+   "monitor": "CLAIM_MISMATCH"
+  },
+  {
+   "trace": "trace_0_320",
+   "round": 1,
+   "kind": "ORDER",
+   "id": "o1",
+   "spec": true,
+   "gate": [
+    false,
+    "CLAIM_MISMATCH"
+   ],
+   "monitor": "CLAIM_MISMATCH"
+  }
+ ]
+}

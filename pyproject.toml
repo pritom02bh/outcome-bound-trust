@@ -6,4 +6,9 @@ requires-python = ">=3.11"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-markers = ["llm: needs a local ollama model (deselect with -m 'not llm')"]
+markers = [
+    "llm: needs a local ollama model (run with -m llm)",
+    "slow: TLC model checking, minutes (run with -m slow)",
+]
+# The default run is fast and deterministic: no model calls, no TLC.
+addopts = "-m 'not llm and not slow'"

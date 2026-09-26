@@ -1,4 +1,5 @@
 """F2: claim-action binding, capacity, LAPSED, gated payments."""
+from decimal import Decimal
 import pytest
 from hypothesis import settings
 from hypothesis import strategies as st
@@ -9,7 +10,7 @@ from obt.env.beer_game import BACKUP
 from obt.env.oracles import Invoice, Oracles, Receipt
 from obt.gate import Gate
 from obt.ledger import ActionLog, Ledger
-from obt.types import Action, Claim, IllegalTransition
+from obt.types import Action, Claim, FrozenDict, IllegalTransition
 from obt.verifier import Verifier
 
 CP = "S_main"
@@ -117,6 +118,59 @@ def test_claim_mismatch_by_round_before_min_lead():
     assert w.order(1, ["ok", "p1"]).status == "EXECUTED"
 
 
+def other_item(claim, item="gadget"):
+    """The catalog has one item (types.ITEMS), so a second one can't pass validation. model_copy skips
+    validation: it stands in for a buggy or compromised upstream handing the gate a two-item state."""
+    return claim.model_copy(update={"slots": FrozenDict({**claim.slots, "item": item})})
+
+
+def test_claim_mismatch_delivery_for_other_item():
+    w = World()
+    w.led.append(other_item(Claim.make(claim_id="dg", counterparty=CP, source_msg_hash="h", created_round=1,
+                                       template="DELIVERY", slots={"item": "widget", "qty": 10, "by_round": 5})))
+    w.p("p1", until=5)
+    assert w.order(1, ["dg", "p1"]).reason == "CLAIM_MISMATCH"
+
+
+def test_order_for_other_item_citing_widget_claims():
+    w = fresh()
+    a = Action(action_id="g", kind="ORDER", counterparty=CP, qty=1, unit_price=5.0, value=5.0,
+               cited_claims=("d1", "p1"), round=1).model_copy(update={"item": "gadget"})
+    assert w.gate.decide(a, 1).reason == "CLAIM_MISMATCH"
+
+
+def _gadget_delivery(w, cid="dg", qty=10):
+    w.led.append(other_item(Claim.make(claim_id=cid, counterparty=CP, source_msg_hash="h", created_round=1,
+                                       template="DELIVERY", slots={"item": "widget", "qty": qty, "by_round": 5})))
+
+
+def test_any_other_item_citation_is_claim_mismatch():
+    # Strict item binding (DECISIONS D18): one wrong-item citation blocks the order, even when the
+    # same-item claims alone would cover it.
+    w = fresh()                     # d1: 10 widgets
+    _gadget_delivery(w)
+    assert w.order(15, ["d1", "dg", "p1"]).reason == "CLAIM_MISMATCH"
+    assert w.led["d1"].consumed == 0 and w.led["dg"].consumed == 0
+
+
+def test_regression_covered_order_plus_other_item_claim_is_blocked():
+    # Was EXECUTED under the lenient rule: d1 alone covers 10, and the gadget claim was silently ignored.
+    w = fresh()
+    _gadget_delivery(w)
+    rec = w.order(10, ["d1", "dg", "p1"])
+    assert (rec.status, rec.reason) == ("BLOCKED", "CLAIM_MISMATCH")
+    assert w.led["d1"].consumed == 0
+
+
+def test_price_claim_for_other_item_is_claim_mismatch():
+    w = World()
+    w.d("d1", by=5)
+    w.led.append(other_item(Claim.make(claim_id="pg", counterparty=CP, source_msg_hash="h", created_round=1,
+                                       template="PRICE", slots={"item": "widget", "unit_price": 5.0,
+                                                                "valid_until": 5})))
+    assert w.order(1, ["d1", "pg"]).reason == "CLAIM_MISMATCH"
+
+
 @pytest.mark.parametrize("case", ["none", "two", "expired", "not_yet", "wrong_price"])
 def test_price_mismatch(case):
     w = World()
@@ -204,7 +258,7 @@ def test_lapsed_only_when_nothing_consumed():
                    slots={"item": "widget", "qty": 5, "by_round": 3})
     assert c.with_status("LAPSED", 3).status == "LAPSED"
     with pytest.raises(IllegalTransition):
-        c.with_consumption(1, 5.0).with_status("LAPSED", 3)
+        c.with_consumption(1, Decimal("5.00")).with_status("LAPSED", 3)
     with pytest.raises(IllegalTransition):
         c.with_status("LAPSED", 3).with_status("PASSED", 4)
 
@@ -257,9 +311,10 @@ class CapacityMachine(RuleBasedStateMachine):
             self.orders.append(rec.action_id)
             dels = [self.w.led[k] for k in rec.cited_claims if self.w.led[k].template == "DELIVERY"]
             assert dels and all(k.status == "PENDING" for k in dels)
-            assert self.w.budget.pending(CP) <= self.w.budget.B(CP, self.now) + 1e-9
+            assert self.w.budget.pending(CP) <= self.w.budget.B(CP, self.now)
 
-    @rule(pick=st.integers(0, 999), amount=st.floats(0, 200, allow_nan=False))
+    # Money is exact cents (D19): arbitrary amounts are drawn as whole cents.
+    @rule(pick=st.integers(0, 999), amount=st.integers(0, 20_000).map(lambda c: Decimal(c) / 100))
     def pay(self, pick, amount):
         if not self.orders:
             return
@@ -267,7 +322,7 @@ class CapacityMachine(RuleBasedStateMachine):
         o = self.w.acts[ref]
         self.w.pay(ref, amount, list(o.cited_claims), now=self.now)
         paid = sum(a.value for a in self.w.acts if a.kind == "PAYMENT" and a.ref_order == ref and a.was_executed)
-        assert paid <= o.qty * o.unit_price + 1e-9
+        assert paid <= o.qty * o.unit_price
 
     @rule(qty=st.integers(1, 20))
     def receipt(self, qty):
@@ -282,7 +337,7 @@ class CapacityMachine(RuleBasedStateMachine):
         before = self._Bs()
         self.now += 1
         resolved = self.w.ver.step(self.now)
-        if self._Bs() > before + 1e-9:
+        if self._Bs() > before:
             assert any(k.status == "PASSED" for k in resolved)
 
     @invariant()

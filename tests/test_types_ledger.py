@@ -1,3 +1,4 @@
+from decimal import Decimal
 import itertools
 
 import pytest
@@ -70,12 +71,12 @@ def test_deadline_derived_from_slots():
 
 def test_exposure_only_on_pending():
     # F2: exposure = consumed units x claimed price, only while PENDING.
-    c = delivery().with_consumption(2, 5.0)
+    c = delivery().with_consumption(2, Decimal("5.00"))
     assert c.realized_exposure == 10 and c.consumed == 2
     with pytest.raises(IllegalTransition):
-        c.with_status("PASSED", 3).with_consumption(1, 5.0)
+        c.with_status("PASSED", 3).with_consumption(1, Decimal("5.00"))
     with pytest.raises(ValueError):
-        c.with_consumption(-1, 5.0)
+        c.with_consumption(-1, Decimal("5.00"))
 
 
 def test_ledger_resolve_needs_verifier_key():
@@ -112,11 +113,11 @@ def test_ledger_is_append_only():
     with pytest.raises(LedgerError):
         led.append(delivery("b").with_status("PASSED", 2))
     with pytest.raises(LedgerError):
-        led.append(delivery("c").with_consumption(1, 5.0))
+        led.append(delivery("c").with_consumption(1, Decimal("5.00")))
     key = led.bind_verifier()
     before = led.events
     led.append(price("p"))
-    led.consume("a", 4, 5.0, 1)
+    led.consume("a", 4, Decimal("5.00"), 1)
     led.resolve("a", "PASSED", 3, key)
     after = led.events
     assert after[: len(before)] == before and len(after) == len(before) + 3

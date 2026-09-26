@@ -1,3 +1,4 @@
+from decimal import Decimal
 import pytest
 from hypothesis import settings
 from hypothesis import strategies as st
@@ -46,7 +47,7 @@ class World:
 
 
 def test_default_b0_is_5pct_of_round_spend():
-    assert BudgetConfig.from_game(GameConfig()).b0 == pytest.approx(5.0)
+    assert BudgetConfig.from_game(GameConfig()).b0 == Decimal("5.00")
 
 
 def test_failed_claim_blocks_citation():
@@ -122,7 +123,7 @@ class GateMachine(RuleBasedStateMachine):
 
     def _no_rise(self, before):
         after = self._Bs()
-        assert all(after[c] <= before[c] + 1e-9 for c in self.CPS), (before, after)
+        assert all(after[c] <= before[c] for c in self.CPS), (before, after)
 
     @rule(cp=st.sampled_from(CPS), tmpl=st.sampled_from(["DELIVERY", "PRICE", "UNTESTABLE"]),
           qty=st.integers(1, 30), dt=st.integers(0, 4), price=st.sampled_from([4.0, 5.0, 6.0]))
@@ -162,7 +163,7 @@ class GateMachine(RuleBasedStateMachine):
         resolved = self.w.ver.step(self.now)
         after = self._Bs()
         for c in self.CPS:
-            if after[c] > before[c] + 1e-9:
+            if after[c] > before[c]:
                 # I2: a rise needs a PASSED claim of c in this verifier step.
                 assert any(k.counterparty == c and k.status == "PASSED" for k in resolved)
 
@@ -181,7 +182,7 @@ class GateMachine(RuleBasedStateMachine):
             assert claims, "executed without a citation"
             assert all(k.counterparty == cp for k in claims)
             assert all(k.status not in ("FAILED", "UNTESTABLE", "LAPSED") for k in claims)
-            assert self.w.budget.pending(cp) <= self.w.budget.B(cp, self.now) + 1e-9
+            assert self.w.budget.pending(cp) <= self.w.budget.B(cp, self.now)
 
     @invariant()
     def claims_only_enter_ledger_via_allowed_actions_or_directly(self):
