@@ -147,17 +147,25 @@ def _e1(runs: Path, out: Path) -> str | None:
     s = summarize_grid(root, read=lambda p: _read_rows(p / "results.jsonl"))
     d = out / "e1"
     d.mkdir(parents=True, exist_ok=True)
+    def front_text(front):
+        # Points that never trade (all honest orders blocked) tie at one spot; list them as one group.
+        never = [n for n in front if (s["points"][n]["blocked_honest_orders"] or 0) >= s["points"][n]["runs"] / 36
+                 * 50 - 1e-9 and s["points"][n]["attack_loss"] == 0]
+        rest = [n for n in front if n not in never]
+        return ", ".join(rest) + (f"; plus {len(never)} tied points that never trade with S_main" if never else "")
     L = ["## E1 ablation grid (scripted buyer)", "",
-         f"OBT Pareto front: {', '.join(s['front']) or '-'}. Default (min utility cost + attack loss on the front): "
-         f"**{s['default']}**. Reputation config for E2 (its front, nearest OBT's utility cost): "
-         f"**{s['reputation_for_e2']}**.", "",
+         f"OBT Pareto front: {front_text(s['front']) or '-'}.", "",
+         f"Reputation Pareto front: {front_text(s['reputation_front']) or '-'}.", "",
+         f"Default (min utility cost + attack loss on the OBT front): **{s['default']}**. Reputation config for E2 "
+         f"(its front, nearest OBT's utility cost): **{s['reputation_for_e2']}**.", "",
          "| point | defense | attack loss | utility cost | blocked honest orders | runs | invariant viol. | bound ok |"
          " front |", "|---|---|---|---|---|---|---|---|---|"]
     fronts = set(s["front"]) | set(s["reputation_front"])
     for name, p in sorted(s["points"].items()):
         mark = "default" if name == s["default"] else ("yes" if name in fronts else "")
-        L.append(f"| {name} | {p['defense']} | {p['attack_loss']} | {p['utility_cost']} | "
-                 f"{p['blocked_honest_orders']} | {p['runs']} | {p['invariant_violations']} | {p['loss_bound_ok']} |"
+        r1 = lambda x: "-" if x is None else f"{x:.1f}"  # noqa: E731
+        L.append(f"| {name} | {p['defense']} | {r1(p['attack_loss'])} | {r1(p['utility_cost'])} | "
+                 f"{r1(p['blocked_honest_orders'])} | {p['runs']} | {p['invariant_violations']} | {p['loss_bound_ok']} |"
                  f" {mark} |")
     (d / "e1.md").write_text("\n".join(L) + "\n")
     (d / "e1_summary.json").write_text(json.dumps(s, indent=1, sort_keys=True) + "\n")
@@ -174,10 +182,17 @@ def _e1(runs: Path, out: Path) -> str | None:
         fp = [(s["points"][n]["utility_cost"], s["points"][n]["attack_loss"]) for n in front]
         if fp:
             ax.plot([x for x, _ in fp], [y for _, y in fp], linewidth=1)
-    if s["default"]:
-        p = s["points"][s["default"]]
-        ax.annotate("default: " + s["default"], (p["utility_cost"], p["attack_loss"]), fontsize=7,
-                    xytext=(4, 4), textcoords="offset points")
+    for key, label in (("default", "OBT default"), ("reputation_for_e2", "reputation for E2")):
+        if s[key]:
+            p = s["points"][s[key]]
+            ax.annotate(f"{label}: {s[key]}", (p["utility_cost"], p["attack_loss"]), fontsize=7,
+                        xytext=(-10, 14), textcoords="offset points", arrowprops={"arrowstyle": "-", "lw": 0.5})
+    never = [p for p in s["points"].values() if p["attack_loss"] == 0 and (p["blocked_honest_orders"] or 0) > 0]
+    if never:
+        ax.annotate(f"{len(never)} configs that never trade", (never[0]["utility_cost"], 0), fontsize=7,
+                    xytext=(-110, 12), textcoords="offset points", arrowprops={"arrowstyle": "-", "lw": 0.5})
+    # Loss spans $0 to ~$5k (no defense): symlog keeps both the zero points and the small OBT losses readable.
+    ax.set_yscale("symlog", linthresh=10)
     ax.set_xlabel("utility cost vs none, honest S_main ($ per run)")
     ax.set_ylabel("mean loss from lies, scenarios 2-12 ($ per run)")
     ax.legend(fontsize=7)

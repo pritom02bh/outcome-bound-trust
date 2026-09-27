@@ -1,0 +1,778 @@
+{
+ "default": "obt_b0.05_W0_d0",
+ "front": [
+  "obt_b0.1_W0_d0",
+  "obt_b0.05_W0_d0",
+  "obt_b0.1_W0_d1",
+  "obt_b0.1_W0_d2",
+  "obt_b0.05_W10_d1",
+  "obt_b0.05_W5_d1",
+  "obt_b0.05_W10_d2",
+  "obt_b0.05_W5_d2",
+  "obt_b0.025_W0_d0",
+  "obt_b0.025_W0_d1",
+  "obt_b0.025_W0_d2",
+  "obt_b0.025_W10_d0",
+  "obt_b0.025_W10_d1",
+  "obt_b0.025_W10_d2",
+  "obt_b0.025_W5_d0",
+  "obt_b0.025_W5_d1",
+  "obt_b0.025_W5_d2",
+  "obt_b0.0_W0_d0",
+  "obt_b0.0_W0_d1",
+  "obt_b0.0_W0_d2",
+  "obt_b0.0_W10_d0",
+  "obt_b0.0_W10_d1",
+  "obt_b0.0_W10_d2",
+  "obt_b0.0_W5_d0",
+  "obt_b0.0_W5_d1",
+  "obt_b0.0_W5_d2"
+ ],
+ "points": {
+  "none": {
+   "attack_loss": 5514.0985,
+   "blocked_honest_orders": 0.0,
+   "defense": "none",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {},
+   "utility_cost": 0.0
+  },
+  "obt_b0.025_W0_d0": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.025,
+    "grace": 0,
+    "window": 0
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.025_W0_d1": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.025,
+    "grace": 1,
+    "window": 0
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.025_W0_d2": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.025,
+    "grace": 2,
+    "window": 0
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.025_W10_d0": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.025,
+    "grace": 0,
+    "window": 10
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.025_W10_d1": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.025,
+    "grace": 1,
+    "window": 10
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.025_W10_d2": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.025,
+    "grace": 2,
+    "window": 10
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.025_W5_d0": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.025,
+    "grace": 0,
+    "window": 5
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.025_W5_d1": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.025,
+    "grace": 1,
+    "window": 5
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.025_W5_d2": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.025,
+    "grace": 2,
+    "window": 5
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.05_W0_d0": {
+   "attack_loss": 136.8409,
+   "blocked_honest_orders": 1.3333,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.05,
+    "grace": 0,
+    "window": 0
+   },
+   "utility_cost": 344.1667
+  },
+  "obt_b0.05_W0_d1": {
+   "attack_loss": 58.7727,
+   "blocked_honest_orders": 1.3333,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.05,
+    "grace": 1,
+    "window": 0
+   },
+   "utility_cost": 423.6667
+  },
+  "obt_b0.05_W0_d2": {
+   "attack_loss": 35.8333,
+   "blocked_honest_orders": 1.3333,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.05,
+    "grace": 2,
+    "window": 0
+   },
+   "utility_cost": 452.6667
+  },
+  "obt_b0.05_W10_d0": {
+   "attack_loss": 140.6894,
+   "blocked_honest_orders": 1.3333,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.05,
+    "grace": 0,
+    "window": 10
+   },
+   "utility_cost": 344.1667
+  },
+  "obt_b0.05_W10_d1": {
+   "attack_loss": 58.6061,
+   "blocked_honest_orders": 1.3333,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.05,
+    "grace": 1,
+    "window": 10
+   },
+   "utility_cost": 423.6667
+  },
+  "obt_b0.05_W10_d2": {
+   "attack_loss": 35.6818,
+   "blocked_honest_orders": 1.3333,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.05,
+    "grace": 2,
+    "window": 10
+   },
+   "utility_cost": 452.6667
+  },
+  "obt_b0.05_W5_d0": {
+   "attack_loss": 138.8409,
+   "blocked_honest_orders": 1.3333,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.05,
+    "grace": 0,
+    "window": 5
+   },
+   "utility_cost": 344.1667
+  },
+  "obt_b0.05_W5_d1": {
+   "attack_loss": 58.6061,
+   "blocked_honest_orders": 1.3333,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.05,
+    "grace": 1,
+    "window": 5
+   },
+   "utility_cost": 423.6667
+  },
+  "obt_b0.05_W5_d2": {
+   "attack_loss": 35.6818,
+   "blocked_honest_orders": 1.3333,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.05,
+    "grace": 2,
+    "window": 5
+   },
+   "utility_cost": 452.6667
+  },
+  "obt_b0.0_W0_d0": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.0,
+    "grace": 0,
+    "window": 0
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.0_W0_d1": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.0,
+    "grace": 1,
+    "window": 0
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.0_W0_d2": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.0,
+    "grace": 2,
+    "window": 0
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.0_W10_d0": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.0,
+    "grace": 0,
+    "window": 10
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.0_W10_d1": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.0,
+    "grace": 1,
+    "window": 10
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.0_W10_d2": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.0,
+    "grace": 2,
+    "window": 10
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.0_W5_d0": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.0,
+    "grace": 0,
+    "window": 5
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.0_W5_d1": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.0,
+    "grace": 1,
+    "window": 5
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.0_W5_d2": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.0,
+    "grace": 2,
+    "window": 5
+   },
+   "utility_cost": 494.1667
+  },
+  "obt_b0.1_W0_d0": {
+   "attack_loss": 201.8561,
+   "blocked_honest_orders": 1.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.1,
+    "grace": 0,
+    "window": 0
+   },
+   "utility_cost": 291.6667
+  },
+  "obt_b0.1_W0_d1": {
+   "attack_loss": 116.0379,
+   "blocked_honest_orders": 1.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.1,
+    "grace": 1,
+    "window": 0
+   },
+   "utility_cost": 377.3333
+  },
+  "obt_b0.1_W0_d2": {
+   "attack_loss": 76.0682,
+   "blocked_honest_orders": 1.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.1,
+    "grace": 2,
+    "window": 0
+   },
+   "utility_cost": 419.6667
+  },
+  "obt_b0.1_W10_d0": {
+   "attack_loss": 219.6439,
+   "blocked_honest_orders": 1.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.1,
+    "grace": 0,
+    "window": 10
+   },
+   "utility_cost": 291.6667
+  },
+  "obt_b0.1_W10_d1": {
+   "attack_loss": 127.9167,
+   "blocked_honest_orders": 1.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.1,
+    "grace": 1,
+    "window": 10
+   },
+   "utility_cost": 377.3333
+  },
+  "obt_b0.1_W10_d2": {
+   "attack_loss": 82.6591,
+   "blocked_honest_orders": 1.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.1,
+    "grace": 2,
+    "window": 10
+   },
+   "utility_cost": 419.6667
+  },
+  "obt_b0.1_W5_d0": {
+   "attack_loss": 216.1136,
+   "blocked_honest_orders": 1.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.1,
+    "grace": 0,
+    "window": 5
+   },
+   "utility_cost": 291.6667
+  },
+  "obt_b0.1_W5_d1": {
+   "attack_loss": 126.6136,
+   "blocked_honest_orders": 1.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.1,
+    "grace": 1,
+    "window": 5
+   },
+   "utility_cost": 377.3333
+  },
+  "obt_b0.1_W5_d2": {
+   "attack_loss": 82.3864,
+   "blocked_honest_orders": 1.0,
+   "defense": "obt",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "b0_frac": 0.1,
+    "grace": 2,
+    "window": 5
+   },
+   "utility_cost": 419.6667
+  },
+  "provenance": {
+   "attack_loss": 5514.0985,
+   "blocked_honest_orders": 0.0,
+   "defense": "provenance",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {},
+   "utility_cost": 0.0
+  },
+  "rep_cap100_th0.6": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 100.0,
+    "rep_theta": 0.6
+   },
+   "utility_cost": 494.1667
+  },
+  "rep_cap100_th0.7": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 100.0,
+    "rep_theta": 0.7
+   },
+   "utility_cost": 494.1667
+  },
+  "rep_cap100_th0.8": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 100.0,
+    "rep_theta": 0.8
+   },
+   "utility_cost": 494.1667
+  },
+  "rep_cap100_th0.9": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 100.0,
+    "rep_theta": 0.9
+   },
+   "utility_cost": 494.1667
+  },
+  "rep_cap200_th0.6": {
+   "attack_loss": 898.7348,
+   "blocked_honest_orders": 0.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 200.0,
+    "rep_theta": 0.6
+   },
+   "utility_cost": 0.0
+  },
+  "rep_cap200_th0.7": {
+   "attack_loss": 812.7803,
+   "blocked_honest_orders": 0.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 200.0,
+    "rep_theta": 0.7
+   },
+   "utility_cost": 0.0
+  },
+  "rep_cap200_th0.8": {
+   "attack_loss": 764.2803,
+   "blocked_honest_orders": 0.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 200.0,
+    "rep_theta": 0.8
+   },
+   "utility_cost": 0.0
+  },
+  "rep_cap200_th0.9": {
+   "attack_loss": 235.0152,
+   "blocked_honest_orders": 46.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 200.0,
+    "rep_theta": 0.9
+   },
+   "utility_cost": 443.6667
+  },
+  "rep_cap400_th0.6": {
+   "attack_loss": 1275.053,
+   "blocked_honest_orders": 0.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 400.0,
+    "rep_theta": 0.6
+   },
+   "utility_cost": 0.0
+  },
+  "rep_cap400_th0.7": {
+   "attack_loss": 1107.1591,
+   "blocked_honest_orders": 0.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 400.0,
+    "rep_theta": 0.7
+   },
+   "utility_cost": 0.0
+  },
+  "rep_cap400_th0.8": {
+   "attack_loss": 1013.3864,
+   "blocked_honest_orders": 0.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 400.0,
+    "rep_theta": 0.8
+   },
+   "utility_cost": 0.0
+  },
+  "rep_cap400_th0.9": {
+   "attack_loss": 431.9394,
+   "blocked_honest_orders": 46.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 400.0,
+    "rep_theta": 0.9
+   },
+   "utility_cost": 443.6667
+  },
+  "rep_cap50_th0.6": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 50.0,
+    "rep_theta": 0.6
+   },
+   "utility_cost": 494.1667
+  },
+  "rep_cap50_th0.7": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 50.0,
+    "rep_theta": 0.7
+   },
+   "utility_cost": 494.1667
+  },
+  "rep_cap50_th0.8": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 50.0,
+    "rep_theta": 0.8
+   },
+   "utility_cost": 494.1667
+  },
+  "rep_cap50_th0.9": {
+   "attack_loss": 0.0,
+   "blocked_honest_orders": 50.0,
+   "defense": "reputation",
+   "invariant_violations": 0,
+   "loss_bound_ok": true,
+   "runs": 36,
+   "sim": {
+    "rep_cap": 50.0,
+    "rep_theta": 0.9
+   },
+   "utility_cost": 494.1667
+  }
+ },
+ "reputation_for_e2": "rep_cap200_th0.9",
+ "reputation_front": [
+  "rep_cap200_th0.8",
+  "rep_cap200_th0.9",
+  "rep_cap100_th0.6",
+  "rep_cap100_th0.7",
+  "rep_cap100_th0.8",
+  "rep_cap100_th0.9",
+  "rep_cap50_th0.6",
+  "rep_cap50_th0.7",
+  "rep_cap50_th0.8",
+  "rep_cap50_th0.9"
+ ]
+}
