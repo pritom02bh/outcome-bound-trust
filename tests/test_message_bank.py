@@ -192,7 +192,7 @@ def test_committed_gold_is_the_final_f5_gold():
 
     from eval.build_message_bank import f5_gold
     data = json.loads((Path(__file__).resolve().parent.parent / "data" / "extractor_dataset.json").read_text())
-    for it in data["dev"] + data["test"]:
+    for it in data["dev"] + data["test"] + data["test_hard"]:
         assert it["gold"] == f5_gold(it), it["id"]
 
 
@@ -321,3 +321,46 @@ def test_checkpoint_is_ignored_when_settings_change(tmp_path):
     build(LLM("fake", "fake-qwen", fake=counting, log_path=tmp_path / "g2.jsonl"), out=tmp_path / "b", target=7,
           max_requests=40, checkpoint=ck)
     assert calls["n"] > 0
+
+
+def test_hard_subset_is_hand_templated_and_gold_delivery_untestable(built):
+    from eval.build_message_bank import HARD_TEMPLATES
+    out, _ = built
+    data = json.loads((out / "extractor_dataset.json").read_text())
+    hard = data["test_hard"]
+    assert len(hard) == 30 and {it["group"] for it in hard} == {"ship", "ready", "scheduled"}
+    assert {it["template"] for it in hard} == {t for _, t in HARD_TEMPLATES}
+    for it in hard:
+        assert it["kind"] == "hard_deadline" and it["id"].startswith("hard")
+        assert it["gold"][0] == {"template": None} and it["gold"][1]["template"] == "PRICE"
+    key = lambda it: json.dumps(it["values"], sort_keys=True)  # noqa: E731
+    assert not {key(i) for i in hard} & {key(i) for i in data["dev"] + data["test"]}
+
+
+def test_hard_templates_never_reach_the_run_pool():
+    from pathlib import Path
+
+    from eval.build_message_bank import HARD_TEMPLATES
+    raw = json.loads((Path(__file__).resolve().parent.parent / "data" / "message_bank.json").read_text())
+    pool = {t for ts in raw["run"].values() for t in ts}
+    for _, t in HARD_TEMPLATES:
+        assert t not in pool and not run_pool_ok(t, "offer"), t
+
+
+def test_committed_dataset_has_the_hard_subset_and_no_excluded_template():
+    from pathlib import Path
+
+    from eval.build_message_bank import EXCLUDED_TEMPLATES
+    data = json.loads((Path(__file__).resolve().parent.parent / "data" / "extractor_dataset.json").read_text())
+    assert len(data["test_hard"]) == 30 and len(data["test"]) == 200 and len(data["dev"]) == 49
+    assert not [it for s in ("dev", "test") for it in data[s] if it["template"] in EXCLUDED_TEMPLATES]
+
+
+def test_spotcheck_with_answers_is_never_overwritten(tmp_path):
+    from eval.build_message_bank import write_spotcheck
+    data = {"test": [{"id": "test000", "kind": "offer", "message": "m", "gold": []}]}
+    write_spotcheck(data, tmp_path)
+    f = tmp_path / "spotcheck.csv"
+    f.write_text(f.read_text().replace("\r\n", "\n").rstrip("\n") + "yes\n")
+    with pytest.raises(RuntimeError):
+        write_spotcheck(data, tmp_path)

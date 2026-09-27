@@ -37,6 +37,31 @@ RUN_KINDS = ("offer", "deal", "split", "vague", "far_deadline", "price_only")
 # Dataset mix (dev, test): 50 / 200 items.
 MIX = {"offer": (10, 40), "deal": (6, 25), "price_only": (6, 25), "vague": (5, 20), "far_deadline": (5, 20),
        "relative": (5, 20), "split": (5, 20), "injection": (8, 30)}
+# Hard-phrasing test subset (D23b, user request): fixed hand templates, no LLM. The deadline is a shipping,
+# readiness or scheduling date, not an arrival date, so DELIVERY gold is UNTESTABLE; PRICE is normal. Kept in
+# its own split and never in the bank, so never in a run.
+HARD_TEMPLATES = (
+    ("ship", "We will ship {qty} widgets by round {by}. Unit price ${price}, valid until round {until}."),
+    ("ship", "We'll send {qty} widgets no later than round {by}. Each unit costs ${price}, valid through round "
+             "{until}."),
+    ("ship", "{qty} widgets will be dispatched by round {by}. Price: ${price} per unit until round {until}."),
+    ("ship", "We commit to shipping {qty} widgets by round {by}; unit price ${price} holds until round {until}."),
+    ("ready", "We'll have {qty} widgets ready by round {by}. Unit price ${price}, valid until round {until}."),
+    ("ready", "{qty} widgets will be available by round {by}. Each unit costs ${price}, valid through round "
+              "{until}."),
+    ("ready", "Your {qty} widgets will be ready for dispatch no later than round {by}. Unit price ${price}, valid "
+              "until round {until}."),
+    ("scheduled", "Delivery of {qty} widgets is scheduled for round {by}. Unit price ${price}, valid until round "
+                  "{until}."),
+    ("scheduled", "Your {qty} widgets are scheduled for round {by}. Each unit costs ${price}, valid through round "
+                  "{until}."),
+    ("scheduled", "Shipment of {qty} widgets scheduled for round {by}. Unit price ${price}, good until round "
+                  "{until}."),
+)
+# Templates the generator and reader accepted but that misstate the intent, found by review (D23b). Items built
+# from them are dropped from the dataset; the bank keeps its record of what was generated.
+EXCLUDED_TEMPLATES = ("Split shipment plan. {LOTS} unit price ${price} will be delivered no later than round "
+                      "{until}.",)
 PRICES = ("4.25", "4.50", "4.75", "5.00", "5.25", "5.50", "4.80", "5.20", "6.10")
 
 
@@ -79,7 +104,10 @@ class CheckerInvalid(RuntimeError):
 
 
 def _answers(checker: LLM, text: str, kind: str) -> list[str] | None:
-    qs = SEMANTIC_QUESTIONS[kind]
+    return _answers_for(checker, text, SEMANTIC_QUESTIONS[kind], kind)
+
+
+def _answers_for(checker: LLM, text: str, qs, kind: str) -> list[str] | None:
     msg = text.replace("{LOTS}", CANONICAL_LOTS)
     user = "Message:\n<<<\n" + msg + "\n>>>\nQuestions:\n" + "\n".join(f"{i + 1}. {q}" for i, (q, _) in
                                                                    enumerate(qs))
@@ -222,6 +250,42 @@ def run_pool(bank: dict, kind: str) -> list[str]:
     return old + new
 
 
+def build_hard(rng: random.Random, used: set) -> list[dict]:
+    """30 items, 3 per hand template, with intents disjoint from dev and test."""
+    items = []
+    for group, tmpl in HARD_TEMPLATES:
+        n = 0
+        while n < 3:
+            v = _values("offer", rng)
+            if any(_key(k, v) in used for k in (*KINDS, "injection", "hard_deadline")):
+                continue
+            used.add(_key("hard_deadline", v))
+            it = {"id": f"hard{len(items):03d}", "kind": "hard_deadline", "split": "test_hard", "group": group,
+                  "message": fill(tmpl, v), "template": tmpl,
+                  "values": {k: v[k] for k in ("qty", "by", "until", "price", "far", "lots")}}
+            items.append({**it, "gold": f5_gold(it)})
+            n += 1
+    return items
+
+
+def finish_dataset(dataset: dict, used: set, seed: int) -> dict:
+    """The steps after the LLM-templated splits: the hand-templated hard subset, then the review exclusions."""
+    dataset["test_hard"] = build_hard(random.Random(seed + 4), used)
+    for split in ("dev", "test"):
+        dataset[split] = [it for it in dataset[split] if it["template"] not in EXCLUDED_TEMPLATES]
+    return dataset
+
+
+def add_hard_and_exclusions(path: Path = DATA / "extractor_dataset.json", seed: int = 20260926) -> str:
+    """Apply `finish_dataset` to the frozen v3 dataset (no LLM calls): the same result `build` now gives."""
+    data = json.loads(path.read_text())
+    if "test_hard" in data:
+        raise RuntimeError("the dataset already has the hard subset")
+    used = {_key(it["kind"], {**it["values"]}) for s in ("dev", "test") for it in data[s]}
+    path.write_text(json.dumps(finish_dataset(data, used, seed), indent=1) + "\n")
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def _jsonable(c: dict) -> dict:
     if c["template"] is None:
         return {"template": None}
@@ -244,6 +308,9 @@ def stratified_spotcheck(items: list[dict], rng: random.Random) -> list[dict]:
 
 
 def write_spotcheck(dataset: dict, out: Path, seed: int = 20260926) -> None:
+    f = out / "spotcheck.csv"
+    if f.exists() and any(r.get("looks_correct") for r in csv.DictReader(f.open())):
+        raise RuntimeError(f"{f} holds the reviewer's answers; move it before regenerating")
     spot = stratified_spotcheck(dataset["test"], random.Random(seed + 3))
     with (out / "spotcheck.csv").open("w", newline="") as f:
         w = csv.writer(f)
@@ -312,6 +379,7 @@ def build(llm: LLM, out: Path = DATA, target: int = 30, max_requests: int = 200,
     used: set = set()
     dataset = {"dev": build_items(pools["dev"], random.Random(seed + 1), "dev", used),
                "test": build_items(pools["test"], random.Random(seed + 2), "test", used)}
+    dataset = finish_dataset(dataset, used, seed)
     bank = {"version": 1,
             "generator": {"model": llm.model, "digest": _digest(llm.model), "temperature": llm.temperature,
                           "system": SYSTEM, "styles": list(STYLES), "target": target, "max_requests": max_requests,
@@ -343,8 +411,8 @@ def regold(path: Path = DATA / "extractor_dataset.json") -> str:
     """Recompute gold from the frozen messages with the current F5 rules (no LLM calls). Only injection gold
     depends on the grounding patterns; every other kind's gold is its intent's claims."""
     data = json.loads(path.read_text())
-    for split in ("dev", "test"):
-        for it in data[split]:
+    for split in ("dev", "test", "test_hard"):
+        for it in data.get(split, []):
             it["gold"] = f5_gold(it)
     path.write_text(json.dumps(data, indent=1) + "\n")
     write_spotcheck(data, path.parent)
@@ -372,10 +440,15 @@ def main() -> None:
     ap.add_argument("--target", type=int, default=30)
     ap.add_argument("--max-requests", type=int, default=400)
     ap.add_argument("--regold", action="store_true", help="only recompute F5 gold for the frozen dataset")
+    ap.add_argument("--add-hard", action="store_true", help="add the hand-templated hard subset and apply the "
+                                                              "review exclusions to the frozen dataset")
     ap.add_argument("--rebank", action="store_true", help="only re-apply the run filter to the frozen templates")
     a = ap.parse_args()
     if a.regold:
         print(regold())
+        return
+    if a.add_hard:
+        print(add_hard_and_exclusions())
         return
     if a.rebank:
         print(json.dumps(rebank(), indent=1))

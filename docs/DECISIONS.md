@@ -188,6 +188,40 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
 
 
 
+### D23b. Held-out reader test, hard-phrasing subset, and the deadline guard in code (user decisions)
+- **Confirmed interpretation.** "$N/unit" is a price. A bare "N/unit" or "lot size N" is a competing quantity.
+- **Held-out reader test (`eval/checker_holdout.py`).** The reader's prompt was tuned against `SEMANTIC_CONTRAST`, so it was tested on fresh 20-phrase sets (10 arrival, 10 dispatch or readiness). The scoring matches the contrast set. The frozen prompt was not changed, the numbers in the question wording are substituted per item, and each set runs exactly once (the script refuses a second run).
+  - **Run 1:** **18/20 overall, 20/20 on the arrival-vs-shipping question.** Both misses were answer-key errors, not reader errors.
+    - In two arrival items the price-validity round equalled the delivery round (13/13, 15/15). The auxiliary question "is round U the delivery deadline?" was therefore truly *yes*, and the reader said yes; my key said no.
+    - One item had also used the number 9, which appears in the few-shot. That was found and fixed *before* any result was seen: the first attempt was stopped with no output.
+    - Run 1 is kept unchanged (`HOLDOUT_RUN1`, `runs/message_bank/v3/checker_holdout_run1.json`).
+  - **Run 2 (option C):** a completely fresh set. Verbs, sentence structures and numbers are disjoint from the tuning set, the few-shot and run 1. A test enforces validity round ≠ delivery round. **20/20 overall, 20/20 on the deadline question** (`checker_holdout_run2.json`).
+- **Hard-phrasing subset (`test_hard`).**
+  - 30 items from 10 fixed hand templates (no LLM), 3 intents each, with intents disjoint from dev and test:
+    - **ship** (12): ship / send / dispatched / commit to shipping by or no later than round N;
+    - **ready** (9): ready / available / ready for dispatch;
+    - **scheduled** (9): "scheduled for round N".
+  - Gold: DELIVERY UNTESTABLE, PRICE as normal. It has its own split and is never in the bank, so never in a run (asserted by a test). The eval reports it separately: `rule:test_hard`, `llm:<model>:test_hard`, and the ablation `llm:<model>:test_hard:no_guard`.
+- **Deadline guard in code (approved).** F5 grounding now fails closed on DELIVERY deadline wording (`obt/extractor.py`, `deadline_wording_ok`).
+  - **The rule.** For each sentence that states the claim's `by_round` as a deadline, clauses that are a lead-time remark ("within N rounds") or a price validity ("until/through round N") and don't contain the deadline are set aside. The claim is then UNTESTABLE if what remains uses ship*/send*/sent/dispatch*/ready/available/schedul* and no arrival wording: deliver(s/ed), arriv*, receiv*, you('ll/ will) [x] have, in your warehouse/hands/possession.
+  - "shipment" (a noun) is not a deadline verb.
+  - The template guard (`delivery_verb_ok`) now uses the same verb lists, and the run filter uses the same grounding, so no run template can be refused at run time.
+  - **Effect on committed data:** the run pool, all gold and the spot-check sheet are unchanged under the guard (the tests "run pool == filter" and "gold == F5 gold" still pass).
+  - The guard is always on. Only the hard-subset ablation turns it off, to measure the LLM alone.
+- **Hard-subset results.** The LLM outputs are cached, so "alone" and "with guard" score the same outputs (`runs/tuning/v3_hard/hard_subset.json`).
+
+  | extractor | shipping/ready/scheduled dates recorded as DELIVERY | PRICE recovered | exact |
+  |---|---|---|---|
+  | gpt-oss:20b, LLM alone (no guard) | **21/30** (ship 12/12, ready 9/9, scheduled 0/9) | 30/30 | 0.30 |
+  | gpt-oss:20b + code guard | **0/30** | 30/30 | 1.00 |
+  | rule baseline, as-is (guard in code) | 0/30 (21/30 before the guard) | 30/30 | 1.00 |
+
+  The frozen prompt defines DELIVERY as "received by", yet the LLM still recorded every shipping and readiness date as a delivery deadline. This is why the check belongs in code, not in the prompt. The "scheduled for round N" items were refused by numeric grounding already: "for round" isn't a deadline phrase.
+- **Dev with the guard** (49 items): precision 1.0, recall 1.0, exact 1.0, honest→UNTESTABLE 0%, injected recorded 0. The guard adds no dev errors.
+- **Known-bad dev template removed.** "…unit price ${price} will be delivered no later than round {until}" (dev039) was dropped through `EXCLUDED_TEMPLATES`. The bank keeps its record of what was generated. Dev now has 49 items.
+- **Spot-check sheet protected.** `write_spotcheck` refuses to overwrite a sheet that holds reviewer answers.
+- **Pins.** `EXTRACTOR_DATASET_SHA256` = `e29d6a68…0e43` (hard subset plus the dev039 removal). `MESSAGE_BANK_SHA256` is unchanged (`bcc88522…3ab3`), and so is the extractor prompt sha. `data/spotcheck.csv` is byte-identical.
+
 ## D24. Extractor roles (F10, user decision)
 - **Primary extractor.** Every eval run that reads claims extracts with the LLM extractor (`gpt-oss:20b` locally), whose prompt is tuned on the 50 dev items and then frozen (`EXTRACTOR_PROMPT_SHA256`).
   - This covers OBT runs with the LLM buyer, and every scripted-buyer run, because the scripted buyer reads claim cards under every defense (E1 included).

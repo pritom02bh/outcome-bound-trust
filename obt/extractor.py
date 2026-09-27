@@ -44,6 +44,32 @@ _CANDIDATES = {
 }
 _NUMERIC_SLOTS = {"DELIVERY": ("qty", "by_round"), "PRICE": ("unit_price", "valid_until")}
 
+# Deadline wording (F5, D23b). DESIGN's DELIVERY deadline is the round by which the buyer HAS the goods. A deadline
+# worded as a shipping, readiness or scheduling date ("ship by round 9", "ready by round 9") is not one, unless
+# the same sentence also states arrival. Checked here in code, not left to the LLM: on the hard subset the LLM
+# alone recorded such dates as delivery deadlines (D23b). "shipment" (a noun) is not a deadline verb.
+SHIP_VERB = re.compile(r"\b(ship(?!ments?\b)\w*|send\w*|sent|dispatch\w*|ready|available|schedul\w*)\b", re.I)
+ARRIVAL = re.compile(r"\b(deliver(?:s|ed)?|arriv\w*|you(?:'ll| will)\s+(?:\w+\s+)?have|in your (?:warehouse|hands|"
+                     r"possession)|receiv\w*)\b", re.I)
+_SENTENCE = re.compile(r"(?<=[.;!?])\s+")
+_CLAUSE = re.compile(r",\s*|\s+(?:though|but|while|and)\s+", re.I)
+# Clauses that are not the deadline: a lead-time remark ("we usually ship within 2 rounds") or a price validity.
+_ASIDE = re.compile(r"\bwithin\s+\d+\s+rounds?\b|\b(?:until|through|thru|till|up to)\s+round\s+\d+", re.I)
+
+
+def deadline_wording_ok(text: str, by_round: int) -> bool:
+    """False iff a sentence stating `by_round` as a deadline words it with ship/send/dispatch/ready/available/
+    scheduled and has no arrival wording. Aside clauses without the deadline are set aside first."""
+    for sent in _SENTENCE.split(text):
+        marks = [m.group(0) for pat in _CANDIDATES["by_round"] for m in pat.finditer(sent)
+                 if int(m.group(1)) == by_round]
+        if not marks:
+            continue
+        kept = " ".join(c for c in _CLAUSE.split(sent) if any(k in c for k in marks) or not _ASIDE.search(c))
+        if SHIP_VERB.search(kept) and not ARRIVAL.search(kept):
+            return False
+    return True
+
 
 def slot_candidates(text: str) -> dict[str, set]:
     """Every value the raw text offers for each numeric slot, found by that slot's context patterns.
@@ -55,12 +81,17 @@ def slot_candidates(text: str) -> dict[str, set]:
     return out
 
 
-def grounded(claim: Claim, cands: dict[str, set]) -> bool:
-    return all(cands[slot] == {claim.slots[slot]} for slot in _NUMERIC_SLOTS[claim.template])
+def grounded(claim: Claim, cands: dict[str, set], text: str | None = None) -> bool:
+    """Numeric grounding and, when `text` is given, the DELIVERY deadline-wording check."""
+    if not all(cands[slot] == {claim.slots[slot]} for slot in _NUMERIC_SLOTS[claim.template]):
+        return False
+    return text is None or claim.template != "DELIVERY" or deadline_wording_ok(text, claim.slots["by_round"])
 
 
 class Extractor:
     name = "base"
+    # Off only in the hard-subset ablation that measures the LLM alone (eval/run.py); never in a run.
+    deadline_guard = True
 
     def propose(self, msg: Message) -> list[Any]:
         """Return raw candidate specs: dicts like {"template": ..., "slots": {...}}."""
@@ -81,7 +112,7 @@ class Extractor:
                 c = Claim.make(claim_id=cid, counterparty=msg.counterparty,
                                source_msg_hash=msg.msg_hash, created_round=msg.round,
                                template=spec["template"], slots=spec["slots"])
-                if not grounded(c, cands):
+                if not grounded(c, cands, msg.text if self.deadline_guard else None):
                     raise ValueError("slot value not grounded in text, or ambiguous")
                 out.append(c)
             except (ValidationError, KeyError, TypeError, ValueError):
@@ -216,9 +247,10 @@ class LLMExtractor(Extractor):
     """LLM proposes specs; `Extractor.extract` validates them. Any schema problem -> UNTESTABLE."""
     name = "llm"
 
-    def __init__(self, llm: LLM, cache: ExtractionCache | None = None) -> None:
+    def __init__(self, llm: LLM, cache: ExtractionCache | None = None, deadline_guard: bool = True) -> None:
         self.llm = llm
         self.cache = cache
+        self.deadline_guard = deadline_guard
 
     def propose(self, msg: Message) -> list[dict]:
         text = self.cache.get(msg.text) if self.cache else None

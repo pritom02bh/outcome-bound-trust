@@ -34,7 +34,8 @@ def test_scripted_eval_end_to_end(tmp_path, rule_llm):
     runs = [json.loads(line) for line in (tmp_path / "results.jsonl").read_text().splitlines()]
     assert {r["usage"]["extractor"] for r in runs} == {"llm"} and all(r["usage"]["by_purpose"]["extract"]["calls"]
                                                                       for r in runs)
-    assert set(rep["extractor"]) == {"rule", "llm:fake"}
+    assert set(rep["extractor"]) == {"rule", "llm:fake", "rule:test_hard", "llm:fake:test_hard",
+                                     "llm:fake:test_hard:no_guard"}
     assert rep["stopped"] is None and rep["n_runs"] == 6
     rows = [json.loads(line) for line in (tmp_path / "results.jsonl").read_text().splitlines()]
     assert len(rows) == 6

@@ -143,6 +143,7 @@ def extractor_eval(extractor: Extractor, limit: int = 200, split: str = "test") 
     tot, by_kind = dict(blank), {}
     honest_gold = honest_lost = 0
     inj = {"n": 0, "exact": 0, "injected_recorded": 0, "real_recovered": 0}
+    hard: dict = {}
     for it in items:
         v = it["values"]
         msg = Message(msg_hash=it["id"], counterparty=MAIN, round=max(0, v["by"] - 2), text=it["message"])
@@ -169,6 +170,12 @@ def extractor_eval(extractor: Extractor, limit: int = 200, split: str = "test") 
         if it["kind"] in ("offer", "deal", "price_only", "split") and gold:
             honest_gold += ngold
             honest_lost += (ngold - tp) if pred_untestable else 0
+        if it["kind"] == "hard_deadline":
+            # The key metric (D23b): a shipping/ready/scheduled date recorded as a delivery deadline.
+            g = hard.setdefault(it["group"], {"n": 0, "delivery_recorded": 0, "price_ok": 0})
+            g["n"] += 1
+            g["delivery_recorded"] += int(any(p[0] == "DELIVERY" for p in pred))
+            g["price_ok"] += int([p for p in pred if p[0] == "PRICE"] == [k for k in gold if k[0] == "PRICE"])
         if it["kind"] == "injection":
             injected = it["injected"]
             inj["n"] += 1
@@ -195,6 +202,12 @@ def extractor_eval(extractor: Extractor, limit: int = 200, split: str = "test") 
     out["injection"] = {"n": inj["n"], "injected_values_recorded": inj["injected_recorded"],
                         "accuracy_vs_f5_gold": round(inj["exact"] / inj["n"], 4) if inj["n"] else None,
                         "real_offer_recovery": round(inj["real_recovered"] / inj["n"], 4) if inj["n"] else None}
+    if hard:
+        out["hard"] = {"n": sum(g["n"] for g in hard.values()),
+                       "delivery_recorded": sum(g["delivery_recorded"] for g in hard.values()),
+                       "price_recovery": round(sum(g["price_ok"] for g in hard.values())
+                                               / sum(g["n"] for g in hard.values()), 4),
+                       "by_group": hard}
     return out
 
 
@@ -353,8 +366,15 @@ def run_eval(ec: EvalConfig, out_dir: Path, meter: CostMeter | None = None, fake
             # The rule extractor is reported here only, as a baseline on the test set (D24).
             ext["rule"] = extractor_eval(RuleExtractor(), ec.extractor_limit)
             check_budget(ec, meter)
-            ext[f"llm:{ec.model}"] = extractor_eval(
-                LLMExtractor(make_llm(ec, "extractor_eval", meter, fake), make_extract_cache(ec)), ec.extractor_limit)
+            llm_ext = LLMExtractor(make_llm(ec, "extractor_eval", meter, fake), make_extract_cache(ec))
+            ext[f"llm:{ec.model}"] = extractor_eval(llm_ext, ec.extractor_limit)
+            # The hand-templated hard subset is reported separately (D23b): shipping/ready/scheduled dates.
+            ext["rule:test_hard"] = extractor_eval(RuleExtractor(), 30, "test_hard")
+            check_budget(ec, meter)
+            ext[f"llm:{ec.model}:test_hard"] = extractor_eval(llm_ext, 30, "test_hard")
+            # Ablation for the paper: the same LLM outputs (cached) without the code deadline guard.
+            ext[f"llm:{ec.model}:test_hard:no_guard"] = extractor_eval(
+                LLMExtractor(llm_ext.llm, llm_ext.cache, deadline_guard=False), 30, "test_hard")
     except (HardStop, BudgetExceeded, PaidCallRefused) as e:
         stopped = f"{type(e).__name__}: {e}"
         print("HARD STOP:", stopped, flush=True)

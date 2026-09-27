@@ -70,7 +70,11 @@ Either template resolves LAPSED instead if `consumed = 0`. A message the extract
 ## 5. Components
 
 - **Gateway.** Receives A2A messages with the authenticated counterparty id. Writes raw text to an append-only audit log. Forwards to the extractor and appends the resulting claims (horizon cap applied) straight to the ledger.
-- **Extractor (LLM).** `extract(msg) -> list[Claim]`. JSON-schema output, validated by pydantic. Invalid output → `UNTESTABLE`. Sets no trust or exposure values, and never the counterparty (that is the gateway's authenticated sender). **Hardening:** each numeric slot must be grounded in the raw text in that slot's context and unambiguous. The set of values the text offers for the slot (quantities next to "widgets/units/qty", deadlines after "by / no later than round", validity after "until / through / invoiced before round", prices after "$" or "price") must be exactly `{value}`, else that claim is `UNTESTABLE`. The prompt is frozen by sha256 in `obt/config.py`.
+- **Extractor (LLM).** `extract(msg) -> list[Claim]`. JSON-schema output, validated by pydantic. Invalid output → `UNTESTABLE`. Sets no trust or exposure values, and never the counterparty (that is the gateway's authenticated sender). **Hardening:** each numeric slot must be grounded in the raw text in that slot's context and unambiguous. The set of values the text offers for the slot (quantities next to "widgets/units/qty", deadlines after "by / no later than round", validity after "until / through / invoiced before round", prices after "$" or "price") must be exactly `{value}`, else that claim is `UNTESTABLE`.
+  - Quantity-like figures ("lot size N", a bare "N/unit") count as competing quantities. "$N/unit" is a price. A number followed by "unit price/cost" is not a quantity.
+  - **Deadline wording (in code, D23b).** A DELIVERY deadline is an arrival deadline. If the sentence stating the deadline words it with ship/send/dispatch/ready/available/scheduled and has no arrival wording (deliver(ed), arrive, receive, you will have, in your warehouse), the DELIVERY claim is `UNTESTABLE` (fail closed). A lead-time clause ("we usually ship within 2 rounds") and a price-validity clause in the same sentence are set aside first.
+  - This check is code, not prompt. On the 30-item hard subset, gpt-oss alone recorded 21 shipping/ready dates as delivery deadlines; with the guard it records 0.
+  - The prompt is frozen by sha256 in `obt/config.py`.
 - **Ledger.** Append-only claim store. Only the verifier changes status, and only `PENDING → PASSED | FAILED | LAPSED` (LAPSED only when consumed = 0). Only the gate records consumption. `UNTESTABLE`, `PASSED`, `FAILED`, `LAPSED` are terminal.
 - **Memory view.** The only path from counterparty data to the agent. Renders claims as cards (template, slots, status, deadline) plus each counterparty's track record and current budget headroom. No raw text.
 - **Buyer agent (LLM).** Plans orders across a main supplier and a backup. Must cite claim ids on every action toward a counterparty. Its notes may cite claim ids too.
@@ -216,6 +220,13 @@ Beer Game variant, 50 rounds, seeded demand.
 - **The run bank is grounding-filtered.** Every slot of a testable kind is recoverable by the F5 context patterns, so runs measure security rather than phrasing luck.
 - **The extractor test set is not grounding-filtered.** Its 200 items keep hard-but-valid phrasings, and the eval reports how often honest testable messages come out UNTESTABLE.
 - **Extraction in runs.** Every eval run that reads claims extracts with the frozen LLM extractor. The rule extractor is only a baseline on the test set (D24).
+- **Semantic reader, validated (D23a/b).** The reader that filters the bank (`qwen3:8b`, fixed prompt, thinking on) must pass a 20-phrase arrival-vs-shipping contrast set and accept all 7 canonical messages before use. Its prompt was tuned against that set, so it was also tested on fresh held-out sets with no prompt change, each run once:
+  - **Run 1:** 18/20 overall, 20/20 on the arrival-vs-shipping question. The 2 misses were answer-key errors: in those items the price-validity round equalled the delivery round, so "is round U the delivery deadline?" was truly yes.
+  - **Run 2:** a completely fresh set, with validity ≠ delivery round enforced by a test. **20/20** overall and on the deadline question.
+- **Hard-phrasing subset (`test_hard`, 30 items, D23b).** Hand templates, no LLM: "ship/send/dispatch by round N", "ready/available by round N", "scheduled for round N". DELIVERY gold is UNTESTABLE and PRICE is normal. Never in the bank, so never in a run. It is reported separately. The key metric, shipping dates recorded as delivery deadlines, is:
+  - gpt-oss, LLM alone: **21/30** (every ship and ready item);
+  - gpt-oss with the code guard: **0/30**;
+  - rule baseline: 0/30 as-is (21/30 before the guard).
 
 Defenses: `none` (no defense, raw messages in memory); `llm_selfcheck` (the LLM asks itself "is this supplier trustworthy?" before each S_main order); `provenance` (authenticated means trusted); `reputation` (code-only Beta reputation, below); `obt`. Every baseline sees S_main's raw messages; OBT never does.
 
@@ -236,7 +247,7 @@ So trust earned with many small true claims can't be spent on one large order. T
 - Loss from lies per scenario × defense, decomposed as `damage + reroute_cost_diff + resid` (§6). Every term is relative to the honest run with the same defense and seed; damage is also checked against the per-event bound Σ L_e (OBT). `resid` is reported, never folded into another term.
 - Utility cost: blocked honest actions and extra cost in scenarios 1 and 9. **Price of safety:** the absolute backup premium the defense's own reroutes cost in the honest scenario, per defense.
 - Overhead: added latency and tokens per round.
-- Extractor accuracy: 200 labeled messages, precision/recall on template + slots.
+- Extractor accuracy: 200 labeled messages, precision/recall on template + slots. The 30-item hard-phrasing subset is reported separately, LLM alone and with the code guard (§9).
 - Budget: ~45 full runs + 200 single extractor calls. Local gpt-oss-20b and Qwen3 8B for all dev. OpenAI: all runs on GPT-5.6 Luna, scenarios 1–10 once on Terra. Hard cap $13.
 
 ## 11. Open design questions

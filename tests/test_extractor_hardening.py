@@ -122,3 +122,48 @@ def test_lot_size_decoy_makes_delivery_untestable(tmp_path):
 ])
 def test_number_before_unit_price_is_not_a_quantity(text, qtys):
     assert slot_candidates(text)["qty"] == qtys
+
+
+# F5 deadline wording (D23b): DESIGN's DELIVERY deadline is an arrival deadline, so a deadline worded as a
+# shipping/readiness/scheduling date, with no arrival wording in the same sentence, is UNTESTABLE in code.
+PRICE_S = " Unit price $5.00, valid until round 9."
+
+
+@pytest.mark.parametrize("deadline", [
+    "We will ship 20 widgets by round 9.",
+    "We'll send 20 widgets no later than round 9.",
+    "20 widgets will be dispatched by round 9.",
+    "We commit to shipping 20 widgets by round 9.",
+    "We'll have 20 widgets ready by round 9.",
+    "20 widgets will be available by round 9.",
+    "Your 20 widgets are scheduled to go out by round 9.",
+    "20 widgets will be sent out no later than round 9.",
+])
+def test_shipping_ready_or_scheduled_deadline_is_untestable(tmp_path, deadline):
+    got = fake(tmp_path, [D(), P()]).extract(msg(deadline + PRICE_S))
+    assert statuses(got) == ["UNTESTABLE", "PENDING"]
+    assert statuses(RuleExtractor().extract(msg(deadline + PRICE_S)))[0] == "UNTESTABLE"
+
+
+@pytest.mark.parametrize("deadline", [
+    "We will deliver 20 widgets by round 9.",
+    "We'll ship 20 widgets so that they arrive by round 9.",
+    "We'll send 20 widgets; they will be delivered by round 9.",
+    "We will ship 20 widgets and you will have them by round 9.",
+    "We ship fast: you'll receive 20 widgets by round 9.",
+    # A shipping verb outside the deadline's sentence, in a lead-time clause, or in a price-validity clause.
+    "We will deliver 20 widgets by round 9. We usually ship within 2 rounds.",
+    "Guaranteed delivery of 20 widgets by round 9, though we usually ship within 2 rounds.",
+    "We will deliver 20 widgets by round 9, at a price available until round 9.",
+    "Split shipment plan. 20 widgets by round 9.",
+])
+def test_arrival_deadline_stays_testable(tmp_path, deadline):
+    assert statuses(fake(tmp_path, [D(), P()]).extract(msg(deadline + PRICE_S)))[0] == "PENDING"
+
+
+def test_guard_is_on_by_default_and_only_the_ablation_turns_it_off(tmp_path):
+    text = "We will ship 20 widgets by round 9." + PRICE_S
+    assert fake(tmp_path, []).deadline_guard and RuleExtractor().deadline_guard
+    off = LLMExtractor(LLM("fake", "fake", fake=lambda s, u: json.dumps({"claims": [D(), P()]}),
+                           log_path=tmp_path / "c.jsonl"), deadline_guard=False)
+    assert statuses(off.extract(msg(text))) == ["PENDING", "PENDING"]

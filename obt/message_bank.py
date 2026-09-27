@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
 
-from .extractor import slot_candidates
+from .extractor import ARRIVAL, SHIP_VERB, deadline_wording_ok, slot_candidates
 
 BANK_PATH = Path(__file__).resolve().parent.parent / "data" / "message_bank.json"
 _NUM_TOKEN = re.compile(r"\d+(?:\.\d+)?")
@@ -200,6 +200,8 @@ def gold_claims(kind: str, v: dict) -> list[dict]:
         return [d(v["qty"], v["far"]), p]
     if kind == "relative":
         return [{"template": None}, p]          # a relative promise has no by_round: untestable by design
+    if kind == "hard_deadline":
+        return [{"template": None}, p]          # a shipping/ready/scheduled date is not an arrival deadline
     return []                                   # vague
 
 
@@ -212,7 +214,9 @@ def claim_grounded(text: str, claim: dict) -> bool:
     cands = slot_candidates(text)
     s = claim["slots"]
     keys = ("qty", "by_round") if claim["template"] == "DELIVERY" else ("unit_price", "valid_until")
-    return all(cands[k] == {s[k]} for k in keys)
+    if not all(cands[k] == {s[k]} for k in keys):
+        return False
+    return claim["template"] != "DELIVERY" or deadline_wording_ok(text, s["by_round"])
 
 
 def grounding_ok(text: str, kind: str, values: dict) -> bool:
@@ -234,9 +238,9 @@ def grammar_ok(template: str, kind: str) -> bool:
 # stated with a shipping or readiness verb is a dispatch/ready date, not an arrival date, unless the same
 # sentence states arrival explicitly.
 _DEADLINE_SLOTS = {"offer": "{by}", "deal": "{by}", "far_deadline": "{far}", "split": "{LOTS}"}
-_SHIP_VERB = re.compile(r"\b(ship\w*|send\w*|sent|dispatch\w*|ready|available)\b", re.I)
-_ARRIVAL = re.compile(r"\b(delivered|arriv\w*|you(?:'ll| will)\s+(?:\w+\s+)?have|in your (?:warehouse|hands|"
-                      r"possession)|receiv\w*)\b", re.I)
+# The same verb lists as the F5 deadline-wording check on incoming messages (obt/extractor.py, D23b).
+_SHIP_VERB = SHIP_VERB
+_ARRIVAL = ARRIVAL
 _SENTENCE = re.compile(r"(?<=[.;!?])\s+")
 _CLAUSE = re.compile(r",\s*|\s+(?:though|but|while|and)\s+", re.I)
 

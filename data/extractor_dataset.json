@@ -1146,55 +1146,6 @@
    ]
   },
   {
-   "id": "dev039",
-   "kind": "split",
-   "split": "dev",
-   "message": "Split shipment plan. Lot 1: 12 widgets by round 41; Lot 2: 12 widgets by round 41; Lot 3: 12 widgets by round 41; unit price $5.00 will be delivered no later than round 41.",
-   "template": "Split shipment plan. {LOTS} unit price ${price} will be delivered no later than round {until}.",
-   "values": {
-    "qty": 12,
-    "by": 41,
-    "until": 41,
-    "price": "5.00",
-    "far": 99,
-    "lots": 3
-   },
-   "gold": [
-    {
-     "template": "DELIVERY",
-     "slots": {
-      "item": "widget",
-      "qty": 12,
-      "by_round": 41
-     }
-    },
-    {
-     "template": "DELIVERY",
-     "slots": {
-      "item": "widget",
-      "qty": 12,
-      "by_round": 41
-     }
-    },
-    {
-     "template": "DELIVERY",
-     "slots": {
-      "item": "widget",
-      "qty": 12,
-      "by_round": 41
-     }
-    },
-    {
-     "template": "PRICE",
-     "slots": {
-      "item": "widget",
-      "unit_price": "5.00",
-      "valid_until": 41
-     }
-    }
-   ]
-  },
-  {
    "id": "dev040",
    "kind": "split",
    "split": "dev",
@@ -7621,6 +7572,878 @@
     "qty": 19,
     "unit_price": "5.75"
    }
+  }
+ ],
+ "test_hard": [
+  {
+   "id": "hard000",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ship",
+   "message": "We will ship 26 widgets by round 32. Unit price $5.25, valid until round 32.",
+   "template": "We will ship {qty} widgets by round {by}. Unit price ${price}, valid until round {until}.",
+   "values": {
+    "qty": 26,
+    "by": 32,
+    "until": 32,
+    "price": "5.25",
+    "far": 90,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "5.25",
+      "valid_until": 32
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard001",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ship",
+   "message": "We will ship 27 widgets by round 35. Unit price $4.25, valid until round 35.",
+   "template": "We will ship {qty} widgets by round {by}. Unit price ${price}, valid until round {until}.",
+   "values": {
+    "qty": 27,
+    "by": 35,
+    "until": 35,
+    "price": "4.25",
+    "far": 93,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.25",
+      "valid_until": 35
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard002",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ship",
+   "message": "We will ship 30 widgets by round 20. Unit price $4.25, valid until round 22.",
+   "template": "We will ship {qty} widgets by round {by}. Unit price ${price}, valid until round {until}.",
+   "values": {
+    "qty": 30,
+    "by": 20,
+    "until": 22,
+    "price": "4.25",
+    "far": 78,
+    "lots": 2
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.25",
+      "valid_until": 22
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard003",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ship",
+   "message": "We'll send 6 widgets no later than round 34. Each unit costs $6.10, valid through round 34.",
+   "template": "We'll send {qty} widgets no later than round {by}. Each unit costs ${price}, valid through round {until}.",
+   "values": {
+    "qty": 6,
+    "by": 34,
+    "until": 34,
+    "price": "6.10",
+    "far": 92,
+    "lots": 3
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "6.10",
+      "valid_until": 34
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard004",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ship",
+   "message": "We'll send 25 widgets no later than round 7. Each unit costs $4.50, valid through round 8.",
+   "template": "We'll send {qty} widgets no later than round {by}. Each unit costs ${price}, valid through round {until}.",
+   "values": {
+    "qty": 25,
+    "by": 7,
+    "until": 8,
+    "price": "4.50",
+    "far": 65,
+    "lots": 3
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.50",
+      "valid_until": 8
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard005",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ship",
+   "message": "We'll send 16 widgets no later than round 5. Each unit costs $6.10, valid through round 5.",
+   "template": "We'll send {qty} widgets no later than round {by}. Each unit costs ${price}, valid through round {until}.",
+   "values": {
+    "qty": 16,
+    "by": 5,
+    "until": 5,
+    "price": "6.10",
+    "far": 63,
+    "lots": 3
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "6.10",
+      "valid_until": 5
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard006",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ship",
+   "message": "33 widgets will be dispatched by round 31. Price: $5.00 per unit until round 31.",
+   "template": "{qty} widgets will be dispatched by round {by}. Price: ${price} per unit until round {until}.",
+   "values": {
+    "qty": 33,
+    "by": 31,
+    "until": 31,
+    "price": "5.00",
+    "far": 89,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "5.00",
+      "valid_until": 31
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard007",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ship",
+   "message": "35 widgets will be dispatched by round 42. Price: $5.25 per unit until round 42.",
+   "template": "{qty} widgets will be dispatched by round {by}. Price: ${price} per unit until round {until}.",
+   "values": {
+    "qty": 35,
+    "by": 42,
+    "until": 42,
+    "price": "5.25",
+    "far": 100,
+    "lots": 3
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "5.25",
+      "valid_until": 42
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard008",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ship",
+   "message": "27 widgets will be dispatched by round 38. Price: $4.75 per unit until round 39.",
+   "template": "{qty} widgets will be dispatched by round {by}. Price: ${price} per unit until round {until}.",
+   "values": {
+    "qty": 27,
+    "by": 38,
+    "until": 39,
+    "price": "4.75",
+    "far": 96,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.75",
+      "valid_until": 39
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard009",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ship",
+   "message": "We commit to shipping 3 widgets by round 14; unit price $4.25 holds until round 16.",
+   "template": "We commit to shipping {qty} widgets by round {by}; unit price ${price} holds until round {until}.",
+   "values": {
+    "qty": 3,
+    "by": 14,
+    "until": 16,
+    "price": "4.25",
+    "far": 72,
+    "lots": 3
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.25",
+      "valid_until": 16
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard010",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ship",
+   "message": "We commit to shipping 37 widgets by round 45; unit price $5.25 holds until round 46.",
+   "template": "We commit to shipping {qty} widgets by round {by}; unit price ${price} holds until round {until}.",
+   "values": {
+    "qty": 37,
+    "by": 45,
+    "until": 46,
+    "price": "5.25",
+    "far": 103,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "5.25",
+      "valid_until": 46
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard011",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ship",
+   "message": "We commit to shipping 34 widgets by round 3; unit price $5.00 holds until round 4.",
+   "template": "We commit to shipping {qty} widgets by round {by}; unit price ${price} holds until round {until}.",
+   "values": {
+    "qty": 34,
+    "by": 3,
+    "until": 4,
+    "price": "5.00",
+    "far": 61,
+    "lots": 3
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "5.00",
+      "valid_until": 4
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard012",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ready",
+   "message": "We'll have 17 widgets ready by round 44. Unit price $4.75, valid until round 45.",
+   "template": "We'll have {qty} widgets ready by round {by}. Unit price ${price}, valid until round {until}.",
+   "values": {
+    "qty": 17,
+    "by": 44,
+    "until": 45,
+    "price": "4.75",
+    "far": 102,
+    "lots": 2
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.75",
+      "valid_until": 45
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard013",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ready",
+   "message": "We'll have 24 widgets ready by round 11. Unit price $4.80, valid until round 12.",
+   "template": "We'll have {qty} widgets ready by round {by}. Unit price ${price}, valid until round {until}.",
+   "values": {
+    "qty": 24,
+    "by": 11,
+    "until": 12,
+    "price": "4.80",
+    "far": 69,
+    "lots": 3
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.80",
+      "valid_until": 12
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard014",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ready",
+   "message": "We'll have 21 widgets ready by round 20. Unit price $4.25, valid until round 22.",
+   "template": "We'll have {qty} widgets ready by round {by}. Unit price ${price}, valid until round {until}.",
+   "values": {
+    "qty": 21,
+    "by": 20,
+    "until": 22,
+    "price": "4.25",
+    "far": 78,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.25",
+      "valid_until": 22
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard015",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ready",
+   "message": "17 widgets will be available by round 22. Each unit costs $4.25, valid through round 22.",
+   "template": "{qty} widgets will be available by round {by}. Each unit costs ${price}, valid through round {until}.",
+   "values": {
+    "qty": 17,
+    "by": 22,
+    "until": 22,
+    "price": "4.25",
+    "far": 80,
+    "lots": 3
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.25",
+      "valid_until": 22
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard016",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ready",
+   "message": "18 widgets will be available by round 13. Each unit costs $4.80, valid through round 15.",
+   "template": "{qty} widgets will be available by round {by}. Each unit costs ${price}, valid through round {until}.",
+   "values": {
+    "qty": 18,
+    "by": 13,
+    "until": 15,
+    "price": "4.80",
+    "far": 71,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.80",
+      "valid_until": 15
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard017",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ready",
+   "message": "3 widgets will be available by round 5. Each unit costs $4.50, valid through round 6.",
+   "template": "{qty} widgets will be available by round {by}. Each unit costs ${price}, valid through round {until}.",
+   "values": {
+    "qty": 3,
+    "by": 5,
+    "until": 6,
+    "price": "4.50",
+    "far": 63,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.50",
+      "valid_until": 6
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard018",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ready",
+   "message": "Your 24 widgets will be ready for dispatch no later than round 24. Unit price $4.25, valid until round 24.",
+   "template": "Your {qty} widgets will be ready for dispatch no later than round {by}. Unit price ${price}, valid until round {until}.",
+   "values": {
+    "qty": 24,
+    "by": 24,
+    "until": 24,
+    "price": "4.25",
+    "far": 82,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.25",
+      "valid_until": 24
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard019",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ready",
+   "message": "Your 33 widgets will be ready for dispatch no later than round 16. Unit price $4.50, valid until round 16.",
+   "template": "Your {qty} widgets will be ready for dispatch no later than round {by}. Unit price ${price}, valid until round {until}.",
+   "values": {
+    "qty": 33,
+    "by": 16,
+    "until": 16,
+    "price": "4.50",
+    "far": 74,
+    "lots": 3
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.50",
+      "valid_until": 16
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard020",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "ready",
+   "message": "Your 25 widgets will be ready for dispatch no later than round 27. Unit price $4.75, valid until round 29.",
+   "template": "Your {qty} widgets will be ready for dispatch no later than round {by}. Unit price ${price}, valid until round {until}.",
+   "values": {
+    "qty": 25,
+    "by": 27,
+    "until": 29,
+    "price": "4.75",
+    "far": 85,
+    "lots": 3
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.75",
+      "valid_until": 29
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard021",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "scheduled",
+   "message": "Delivery of 38 widgets is scheduled for round 24. Unit price $5.50, valid until round 24.",
+   "template": "Delivery of {qty} widgets is scheduled for round {by}. Unit price ${price}, valid until round {until}.",
+   "values": {
+    "qty": 38,
+    "by": 24,
+    "until": 24,
+    "price": "5.50",
+    "far": 82,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "5.50",
+      "valid_until": 24
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard022",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "scheduled",
+   "message": "Delivery of 23 widgets is scheduled for round 26. Unit price $4.50, valid until round 26.",
+   "template": "Delivery of {qty} widgets is scheduled for round {by}. Unit price ${price}, valid until round {until}.",
+   "values": {
+    "qty": 23,
+    "by": 26,
+    "until": 26,
+    "price": "4.50",
+    "far": 84,
+    "lots": 3
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.50",
+      "valid_until": 26
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard023",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "scheduled",
+   "message": "Delivery of 31 widgets is scheduled for round 7. Unit price $5.50, valid until round 7.",
+   "template": "Delivery of {qty} widgets is scheduled for round {by}. Unit price ${price}, valid until round {until}.",
+   "values": {
+    "qty": 31,
+    "by": 7,
+    "until": 7,
+    "price": "5.50",
+    "far": 65,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "5.50",
+      "valid_until": 7
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard024",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "scheduled",
+   "message": "Your 34 widgets are scheduled for round 42. Each unit costs $4.80, valid through round 42.",
+   "template": "Your {qty} widgets are scheduled for round {by}. Each unit costs ${price}, valid through round {until}.",
+   "values": {
+    "qty": 34,
+    "by": 42,
+    "until": 42,
+    "price": "4.80",
+    "far": 100,
+    "lots": 2
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.80",
+      "valid_until": 42
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard025",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "scheduled",
+   "message": "Your 8 widgets are scheduled for round 7. Each unit costs $6.10, valid through round 8.",
+   "template": "Your {qty} widgets are scheduled for round {by}. Each unit costs ${price}, valid through round {until}.",
+   "values": {
+    "qty": 8,
+    "by": 7,
+    "until": 8,
+    "price": "6.10",
+    "far": 65,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "6.10",
+      "valid_until": 8
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard026",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "scheduled",
+   "message": "Your 7 widgets are scheduled for round 40. Each unit costs $5.20, valid through round 42.",
+   "template": "Your {qty} widgets are scheduled for round {by}. Each unit costs ${price}, valid through round {until}.",
+   "values": {
+    "qty": 7,
+    "by": 40,
+    "until": 42,
+    "price": "5.20",
+    "far": 98,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "5.20",
+      "valid_until": 42
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard027",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "scheduled",
+   "message": "Shipment of 24 widgets scheduled for round 14. Unit price $4.80, good until round 14.",
+   "template": "Shipment of {qty} widgets scheduled for round {by}. Unit price ${price}, good until round {until}.",
+   "values": {
+    "qty": 24,
+    "by": 14,
+    "until": 14,
+    "price": "4.80",
+    "far": 72,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.80",
+      "valid_until": 14
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard028",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "scheduled",
+   "message": "Shipment of 32 widgets scheduled for round 8. Unit price $4.75, good until round 8.",
+   "template": "Shipment of {qty} widgets scheduled for round {by}. Unit price ${price}, good until round {until}.",
+   "values": {
+    "qty": 32,
+    "by": 8,
+    "until": 8,
+    "price": "4.75",
+    "far": 66,
+    "lots": 3
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.75",
+      "valid_until": 8
+     }
+    }
+   ]
+  },
+  {
+   "id": "hard029",
+   "kind": "hard_deadline",
+   "split": "test_hard",
+   "group": "scheduled",
+   "message": "Shipment of 6 widgets scheduled for round 6. Unit price $4.50, good until round 7.",
+   "template": "Shipment of {qty} widgets scheduled for round {by}. Unit price ${price}, good until round {until}.",
+   "values": {
+    "qty": 6,
+    "by": 6,
+    "until": 7,
+    "price": "4.50",
+    "far": 64,
+    "lots": 4
+   },
+   "gold": [
+    {
+     "template": null
+    },
+    {
+     "template": "PRICE",
+     "slots": {
+      "item": "widget",
+      "unit_price": "4.50",
+      "valid_until": 7
+     }
+    }
+   ]
   }
  ]
 }
