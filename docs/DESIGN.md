@@ -1,6 +1,20 @@
-# Outcome-Bound Trust — Design Spec (v0.1)
+# Outcome-Bound Trust — Design Spec (v0.2)
 
 Working title: _Outcome-Bound Trust: Falsifiable Claims as a Security Primitive for Memory in Multi-Agent AI Systems_
+
+**v0.2 (FIXES F0–F12).** Changes from v0.1, each detailed in its section and in `docs/DECISIONS.md`:
+- **F1:** a fixed round order is the single source of truth (§5).
+- **F2:** gate claim–action binding, capacity and budget rules (§6).
+- **F3:** receipt allocation and grace δ (§5, §6).
+- **F4:** remediation in code (§5).
+- **F5:** extractor grounding, quantity decoys and the deadline-wording guard (§5; D17, D23b).
+- **F6:** invariants I1–I7 in TLA+ and runtime monitors (§7).
+- **F7:** the per-failure-event loss bound and the damage counterfactual (§6; D21).
+- **F8:** scenarios 11 (extraction attack) and 12 (Sybil re-entry) (§9).
+- **F9:** reputation baseline (§9; D22).
+- **F10:** frozen message bank, validated semantic reader, extractor dataset with a hard-phrasing subset (§9; D23–D24).
+- **F11:** real A2A transport (§5; D25).
+- **F12:** reproducibility (§10; D26).
 
 ## 1. Problem
 
@@ -250,6 +264,12 @@ So trust earned with many small true claims can't be spent on one large order. T
 - Overhead: added latency and tokens per round.
 - Extractor accuracy: 200 labeled messages, precision/recall on template + slots. The 30-item hard-phrasing subset is reported separately, LLM alone and with the code guard (§9).
 - Budget: ~45 full runs + 200 single extractor calls. Local gpt-oss-20b and Qwen3 8B for all dev. OpenAI: all runs on GPT-5.6 Luna, scenarios 1–10 once on Terra. Hard cap $13.
+
+### Reproducibility (F12, D26)
+- **Pins.** Python packages are pinned exactly in `requirements.lock`. The machine, both ollama model digests and the TLC version are in `docs/ENV.md`. Frozen inputs (extractor prompt, message bank, dataset) are pinned by sha256 in `obt/config.py` and checked by tests.
+- **Provenance.** Every run record carries a `meta` block: git commit (and whether the tree was dirty), config hash, backend, model and digest, scenario, defense, seed, transport, the message-bank, extractor-prompt and dataset hashes, and the Python and a2a-sdk versions.
+- **Resumable eval.** Runs are keyed by (defense, scenario, seed, model) plus the config hash, so a changed config never reuses a stale run. Completed keys are skipped, and a torn last line is dropped and redone. The extractor report is resumed only when its model digest, prompt, dataset and limit all match.
+- **`make results`** rebuilds every table and figure from `runs/` only (`eval/results.py`): no simulation and no model call. Output is deterministic (same runs, same bytes).
 
 ## 11. Open design questions
 

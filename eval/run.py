@@ -8,17 +8,23 @@ and stop for good once runs/cost_ledger.json reaches $13.
 from __future__ import annotations
 
 import argparse
+import dataclasses
+import hashlib
 import json
 import math
+import platform
+import subprocess
 import time
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 from obt.agent import LLMBuyer, ScriptedClaimBuyer
 from obt.attacks.suppliers import SCENARIOS, make_supplier, scenario_name
 from obt.env.beer_game import MAIN, GameConfig
 from obt import lossbound
-from obt.extractor import ExtractionCache, Extractor, LLMExtractor, NullExtractor, RuleExtractor, model_digest
+from obt.extractor import (EXTRACTOR_SYSTEM, ExtractionCache, Extractor, LLMExtractor, NullExtractor, RuleExtractor,
+                           model_digest)
 from obt.llm import HARD_CAP_USD, LLM, RUNS, BudgetExceeded, CostMeter, PaidCallRefused
 from obt.sim import DEFENSES, Sim, SimConfig
 from obt.types import Message
@@ -84,6 +90,89 @@ def check_budget(ec: EvalConfig, meter: CostMeter) -> None:
         raise HardStop(f"paid spend ${meter.spent():.2f} reached the ${ec.cap_usd} cap")
 
 
+# ---------------------------------------------------------------- provenance (F12)
+
+ROOT = Path(__file__).resolve().parent.parent
+# The EvalConfig fields a single run's outcome depends on. Scenario, defense, seed and model are the run key;
+# paths, budgets and which jobs to run are not part of a run's config.
+_RUN_FIELDS = ("backend", "model", "buyer", "rounds", "cache", "transport")
+
+
+def sim_config(ec: EvalConfig, defense: str = "obt") -> SimConfig:
+    return SimConfig(game=GameConfig(rounds=ec.rounds), defense=defense, transport=ec.transport)
+
+
+def config_hash(ec: EvalConfig) -> str:
+    sim = dataclasses.asdict(sim_config(ec))
+    sim.pop("defense")                      # part of the run key, not of the config
+    blob = {"eval": {k: getattr(ec, k) for k in _RUN_FIELDS}, "sim": sim}
+    return hashlib.sha256(json.dumps(blob, sort_keys=True, default=str).encode()).hexdigest()
+
+
+@lru_cache(maxsize=None)
+def git_state() -> tuple[str, bool]:
+    try:
+        commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True,
+                                timeout=10).stdout.strip()
+        dirty = bool(subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT,
+                                    capture_output=True, text=True, timeout=10).stdout.strip())
+        return commit or "unknown", dirty
+    except Exception:
+        return "unknown", True
+
+
+@lru_cache(maxsize=None)
+def _digest(backend: str, model: str) -> str:
+    return model_digest(model) if backend == "ollama" else model
+
+
+@lru_cache(maxsize=None)
+def _file_sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def run_meta(ec: EvalConfig, n: int, defense: str, seed: int) -> dict:
+    from obt.message_bank import BANK_PATH, bank
+    commit, dirty = git_state()
+    try:
+        from importlib.metadata import version
+        a2a = version("a2a-sdk")
+    except Exception:
+        a2a = None
+    return {"git_commit": commit, "git_dirty": dirty, "config_hash": config_hash(ec), "backend": ec.backend,
+            "model": ec.model, "model_digest": _digest(ec.backend, ec.model), "scenario": n, "defense": defense,
+            "seed": seed, "transport": ec.transport,
+            "message_bank_sha256": bank().sha256 if BANK_PATH.exists() else None,
+            "extractor_prompt_sha256": hashlib.sha256(EXTRACTOR_SYSTEM.encode()).hexdigest(),
+            "extractor_dataset_sha256": _file_sha(EXTRACTOR_SET), "python": platform.python_version(),
+            "a2a_sdk": a2a}
+
+
+def run_key(r: dict) -> tuple:
+    return (r["defense"], r["scenario"], r["seed"], r["model"], r["meta"]["config_hash"])
+
+
+def load_results(out_dir: Path) -> list[dict]:
+    """Every complete run record in out_dir. A torn last line (a crash mid-write) is dropped and the file
+    rewritten, so the run is simply redone and the next append starts on a clean line."""
+    f = out_dir / "results.jsonl"
+    if not f.exists():
+        return []
+    good, torn = [], False
+    for line in f.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            r = json.loads(line)
+            run_key(r)
+            good.append(r)
+        except (json.JSONDecodeError, KeyError, TypeError):
+            torn = True
+    if torn:
+        f.write_text("".join(json.dumps(r, default=str) + "\n" for r in good))
+    return good
+
+
 def run_one(ec: EvalConfig, n: int, defense: str, seed: int, meter: CostMeter, fake=None) -> dict:
     cfg = GameConfig(rounds=ec.rounds)
     tag = f"{scenario_name(n)}|{defense}|s{seed}|{ec.model}"
@@ -103,15 +192,16 @@ def run_one(ec: EvalConfig, n: int, defense: str, seed: int, meter: CostMeter, f
     if not isinstance(extractor, (LLMExtractor, NullExtractor)):
         raise RuntimeError("eval runs must use the LLM extractor (D24)")
     t0 = time.time()
-    sim = Sim(SimConfig(game=cfg, defense=defense, transport=ec.transport), seed, make_supplier(n, cfg, seed),
-              buyer, extractor=extractor, scenario=scenario_name(n))
+    sim = Sim(sim_config(ec, defense), seed, make_supplier(n, cfg, seed), buyer, extractor=extractor,
+              scenario=scenario_name(n))
     res = sim.run()
     usage = {"calls": llm.calls, "tokens": llm.tokens, "latency_s": round(llm.latency, 3),
              "by_purpose": llm.by_purpose, "extractor": extractor.name}
     return {"scenario": n, "name": scenario_name(n), "defense": defense, "seed": seed, "model": ec.model,
             "buyer": ec.buyer, "transport": ec.transport, "total_cost": res.total_cost, "costs": res.costs,
             "metrics": res.metrics,
-            "usage": usage, "wall_s": round(time.time() - t0, 2), "rounds": ec.rounds, "trace": res.trace}
+            "usage": usage, "wall_s": round(time.time() - t0, 2), "rounds": ec.rounds, "trace": res.trace,
+            "meta": run_meta(ec, n, defense, seed)}
 
 
 # ---------------------------------------------------------------- extractor accuracy
@@ -349,11 +439,19 @@ def run_eval(ec: EvalConfig, out_dir: Path, meter: CostMeter | None = None, fake
     out_dir.mkdir(parents=True, exist_ok=True)
     ec.log_dir = out_dir
     spent0 = meter.spent()
-    results, stopped = [], None
+    stopped = None
+    # Resumable (F12): runs are keyed by (defense, scenario, seed, model) plus the config hash, so a changed
+    # config never reuses a stale run; completed keys are skipped.
+    chash = config_hash(ec)
+    results = [r for r in load_results(out_dir) if r["meta"]["config_hash"] == chash and r["model"] == ec.model]
+    done = {run_key(r) for r in results}
     jobs = [(n, d, s) for s in ec.seeds for d in ec.defenses for n in ec.scenarios
-            if not (ec.buyer == "scripted" and d == "llm_selfcheck")]
+            if not (ec.buyer == "scripted" and d == "llm_selfcheck")
+            and (d, n, s, ec.model, chash) not in done]
     # Honest scenario first per defense, so partial results still give loss numbers.
     jobs.sort(key=lambda j: (j[2], j[1] != "obt", j[1], j[0] != 1, j[0]))
+    if done:
+        print(f"resuming: {len(done)} runs already done, {len(jobs)} to go", flush=True)
     ext: dict = {}
     try:
         for n, d, s in jobs:
@@ -362,24 +460,46 @@ def run_eval(ec: EvalConfig, out_dir: Path, meter: CostMeter | None = None, fake
             results.append(r)
             with (out_dir / "results.jsonl").open("a") as f:
                 f.write(json.dumps(r, default=str) + "\n")
-            print(f"[{len(results)}/{len(jobs)}] {r['name']:20s} {d:10s} s{s} cost {r['total_cost']:9.1f} "
+            print(f"[{len(results)}/{len(done) + len(jobs)}] {r['name']:20s} {d:10s} s{s} cost {r['total_cost']:9.1f} "
                   f"calls {r['usage']['calls']:4d} wall {r['wall_s']:.0f}s", flush=True)
         if ec.extractor_eval:
-            # The rule extractor is reported here only, as a baseline on the test set (D24).
-            ext["rule"] = extractor_eval(RuleExtractor(), ec.extractor_limit)
-            check_budget(ec, meter)
-            llm_ext = LLMExtractor(make_llm(ec, "extractor_eval", meter, fake), make_extract_cache(ec))
-            ext[f"llm:{ec.model}"] = extractor_eval(llm_ext, ec.extractor_limit)
-            # The hand-templated hard subset is reported separately (D23b): shipping/ready/scheduled dates.
-            ext["rule:test_hard"] = extractor_eval(RuleExtractor(), 30, "test_hard")
-            check_budget(ec, meter)
-            ext[f"llm:{ec.model}:test_hard"] = extractor_eval(llm_ext, 30, "test_hard")
-            # Ablation for the paper: the same LLM outputs (cached) without the code deadline guard.
-            ext[f"llm:{ec.model}:test_hard:no_guard"] = extractor_eval(
-                LLMExtractor(llm_ext.llm, llm_ext.cache, deadline_guard=False), 30, "test_hard")
+            ext = _extractor_report(ec, out_dir, meter, fake)
     except (HardStop, BudgetExceeded, PaidCallRefused) as e:
         stopped = f"{type(e).__name__}: {e}"
         print("HARD STOP:", stopped, flush=True)
+    return _finish(ec, out_dir, meter, spent0, results, stopped, ext)
+
+
+def _extractor_report(ec: EvalConfig, out_dir: Path, meter: CostMeter, fake=None) -> dict:
+    """Extractor accuracy, resumed from out_dir/extractor.json when every input it depends on is unchanged."""
+    meta = {"backend": ec.backend, "model": ec.model, "model_digest": _digest(ec.backend, ec.model),
+            "extractor_prompt_sha256": hashlib.sha256(EXTRACTOR_SYSTEM.encode()).hexdigest(),
+            "extractor_dataset_sha256": _file_sha(EXTRACTOR_SET), "limit": ec.extractor_limit,
+            "git_commit": git_state()[0]}
+    f = out_dir / "extractor.json"
+    if f.exists():
+        saved = json.loads(f.read_text())
+        if saved.get("meta") == meta:
+            return saved["extractor"]
+    ext: dict = {}
+    # The rule extractor is reported here only, as a baseline on the test set (D24).
+    ext["rule"] = extractor_eval(RuleExtractor(), ec.extractor_limit)
+    check_budget(ec, meter)
+    llm_ext = LLMExtractor(make_llm(ec, "extractor_eval", meter, fake), make_extract_cache(ec))
+    ext[f"llm:{ec.model}"] = extractor_eval(llm_ext, ec.extractor_limit)
+    # The hand-templated hard subset is reported separately (D23b): shipping/ready/scheduled dates.
+    ext["rule:test_hard"] = extractor_eval(RuleExtractor(), 30, "test_hard")
+    check_budget(ec, meter)
+    ext[f"llm:{ec.model}:test_hard"] = extractor_eval(llm_ext, 30, "test_hard")
+    # Ablation for the paper: the same LLM outputs (cached) without the code deadline guard.
+    ext[f"llm:{ec.model}:test_hard:no_guard"] = extractor_eval(
+        LLMExtractor(llm_ext.llm, llm_ext.cache, deadline_guard=False), 30, "test_hard")
+    f.write_text(json.dumps({"meta": meta, "extractor": ext}, indent=1, default=str) + "\n")
+    return ext
+
+
+def _finish(ec: EvalConfig, out_dir: Path, meter: CostMeter, spent0: float, results: list[dict],
+            stopped: str | None, ext: dict) -> dict:
     summary = summarize(results) if results else {}
     violations = sum(r["metrics"]["invariant_violations"]["count"] for r in results)
     bound_bad = [(r["name"], r["defense"], r["seed"]) for r in results if r["metrics"]["loss_bound"]["ok"] is False]
