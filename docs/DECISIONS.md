@@ -270,3 +270,16 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - SVGs are written with no date and a fixed hash salt, so rebuilding gives identical bytes (tested).
 - **New pinned dependency.** `matplotlib` 3.10.7, for figures only.
 - **`docs/ENV.md`** records the machine, Python, ollama 0.18.0 and both model digests (from the ollama API; the extraction cache is keyed by them), TLC 2.19 with the `tla2tools.jar` sha, and the JDK.
+
+## D27. E1 outcome and the E2 setup (user decisions)
+- **E1 ran in full.** 54 grid points (36 OBT b0 × W × δ, 16 reputation cap × θ, `none`, `provenance`), each on 12 scenarios × 3 seeds × 50 rounds: 1,944 runs over A2A with the gpt-oss extractor. 0 invariant violations, 0 loss-bound violations. Results: `results/e1/` (table, summary, Pareto figure).
+- **OBT default: b0 = 5%, W = 0, δ = 0.** This is the pre-registered rule's pick: the OBT Pareto-front point with the smallest utility cost + attack loss (344.2 + 136.8 = 481.0 $/run).
+  - **The design default was a near-tie.** b0 = 5%, W = 10, δ = 0 scores 484.9, 0.8% worse. b0 5% / W 10 / δ 1 scores 482.3.
+  - **W had a negligible effect in E1.** At b0 5%, δ 0, attack loss is 136.8 / 138.8 / 140.7 for W = 0 / 5 / 10, with identical utility cost. The cool-down only added reroute cost after failures. The pre-registered pick was kept, not the design default.
+  - **Other E1 findings.** δ trades utility for safety (utility cost 344 → 424 → 453, attack loss 137 → 59 → 36 for δ = 0 → 2). Every b0 ≤ 2.5% point, and every reputation point with cap ≤ $100, never trades with S_main: the starting budget (or a newcomer's limit) is below one lot's value, so no trust can ever be earned. Those points are the utility-cost ceiling ($494.2/run, all 50 honest orders blocked).
+- **Reputation in E2: two variants, run as separate defenses.**
+  - `rep-strict` (cap $200, θ 0.9) is the D22 rule's point: the reputation front point nearest OBT's utility cost. It is near-degenerate, though: it blocks 46 of 50 honest orders (utility 443.7, loss 235.0).
+  - `rep-default` (cap $200, θ 0.8) is the D22 default and the other non-degenerate front point: it trades freely (utility 0) and loses $764/run.
+  - **Why both:** neither alone is a fair picture of the baseline. Running both shows the reputation baseline at both ends of its front: when it's strict enough to be safe it barely trades, and when it trades it loses about 5× more than OBT.
+  - **Implementation.** `eval.run.VARIANTS` maps a named variant to a Sim defense plus its settings. Each variant has its own run identity (config hash), while the eval as a whole keeps one shared `eval_config_hash`.
+- **E2 plan.** 12 scenarios × 6 defenses (`none`, `llm_selfcheck`, `provenance`, `rep-strict`, `rep-default`, `obt`) × 3 seeds = 216 LLM-buyer runs with gpt-oss:20b, on the OBT default above (`--sim b0_frac=0.05,window=0,grace=0`). Run one seed at a time with a report after each. The eval now stops right after the first run with an invariant or loss-bound violation, instead of at the end of the batch.

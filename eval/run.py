@@ -99,8 +99,24 @@ ROOT = Path(__file__).resolve().parent.parent
 _RUN_FIELDS = ("backend", "model", "buyer", "rounds", "cache", "transport")
 
 
+# Named defense variants (DECISIONS D27): one Sim defense run with its own settings, reported as its own column.
+VARIANTS: dict[str, tuple[str, dict]] = {
+    "rep-strict": ("reputation", {"rep_cap": 200.0, "rep_theta": 0.9}),     # the D22 rule point on E1's front
+    "rep-default": ("reputation", {"rep_cap": 200.0, "rep_theta": 0.8}),    # the D22 default
+}
+
+
+def base_defense(defense: str) -> str:
+    return VARIANTS.get(defense, (defense, {}))[0]
+
+
+def sim_overrides(ec: EvalConfig, defense: str) -> dict:
+    return {**ec.sim, **VARIANTS.get(defense, (defense, {}))[1]}
+
+
 def sim_config(ec: EvalConfig, defense: str = "obt") -> SimConfig:
-    return SimConfig(game=GameConfig(rounds=ec.rounds), defense=defense, transport=ec.transport, **ec.sim)
+    return SimConfig(game=GameConfig(rounds=ec.rounds), defense=base_defense(defense), transport=ec.transport,
+                     **sim_overrides(ec, defense))
 
 
 def parse_sim(spec: str) -> dict:
@@ -115,8 +131,10 @@ def parse_sim(spec: str) -> dict:
     return out
 
 
-def config_hash(ec: EvalConfig) -> str:
-    sim = dataclasses.asdict(sim_config(ec))
+def config_hash(ec: EvalConfig, defense: str = "obt") -> str:
+    """A run's config identity. A variant's own settings are part of it (so a changed variant never reuses a
+    stale run); for every plain defense it is the eval's shared config hash."""
+    sim = dataclasses.asdict(sim_config(ec, defense))
     sim.pop("defense")                      # part of the run key, not of the config
     blob = {"eval": {k: getattr(ec, k) for k in _RUN_FIELDS}, "sim": sim}
     return hashlib.sha256(json.dumps(blob, sort_keys=True, default=str).encode()).hexdigest()
@@ -152,9 +170,10 @@ def run_meta(ec: EvalConfig, n: int, defense: str, seed: int) -> dict:
         a2a = version("a2a-sdk")
     except Exception:
         a2a = None
-    return {"git_commit": commit, "git_dirty": dirty, "config_hash": config_hash(ec), "backend": ec.backend,
+    return {"git_commit": commit, "git_dirty": dirty, "config_hash": config_hash(ec, defense),
+            "eval_config_hash": config_hash(ec), "backend": ec.backend,
             "model": ec.model, "model_digest": _digest(ec.backend, ec.model), "scenario": n, "defense": defense,
-            "seed": seed, "transport": ec.transport, "sim": dict(ec.sim),
+            "seed": seed, "transport": ec.transport, "sim": sim_overrides(ec, defense),
             "message_bank_sha256": bank().sha256 if BANK_PATH.exists() else None,
             "extractor_prompt_sha256": hashlib.sha256(EXTRACTOR_SYSTEM.encode()).hexdigest(),
             "extractor_dataset_sha256": _file_sha(EXTRACTOR_SET), "python": platform.python_version(),
@@ -199,7 +218,7 @@ def run_one(ec: EvalConfig, n: int, defense: str, seed: int, meter: CostMeter, f
         # The scripted buyer reads claim cards under every defense, so every scripted run extracts.
         extractor: Extractor = LLMExtractor(llm, make_extract_cache(ec))
     else:
-        buyer = LLMBuyer(llm, cfg, defense)
+        buyer = LLMBuyer(llm, cfg, base_defense(defense))
         # LLM-buyer baselines read raw text, not claims, so they skip extraction and overhead stays fair.
         extractor = LLMExtractor(llm, make_extract_cache(ec)) if defense == "obt" else NullExtractor()
     if not isinstance(extractor, (LLMExtractor, NullExtractor)):
@@ -320,7 +339,8 @@ def extractor_eval(extractor: Extractor, limit: int = 200, split: str = "test") 
 
 def summarize(results: list[dict]) -> dict:
     idx = {(r["scenario"], r["defense"], r["seed"]): r for r in results}
-    defenses = sorted({r["defense"] for r in results}, key=list(DEFENSES).index)
+    order = [*DEFENSES, *VARIANTS]
+    defenses = sorted({r["defense"] for r in results}, key=lambda d: (order.index(d) if d in order else len(order), d))
     scenarios = sorted({r["scenario"] for r in results})
     seeds = sorted({r["seed"] for r in results})
 
@@ -455,17 +475,19 @@ def run_eval(ec: EvalConfig, out_dir: Path, meter: CostMeter | None = None, fake
     stopped = None
     # Resumable (F12): runs are keyed by (defense, scenario, seed, model) plus the config hash, so a changed
     # config never reuses a stale run; completed keys are skipped.
-    chash = config_hash(ec)
-    results = [r for r in load_results(out_dir) if r["meta"]["config_hash"] == chash and r["model"] == ec.model]
+    chash = {d: config_hash(ec, d) for d in ec.defenses}
+    results = [r for r in load_results(out_dir) if r["model"] == ec.model and r["defense"] in chash
+               and r["meta"]["config_hash"] == chash[r["defense"]]]
     done = {run_key(r) for r in results}
     jobs = [(n, d, s) for s in ec.seeds for d in ec.defenses for n in ec.scenarios
             if not (ec.buyer == "scripted" and d == "llm_selfcheck")
-            and (d, n, s, ec.model, chash) not in done]
+            and (d, n, s, ec.model, chash[d]) not in done]
     # Honest scenario first per defense, so partial results still give loss numbers.
     jobs.sort(key=lambda j: (j[2], j[1] != "obt", j[1], j[0] != 1, j[0]))
     if done:
         print(f"resuming: {len(done)} runs already done, {len(jobs)} to go", flush=True)
     ext: dict = {}
+    violated = False
     try:
         for n, d, s in jobs:
             check_budget(ec, meter)
@@ -475,7 +497,12 @@ def run_eval(ec: EvalConfig, out_dir: Path, meter: CostMeter | None = None, fake
                 f.write(json.dumps(r, default=str) + "\n")
             print(f"[{len(results)}/{len(done) + len(jobs)}] {r['name']:20s} {d:10s} s{s} cost {r['total_cost']:9.1f} "
                   f"calls {r['usage']['calls']:4d} wall {r['wall_s']:.0f}s", flush=True)
-        if ec.extractor_eval:
+            # STOP rule: a violation ends the eval at once (reported and raised in _finish), not after the batch.
+            if r["metrics"]["invariant_violations"]["count"] or r["metrics"]["loss_bound"]["ok"] is False:
+                print(f"STOP: violation in {r['name']} {r['defense']} s{r['seed']}", flush=True)
+                violated = True
+                break
+        if ec.extractor_eval and not violated:
             ext = _extractor_report(ec, out_dir, meter, fake)
     except (HardStop, BudgetExceeded, PaidCallRefused) as e:
         stopped = f"{type(e).__name__}: {e}"

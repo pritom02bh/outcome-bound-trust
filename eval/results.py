@@ -47,7 +47,8 @@ def _evals(runs: Path) -> dict[str, tuple[list[dict], dict]]:
         rows = _read_rows(f)
         groups = defaultdict(list)
         for r in rows:
-            groups[r["meta"]["config_hash"]].append(r)
+            # One eval = one shared config; named variants inside it keep their own run identity (D27).
+            groups[r["meta"].get("eval_config_hash", r["meta"]["config_hash"])].append(r)
         ext = {}
         ef = f.parent / "extractor.json"
         if ef.exists():
