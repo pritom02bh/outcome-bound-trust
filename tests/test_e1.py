@@ -76,3 +76,11 @@ def test_make_results_builds_the_e1_tables_and_pareto_figure(tmp_path, rule_llm)
     table = (out / "e1" / "e1.md").read_text()
     assert "obt_b0.05_W10_d0" in table and "default" in table
     assert not (out / "e1__none").exists()                        # grid points are not separate evals
+
+
+def test_cli_sim_overrides_are_typed():
+    assert er.parse_sim("b0_frac=0.025,window=5,grace=1,rep_cap=100,rep_theta=0.7") == {
+        "b0_frac": 0.025, "window": 5, "grace": 1, "rep_cap": 100.0, "rep_theta": 0.7}
+    assert er.parse_sim("") == {}
+    with pytest.raises(ValueError):
+        er.parse_sim("b0=1")

@@ -103,6 +103,18 @@ def sim_config(ec: EvalConfig, defense: str = "obt") -> SimConfig:
     return SimConfig(game=GameConfig(rounds=ec.rounds), defense=defense, transport=ec.transport, **ec.sim)
 
 
+def parse_sim(spec: str) -> dict:
+    """'b0_frac=0.025,window=5' -> typed SimConfig overrides; unknown fields are refused."""
+    fields = {f.name: f.type for f in dataclasses.fields(SimConfig)}
+    out: dict = {}
+    for part in filter(None, (p.strip() for p in spec.split(","))):
+        k, _, v = part.partition("=")
+        if k not in fields or k in ("game", "defense", "transport"):
+            raise ValueError(f"not a SimConfig override: {k!r}")
+        out[k] = int(v) if fields[k] in (int, "int") else float(v) if fields[k] in (float, "float") else v
+    return out
+
+
 def config_hash(ec: EvalConfig) -> str:
     sim = dataclasses.asdict(sim_config(ec))
     sim.pop("defense")                      # part of the run key, not of the config
@@ -536,11 +548,12 @@ def main() -> None:
     ap.add_argument("--cache", action="store_true", help="reuse cached LLM replies (skews latency numbers)")
     ap.add_argument("--out", default=None)
     ap.add_argument("--transport", default="a2a", choices=["a2a", "inproc"])
+    ap.add_argument("--sim", default="", help="SimConfig overrides, e.g. b0_frac=0.025,window=5,grace=1")
     a = ap.parse_args()
     ec = EvalConfig(backend=a.backend, model=a.model, buyer=a.buyer, scenarios=tuple(parse_range(a.scenarios)),
                     defenses=tuple(a.defenses.split(",")), seeds=tuple(parse_range(a.seeds)), rounds=a.rounds,
                     extractor_eval=not a.no_extractor_eval, extractor_limit=a.extractor_limit, cache=a.cache,
-                    transport=a.transport)
+                    transport=a.transport, sim=parse_sim(a.sim))
     stamp = time.strftime("%Y%m%d-%H%M%S")
     name = f"eval_{a.buyer}_{a.model.replace(':', '-') if a.buyer == 'llm' else 'rule'}_{stamp}"
     out = Path(a.out) if a.out else RUNS / name
