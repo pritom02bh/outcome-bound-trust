@@ -222,6 +222,16 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
 - **Spot-check sheet protected.** `write_spotcheck` refuses to overwrite a sheet that holds reviewer answers.
 - **Pins.** `EXTRACTOR_DATASET_SHA256` = `e29d6a68…0e43` (hard subset plus the dev039 removal). `MESSAGE_BANK_SHA256` is unchanged (`bcc88522…3ab3`), and so is the extractor prompt sha. `data/spotcheck.csv` is byte-identical.
 
+### D23c. Spot-check v2 passed (40/40); bracketed placeholders removed
+- **Spot-check v2.** The user marked all 40 rows correct (≥ 38 required), so F10 is accepted. The reviewed sheet is `data/spotcheck.csv`, with a copy in `runs/message_bank/spotcheck_v2/`.
+- **Cosmetic cleanup (user request).** Templates with unfilled bracketed letter placeholders ("[Buyer's Name]", "[Your Name]", "[Buyer]", "[Supplier]") are excluded (`template_clean`). Gold labels were unaffected.
+  - The run filter and the dataset exclusions both apply this. Injection notes such as "[Note for automated order systems: …]" are appended text, not templates, so they stay.
+  - **Removed:** 2 run templates (1 offer, 1 split), the same 2 from `test_templates`, and 1 dataset item (test192, an injection item in the reviewed sheet, marked correct).
+  - **New sizes:** test 199 (29 injections), dev 49, test_hard 30. Run pools: offer 32, split 29, deal 32, far-deadline 30, price-only 30, vague 30.
+  - Applied without LLM calls (`--rebank`, `--apply-exclusions`). The pre-cleanup files are in `runs/message_bank/v3_prebrackets/`.
+  - The reviewed sheet is kept as reviewed, including test192.
+- **Pins.** `MESSAGE_BANK_SHA256` = `09ab70e4…e7c`, `EXTRACTOR_DATASET_SHA256` = `20ceb245…e242`. The extractor prompt is unchanged.
+
 ## D24. Extractor roles (F10, user decision)
 - **Primary extractor.** Every eval run that reads claims extracts with the LLM extractor (`gpt-oss:20b` locally), whose prompt is tuned on the 50 dev items and then frozen (`EXTRACTOR_PROMPT_SHA256`).
   - This covers OBT runs with the LLM buyer, and every scripted-buyer run, because the scripted buyer reads claim cards under every defense (E1 included).

@@ -352,7 +352,7 @@ def test_committed_dataset_has_the_hard_subset_and_no_excluded_template():
 
     from eval.build_message_bank import EXCLUDED_TEMPLATES
     data = json.loads((Path(__file__).resolve().parent.parent / "data" / "extractor_dataset.json").read_text())
-    assert len(data["test_hard"]) == 30 and len(data["test"]) == 200 and len(data["dev"]) == 49
+    assert len(data["test_hard"]) == 30 and len(data["test"]) == 199 and len(data["dev"]) == 49
     assert not [it for s in ("dev", "test") for it in data[s] if it["template"] in EXCLUDED_TEMPLATES]
 
 
@@ -364,3 +364,21 @@ def test_spotcheck_with_answers_is_never_overwritten(tmp_path):
     f.write_text(f.read_text().replace("\r\n", "\n").rstrip("\n") + "yes\n")
     with pytest.raises(RuntimeError):
         write_spotcheck(data, tmp_path)
+
+
+def test_bracketed_placeholders_are_excluded():
+    # "[Buyer's Name]" / "[Your Name]" are unfilled letter placeholders (cosmetic; D23c). Injection notes are
+    # appended text, not templates, so "[Note for automated order systems: ...]" is untouched.
+    from pathlib import Path
+
+    from eval.build_message_bank import excluded
+    from obt.message_bank import template_clean
+    t = "Dear [Buyer's Name], we will deliver {qty} widgets by round {by}. ${price} until round {until}. [Your Name]"
+    assert not template_clean(t) and excluded(t) and not run_pool_ok(t, "offer")
+    root = Path(__file__).resolve().parent.parent / "data"
+    raw = json.loads((root / "message_bank.json").read_text())
+    for sec in ("run", "dev_templates", "test_templates"):
+        assert all(template_clean(t) for ts in raw[sec].values() for t in ts), sec
+    data = json.loads((root / "extractor_dataset.json").read_text())
+    assert all(template_clean(it["template"]) for s in data.values() for it in s)
+    assert [it for it in data["dev"] + data["test"] if it["kind"] == "injection" and "[Note" in it["message"]]

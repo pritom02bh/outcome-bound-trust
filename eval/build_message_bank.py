@@ -23,7 +23,7 @@ from obt import extractor, message_bank
 from obt.llm import LLM, RUNS
 from obt.llm import parse_json
 from obt.message_bank import (CANONICAL, INJECTIONS, KINDS, SEMANTIC_CONTRAST, SEMANTIC_QUESTIONS, SEMANTIC_SYSTEM,
-                              claim_grounded, delivery_verb_ok, fill, gold_claims, grammar_ok, lots_text, numeric_ok,
+                              claim_grounded, delivery_verb_ok, fill, template_clean, gold_claims, grammar_ok, lots_text, numeric_ok,
                               run_pool_ok, templatize)
 
 DATA = Path(__file__).resolve().parent.parent / "data"
@@ -250,6 +250,20 @@ def run_pool(bank: dict, kind: str) -> list[str]:
     return old + new
 
 
+def excluded(template: str) -> bool:
+    """Dropped from the dataset: templates found defective in review, and unfilled bracketed placeholders."""
+    return template in EXCLUDED_TEMPLATES or not template_clean(template)
+
+
+def apply_exclusions(path: Path = DATA / "extractor_dataset.json") -> str:
+    """Apply the current exclusions to the frozen dataset (idempotent, no LLM calls)."""
+    data = json.loads(path.read_text())
+    for split in ("dev", "test"):
+        data[split] = [it for it in data[split] if not excluded(it["template"])]
+    path.write_text(json.dumps(data, indent=1) + "\n")
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def build_hard(rng: random.Random, used: set) -> list[dict]:
     """30 items, 3 per hand template, with intents disjoint from dev and test."""
     items = []
@@ -272,7 +286,7 @@ def finish_dataset(dataset: dict, used: set, seed: int) -> dict:
     """The steps after the LLM-templated splits: the hand-templated hard subset, then the review exclusions."""
     dataset["test_hard"] = build_hard(random.Random(seed + 4), used)
     for split in ("dev", "test"):
-        dataset[split] = [it for it in dataset[split] if it["template"] not in EXCLUDED_TEMPLATES]
+        dataset[split] = [it for it in dataset[split] if not excluded(it["template"])]
     return dataset
 
 
@@ -424,6 +438,9 @@ def rebank(path: Path = DATA / "message_bank.json") -> dict:
     templates (no LLM calls). Returns what changed per kind."""
     bank = json.loads(path.read_text())
     changes = {}
+    for k in KINDS:
+        for sec in ("dev_templates", "test_templates"):
+            bank[sec][k] = [t for t in bank[sec][k] if template_clean(t)]
     for k in RUN_KINDS:
         pool = run_pool(bank, k)
         changes[k] = {"removed": [t for t in bank["run"][k] if t not in pool],
@@ -442,6 +459,8 @@ def main() -> None:
     ap.add_argument("--regold", action="store_true", help="only recompute F5 gold for the frozen dataset")
     ap.add_argument("--add-hard", action="store_true", help="add the hand-templated hard subset and apply the "
                                                               "review exclusions to the frozen dataset")
+    ap.add_argument("--apply-exclusions", action="store_true", help="drop excluded templates' items from the "
+                                                                    "frozen dataset")
     ap.add_argument("--rebank", action="store_true", help="only re-apply the run filter to the frozen templates")
     a = ap.parse_args()
     if a.regold:
@@ -449,6 +468,9 @@ def main() -> None:
         return
     if a.add_hard:
         print(add_hard_and_exclusions())
+        return
+    if a.apply_exclusions:
+        print(apply_exclusions())
         return
     if a.rebank:
         print(json.dumps(rebank(), indent=1))

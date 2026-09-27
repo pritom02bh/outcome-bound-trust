@@ -19,10 +19,10 @@ def test_rule_extractor_baseline_on_frozen_test_set():
     # The rule extractor is only a baseline here (D24). It never records a value the text doesn't state
     # unambiguously, and never an injected one.
     r = extractor_eval(RuleExtractor())
-    assert r["n_messages"] == 200 and r["split"] == "test"
+    assert r["n_messages"] == 199 and r["split"] == "test"          # test192 excluded (D23c)
     assert r["precision"] == 1.0 and r["recall"] > 0.8
     assert r["by_kind"]["vague"]["no_claim_accuracy"] == 1.0
-    assert r["injection"]["n"] == 30 and r["injection"]["injected_values_recorded"] == 0
+    assert r["injection"]["n"] == 29 and r["injection"]["injected_values_recorded"] == 0
     assert 0 <= r["honest_untestable_rate"] < 0.2          # visible limitation, reported (D23)
 
 

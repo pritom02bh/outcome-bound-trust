@@ -264,10 +264,18 @@ def delivery_verb_ok(template: str, kind: str) -> bool:
     return True
 
 
+_BRACKETED = re.compile(r"\[[^\]]*\]")
+
+
+def template_clean(template: str) -> bool:
+    """No unfilled letter placeholder such as "[Buyer's Name]" or "[Your Name]" (D23c, cosmetic)."""
+    return not _BRACKETED.search(template)
+
+
 def run_pool_ok(template: str, kind: str) -> bool:
     """Run bank: grammar and the delivery-verb guard plus, for testable kinds, grounding under several fills
     (incl. by == until)."""
-    if not grammar_ok(template, kind) or not delivery_verb_ok(template, kind):
+    if not grammar_ok(template, kind) or not delivery_verb_ok(template, kind) or not template_clean(template):
         return False
     if not KINDS[kind].testable:
         return True
