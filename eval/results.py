@@ -19,7 +19,8 @@ from pathlib import Path
 from eval.run import markdown, summarize
 from obt.attacks.suppliers import scenario_name
 
-SKIP = ("_invalid", "_archive", "cache", "message_bank", "tuning")
+# e1 grid points are summarized together as one grid (_e1), not as separate evals.
+SKIP = ("_invalid", "_archive", "cache", "message_bank", "tuning", "e1")
 
 
 def _read_rows(f: Path) -> list[dict]:
@@ -138,6 +139,54 @@ def _bank_md(runs: Path) -> str | None:
     return "\n".join(L) + "\n"
 
 
+def _e1(runs: Path, out: Path) -> str | None:
+    root = runs / "e1"
+    if not root.exists():
+        return None
+    from eval.e1 import summarize_grid
+    s = summarize_grid(root, read=lambda p: _read_rows(p / "results.jsonl"))
+    d = out / "e1"
+    d.mkdir(parents=True, exist_ok=True)
+    L = ["## E1 ablation grid (scripted buyer)", "",
+         f"OBT Pareto front: {', '.join(s['front']) or '-'}. Default (min utility cost + attack loss on the front): "
+         f"**{s['default']}**. Reputation config for E2 (its front, nearest OBT's utility cost): "
+         f"**{s['reputation_for_e2']}**.", "",
+         "| point | defense | attack loss | utility cost | blocked honest orders | runs | invariant viol. | bound ok |"
+         " front |", "|---|---|---|---|---|---|---|---|---|"]
+    fronts = set(s["front"]) | set(s["reputation_front"])
+    for name, p in sorted(s["points"].items()):
+        mark = "default" if name == s["default"] else ("yes" if name in fronts else "")
+        L.append(f"| {name} | {p['defense']} | {p['attack_loss']} | {p['utility_cost']} | "
+                 f"{p['blocked_honest_orders']} | {p['runs']} | {p['invariant_violations']} | {p['loss_bound_ok']} |"
+                 f" {mark} |")
+    (d / "e1.md").write_text("\n".join(L) + "\n")
+    (d / "e1_summary.json").write_text(json.dumps(s, indent=1, sort_keys=True) + "\n")
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(6.5, 4.5))
+    for defense, marker in (("obt", "o"), ("reputation", "s"), ("none", "x"), ("provenance", "^")):
+        pts = sorted((p["utility_cost"], p["attack_loss"], n) for n, p in s["points"].items()
+                     if p["defense"] == defense and p["utility_cost"] is not None and p["attack_loss"] is not None)
+        if pts:
+            ax.scatter([x for x, _, _ in pts], [y for _, y, _ in pts], marker=marker, label=defense, alpha=0.7)
+    for front in (s["front"], s["reputation_front"]):
+        fp = [(s["points"][n]["utility_cost"], s["points"][n]["attack_loss"]) for n in front]
+        if fp:
+            ax.plot([x for x, _ in fp], [y for _, y in fp], linewidth=1)
+    if s["default"]:
+        p = s["points"][s["default"]]
+        ax.annotate("default: " + s["default"], (p["utility_cost"], p["attack_loss"]), fontsize=7,
+                    xytext=(4, 4), textcoords="offset points")
+    ax.set_xlabel("utility cost vs none, honest S_main ($ per run)")
+    ax.set_ylabel("mean loss from lies, scenarios 2-12 ($ per run)")
+    ax.legend(fontsize=7)
+    fig.tight_layout()
+    (d / "e1_pareto.svg").write_bytes(_svg(fig))
+    plt.close(fig)
+    return "e1/: e1.md, e1_summary.json, e1_pareto.svg (loss vs utility, fronts, default)"
+
+
 def build(runs: Path, out: Path) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     built, index, pareto = {}, ["# Results (rebuilt from runs/ only)", ""], []
@@ -180,6 +229,9 @@ def build(runs: Path, out: Path) -> dict:
     if pareto:
         (out / "pareto.svg").write_bytes(_loss_vs_utility(sorted(pareto), "all evals: loss vs utility"))
         index.append("- pareto.svg: every eval x defense")
+    e1 = _e1(runs, out)
+    if e1:
+        index.append("- " + e1)
     bank = _bank_md(runs)
     if bank:
         (out / "bank.md").write_text(bank)

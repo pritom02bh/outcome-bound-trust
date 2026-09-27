@@ -15,7 +15,7 @@ import math
 import platform
 import subprocess
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
@@ -55,6 +55,7 @@ class EvalConfig:
     cap_usd: float = HARD_CAP_USD
     cache: bool = False
     transport: str = "a2a"      # the eval talks to suppliers over real A2A (F11)
+    sim: dict = field(default_factory=dict)     # SimConfig overrides, e.g. b0_frac / window / grace (E1)
     log_dir: Path | None = None
     # Persistent extraction cache shared by every run (key: text + prompt hash + model + digest).
     extract_cache: Path | None = RUNS / "cache" / "extract"
@@ -99,7 +100,7 @@ _RUN_FIELDS = ("backend", "model", "buyer", "rounds", "cache", "transport")
 
 
 def sim_config(ec: EvalConfig, defense: str = "obt") -> SimConfig:
-    return SimConfig(game=GameConfig(rounds=ec.rounds), defense=defense, transport=ec.transport)
+    return SimConfig(game=GameConfig(rounds=ec.rounds), defense=defense, transport=ec.transport, **ec.sim)
 
 
 def config_hash(ec: EvalConfig) -> str:
@@ -141,7 +142,7 @@ def run_meta(ec: EvalConfig, n: int, defense: str, seed: int) -> dict:
         a2a = None
     return {"git_commit": commit, "git_dirty": dirty, "config_hash": config_hash(ec), "backend": ec.backend,
             "model": ec.model, "model_digest": _digest(ec.backend, ec.model), "scenario": n, "defense": defense,
-            "seed": seed, "transport": ec.transport,
+            "seed": seed, "transport": ec.transport, "sim": dict(ec.sim),
             "message_bank_sha256": bank().sha256 if BANK_PATH.exists() else None,
             "extractor_prompt_sha256": hashlib.sha256(EXTRACTOR_SYSTEM.encode()).hexdigest(),
             "extractor_dataset_sha256": _file_sha(EXTRACTOR_SET), "python": platform.python_version(),
