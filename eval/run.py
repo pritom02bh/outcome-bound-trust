@@ -48,6 +48,7 @@ class EvalConfig:
     extractor_limit: int = 200
     cap_usd: float = HARD_CAP_USD
     cache: bool = False
+    transport: str = "a2a"      # the eval talks to suppliers over real A2A (F11)
     log_dir: Path | None = None
     # Persistent extraction cache shared by every run (key: text + prompt hash + model + digest).
     extract_cache: Path | None = RUNS / "cache" / "extract"
@@ -102,13 +103,14 @@ def run_one(ec: EvalConfig, n: int, defense: str, seed: int, meter: CostMeter, f
     if not isinstance(extractor, (LLMExtractor, NullExtractor)):
         raise RuntimeError("eval runs must use the LLM extractor (D24)")
     t0 = time.time()
-    sim = Sim(SimConfig(game=cfg, defense=defense), seed, make_supplier(n, cfg, seed), buyer,
-              extractor=extractor, scenario=scenario_name(n))
+    sim = Sim(SimConfig(game=cfg, defense=defense, transport=ec.transport), seed, make_supplier(n, cfg, seed),
+              buyer, extractor=extractor, scenario=scenario_name(n))
     res = sim.run()
     usage = {"calls": llm.calls, "tokens": llm.tokens, "latency_s": round(llm.latency, 3),
              "by_purpose": llm.by_purpose, "extractor": extractor.name}
     return {"scenario": n, "name": scenario_name(n), "defense": defense, "seed": seed, "model": ec.model,
-            "buyer": ec.buyer, "total_cost": res.total_cost, "costs": res.costs, "metrics": res.metrics,
+            "buyer": ec.buyer, "transport": ec.transport, "total_cost": res.total_cost, "costs": res.costs,
+            "metrics": res.metrics,
             "usage": usage, "wall_s": round(time.time() - t0, 2), "rounds": ec.rounds, "trace": res.trace}
 
 
@@ -412,10 +414,12 @@ def main() -> None:
     ap.add_argument("--extractor-limit", type=int, default=200)
     ap.add_argument("--cache", action="store_true", help="reuse cached LLM replies (skews latency numbers)")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--transport", default="a2a", choices=["a2a", "inproc"])
     a = ap.parse_args()
     ec = EvalConfig(backend=a.backend, model=a.model, buyer=a.buyer, scenarios=tuple(parse_range(a.scenarios)),
                     defenses=tuple(a.defenses.split(",")), seeds=tuple(parse_range(a.seeds)), rounds=a.rounds,
-                    extractor_eval=not a.no_extractor_eval, extractor_limit=a.extractor_limit, cache=a.cache)
+                    extractor_eval=not a.no_extractor_eval, extractor_limit=a.extractor_limit, cache=a.cache,
+                    transport=a.transport)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     name = f"eval_{a.buyer}_{a.model.replace(':', '-') if a.buyer == 'llm' else 'rule'}_{stamp}"
     out = Path(a.out) if a.out else RUNS / name

@@ -22,6 +22,7 @@ from .memory_view import MemoryView, build_view
 from . import lossbound
 from .money import ZERO, to_money
 from .monitor import Monitor
+from .transport import TRANSPORTS, make_transport
 from .reputation import RepConfig, Reputation
 from .types import Action, Note
 from .verifier import Verifier
@@ -38,6 +39,7 @@ class SimConfig:
     defense: str = "obt"
     raw_history: int = 6
     horizon_cap: int = 8
+    transport: str = "inproc"   # "a2a": suppliers are A2A servers, the buyer an A2A client (F11, D25)
     grace: int = 0          # δ: DELIVERY claims resolve at by_round + δ (F3)
     rep_theta: float = 0.8  # reputation baseline (F9, D22)
     rep_cap: float = 200.0
@@ -158,15 +160,18 @@ class Sim:
                  extractor: Extractor | None = None, scenario: str = "") -> None:
         if cfg.defense not in DEFENSES:
             raise ValueError(cfg.defense)
+        if cfg.transport not in TRANSPORTS:
+            raise ValueError(cfg.transport)
         self.cfg = cfg
         self.seed = seed
         self.scenario = scenario
         self.main = main
         # A supplier may hold several authenticated identities (scenario 12). Each has its own ledger
-        # history and budget; `main_id` is the one it currently speaks as.
-        self.main_ids: tuple[str, ...] = tuple(getattr(main, "identities", ()) or (MAIN,))
+        # history and budget; `main_id` is the one it currently speaks as, as the transport reports it.
+        self.transport = make_transport(cfg.transport, main, cfg.game)
+        self.main_ids: tuple[str, ...] = self.transport.identities
         self.buyer = buyer
-        self.game = BeerGame(cfg.game, seed, {**{i: main for i in self.main_ids}, BACKUP: BackupSupplier(cfg.game)})
+        self.game = BeerGame(cfg.game, seed, self.transport.suppliers())
         self.ledger = Ledger()
         self.actions = ActionLog()
         self.notes = NoteLog()
@@ -198,7 +203,7 @@ class Sim:
 
     @property
     def main_id(self) -> str:
-        return getattr(self.main, "identity", MAIN)
+        return self.transport.speaker
 
     def next_id(self, prefix: str) -> str:
         self._n += 1
@@ -262,12 +267,12 @@ class Sim:
 
     def phase_messages(self) -> None:
         t = self.game.round
-        text = self.main.offer_message(t, self.request_qty)
-        intent = getattr(self.main, "last_intent", None)
+        offers = self.transport.fetch_offers(t, self.request_qty)
+        intent = self.transport.intent()
         # The intent's truth flag is ground truth for analysis only; nothing in the defense reads it.
         self._intent = None if intent is None else {"kind": intent["kind"], "truth": intent["truth"]}
-        # The identity is read after the message: a Sybil supplier switches while composing it.
-        self._offer_claims = self.gateway.receive(self.main_id, t, text) if text else []
+        # The counterparty is the identity the transport authenticated, never read from the text.
+        self._offer_claims = [c for who, text in offers if text for c in self.gateway.receive(who, t, text)]
         self._log("messages")
 
     def phase_propose(self) -> None:
@@ -381,8 +386,11 @@ class Sim:
         return row
 
     def run(self) -> SimResult:
-        while not self.game.done:
-            self.step()
+        try:
+            while not self.game.done:
+                self.step()
+        finally:
+            self.transport.close()
         m = self.metrics()
         if hasattr(self.buyer, "stats"):
             m["buyer"] = dict(self.buyer.stats)

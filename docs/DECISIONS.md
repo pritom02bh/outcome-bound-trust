@@ -240,3 +240,21 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
 - **Rule extractor.** Only a baseline, reported separately on the 200-item test set. The run bank is grounding-filtered with the same F5 patterns the rule extractor is built on, so using it in runs would make extraction trivially perfect there.
 - **Unit tests** may still build `Sim` with the rule extractor for speed. Eval-harness tests route the LLM-extractor path through a fake LLM backed by the rule extractor (`tests/conftest.py`).
 - **Cost.** Scripted runs (E1) now make one extractor LLM call per supplier message. Identical messages are served from the LLM cache when `--cache` is set.
+
+## D25. Real A2A transport (F11)
+- **SDK.** `a2a-sdk` 1.1.5 (JSON-RPC binding, protobuf types), served by Starlette and uvicorn on localhost. The exact versions are pinned in `requirements.lock`. The transport lives in `obt/transport.py`; `SimConfig.transport` is `inproc | a2a`. Unit tests default to `inproc` for speed; the eval defaults to `a2a` and records the transport in every run.
+- **Topology.**
+  - Every supplier identity is its own A2A server, with its own port, its own Agent Card, and its own bearer token issued at registration. That's `S_main`, `S_backup`, and the extra Sybil identities `S_main_2` and `S_main_3` in scenario 12.
+  - The Agent Card is public at `/.well-known/agent-card.json`. It declares a `bearer` HTTP security scheme and requirement, and a JSON-RPC interface.
+  - The buyer side is an A2A client. It resolves each agent's card, then sends data messages: `offer` (round, requested lot), `order` (order id, round, qty, item) and `payment` (round, amount).
+  - The server rejects any request without that agent's own token with HTTP 401. That includes another agent's valid token.
+- **Identity comes from the connection.** The gateway's counterparty id is the registry identity of the endpoint the reply arrived on (URL + token). Text claiming another identity changes nothing (tested with an impostor supplier).
+- **One supplier, several identities.** A host composes the round's message once (one `offer_message` call per round, as in-process). It releases the message only on the endpoint of the identity the supplier speaks as after composing it. The other identities answer "no offer". This keeps scenario 12's switch-while-composing behavior and makes one message per round per supplier explicit on the wire.
+- **What crosses the wire, and where it goes.**
+  - Offer text goes to the gateway (audit log + extractor), exactly as before.
+  - Order replies (invoice unit price and shipping schedule) go to the environment, which models physical delivery and the invoice. They never reach the buyer's context.
+  - JSON numbers arrive as doubles. Float prices are exact, and integers are cast back.
+- **Analysis channel.** The scripted supplier's intent/truth flag is ground truth for analysis only. It's read out of band from the host object in the same process, never over A2A, and no defense reads it.
+- **Acceptance.** For all 12 scenarios (scripted buyer, seed 0), `inproc` and `a2a` give identical ledgers (claim ids, counterparties, slots, statuses, source hashes), actions, costs and traces. The same holds for the `none` and `reputation` baselines on scenarios 1, 3 and 12.
+- **Overhead (measured).** About 1.4 ms per exchange on localhost and 0.11 s to start a run's servers. A 50-round scripted run takes 0.76 s over A2A, against 0.05 s in-process. Servers and clients are shut down at the end of every run (tested).
+- **SDK log noise.** a2a-sdk 1.1.5 logs "Dispatcher task is not running. Cannot wait for event dispatch." at the teardown of every request answered with a single `Message`. That is the SDK's documented immediate-reply pattern, and the reply has already been delivered (parity is exact). Only that exact message is filtered; every other SDK warning and error still shows.
