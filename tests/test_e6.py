@@ -77,3 +77,11 @@ def test_results_builder_writes_e6_summary(tmp_path):
     results.build(tmp_path / "runs", tmp_path / "out")
     md = (tmp_path / "out" / "e6.md").read_text()
     assert "0.5" in md and "farm_len" in md and "evaluations" in md
+
+
+def test_confirmation_uses_the_llm_extractor_over_a2a(tmp_path, rule_llm):
+    from obt.llm import LLM
+    llm = LLM("fake", "gpt-oss:20b", fake=rule_llm, log_path=tmp_path / "c.jsonl")
+    r = e6.confirm(Params(farm_len=0), seeds=(1,), llm=llm, cache=None, rounds=8)
+    assert r["per_seed"][0]["transport"] == "a2a" and r["per_seed"][0]["extractor"] == "llm"
+    assert 0 <= r["ratio"] <= 1 and llm.calls > 0

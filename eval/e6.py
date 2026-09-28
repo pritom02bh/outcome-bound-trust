@@ -101,6 +101,43 @@ def search(budget: int = 10_000, n_random: int = 2_000, seeds=SEEDS, rng_seed: i
             "budget": budget, "n_random": n_random, "seeds": list(seeds), "rng_seed": rng_seed}
 
 
+def confirm(params: Params, seeds=SEEDS, llm=None, cache=None, rounds: int = G.rounds) -> dict:
+    """Re-score an attacker the way eval runs extract (D24): gpt-oss extractor, over A2A (D29)."""
+    from obt.extractor import ExtractionCache, LLMExtractor, model_digest
+    if llm is None:
+        from obt.llm import LLM
+        llm = LLM("ollama", "gpt-oss:20b", log_path=OUT / "confirm_llm_calls.jsonl")
+        cache = ExtractionCache(RUNS / "cache" / "extract", "gpt-oss:20b", model_digest("gpt-oss:20b"))
+    g = GameConfig(rounds=rounds)
+    per = []
+    for s in seeds:
+        ext = LLMExtractor(llm, cache)
+        res = Sim(SimConfig(game=g, defense="obt", transport="a2a", **DEFAULT_SIM), s, AdaptiveAttacker(g, s, params),
+                  ScriptedClaimBuyer(g), extractor=ext).run()
+        lb = res.metrics["loss_bound"]
+        per.append({"seed": s, "ratio": lb["damage"] / lb["sum_bound"] if lb["sum_bound"] else 0.0,
+                    "damage": lb["damage"], "sum_bound": lb["sum_bound"], "bound_ok": lb["ok"],
+                    "invariant_violations": res.metrics["invariant_violations"]["count"],
+                    "transport": "a2a", "extractor": ext.name})
+    worst = max(per, key=lambda r: (r["ratio"], r["damage"]))
+    return {"ratio": worst["ratio"], "mean_ratio": sum(r["ratio"] for r in per) / len(per),
+            "damage": worst["damage"], "sum_bound": worst["sum_bound"], "per_seed": per}
+
+
+def confirm_main() -> None:
+    d = json.loads((OUT / "e6.json").read_text())
+    out = {}
+    for key in ("best", "max_damage"):
+        p = Params(**d[key]["params"])
+        r = confirm(p)
+        _check(p, r)
+        out[key] = r
+        print(f"{key}: gpt-oss over A2A worst ratio {r['ratio']:.4f} (damage {r['damage']} vs {r['sum_bound']}); "
+              f"rule extractor inproc was {d[key]['ratio']:.4f}", flush=True)
+    d["confirmation_llm_a2a"] = out
+    (OUT / "e6.json").write_text(json.dumps(d, indent=1) + "\n")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--budget", type=int, default=10_000)
@@ -124,4 +161,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    confirm_main() if "--confirm" in sys.argv else main()

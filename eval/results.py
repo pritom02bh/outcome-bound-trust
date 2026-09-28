@@ -251,6 +251,13 @@ def _e6(runs: Path, out: Path) -> str | None:
           "| OBT config | worst ratio | mean ratio | damage | bound |", "|---|---|---|---|---|"]
     for k, v in d["best_under_variants"].items():
         L.append(f"| {k} | {v['ratio']:.4f} | {v['mean_ratio']:.4f} | {v['damage']} | {v['sum_bound']} |")
+    conf = d.get("confirmation_llm_a2a")
+    if conf:
+        L += ["", "Confirmation with the eval pipeline (gpt-oss extractor, A2A transport, seeds 1-3):", "",
+              "| attacker | worst ratio | mean ratio | damage | bound | rule extractor, inproc |", "|---|---|---|---|---|---|"]
+        for k, v in conf.items():
+            L.append(f"| {k} | {v['ratio']:.4f} | {v['mean_ratio']:.4f} | {v['damage']} | {v['sum_bound']} | "
+                     f"{d[k]['ratio']:.4f} |")
     (out / "e6.md").write_text("\n".join(L) + "\n")
     return "e6.md: adaptive attacker search, max damage/bound ratio and the attackers"
 
