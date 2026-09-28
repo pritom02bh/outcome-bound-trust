@@ -195,6 +195,7 @@ class LLMBuyer:
     llm: LLM
     cfg: GameConfig
     defense: str = "obt"
+    variant: str | None = None          # view variant, e.g. "trust-aware" (E2b, D30); None = the E2 view
     stats: dict = field(default_factory=lambda: {"calls": 0, "parse_failures": 0, "replans": 0,
                                                  "selfcheck_vetoes": 0, "selfcheck_calls": 0})
 
@@ -226,7 +227,7 @@ class LLMBuyer:
             return False
 
     def act(self, view, api) -> None:
-        context = render(view)
+        context = render(view, variant=self.variant)
         d = self._decide(context)
         if d is None:
             # Unusable output: skip S_main, keep the shelf stocked from backup.

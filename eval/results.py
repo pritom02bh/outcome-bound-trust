@@ -17,7 +17,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from eval.run import markdown, summarize
-from eval.stats import report, trust_over_time_svg
+from eval.stats import e2b_report, e2b_trust_svg, report, trust_over_time_svg
 from obt.attacks.suppliers import scenario_name
 
 # e1 grid points are summarized together as one grid (_e1), not as separate evals.
@@ -262,6 +262,24 @@ def _e6(runs: Path, out: Path) -> str | None:
     return "e6.md: adaptive attacker search, max damage/bound ratio and the attackers"
 
 
+def _e2b(runs: Path, out: Path) -> str | None:
+    f = runs / "e2b" / "results.jsonl"
+    if not f.exists() or not (runs / "e2" / "results.jsonl").exists():
+        return None
+    e2b, e2 = _read_rows(f), _read_rows(runs / "e2" / "results.jsonl")
+    e1 = {"obt": [], "rep-strict": []}
+    ef = runs / "e2b" / "e1_scripted.jsonl"
+    if ef.exists():
+        for line in ef.read_text().splitlines():
+            r = json.loads(line)
+            e1[r["defense"]].append(r)
+    d = out / "e2b"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "e2b.md").write_text(e2b_report(e2b, e2))
+    (d / "trust_over_time.svg").write_bytes(e2b_trust_svg(e2b, e2, e1))
+    return "e2b/: trust-aware buyer view vs E2 (e2b.md) and trust over time with E2 and E1 overlays"
+
+
 def build(runs: Path, out: Path) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     built, index, pareto = {}, ["# Results (rebuilt from runs/ only)", ""], []
@@ -318,6 +336,9 @@ def build(runs: Path, out: Path) -> dict:
     e6 = _e6(runs, out)
     if e6:
         index.append("- " + e6)
+    e2b = _e2b(runs, out)
+    if e2b:
+        index.append("- " + e2b)
     bank = _bank_md(runs)
     if bank:
         (out / "bank.md").write_text(bank)

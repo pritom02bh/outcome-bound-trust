@@ -57,6 +57,7 @@ class EvalConfig:
     transport: str = "a2a"      # the eval talks to suppliers over real A2A (F11)
     sim: dict = field(default_factory=dict)     # SimConfig overrides, e.g. b0_frac / window / grace (E1)
     extractor_model: str | None = None          # None: the run's own model extracts; E3 sets gpt-oss (D28)
+    buyer_variant: str | None = None            # LLM buyer view variant, e.g. "trust-aware" (E2b, D30)
     log_dir: Path | None = None
     # Persistent extraction cache shared by every run (key: text + prompt hash + model + digest).
     extract_cache: Path | None = RUNS / "cache" / "extract"
@@ -145,6 +146,8 @@ def config_hash(ec: EvalConfig, defense: str = "obt") -> str:
     blob = {"eval": {k: getattr(ec, k) for k in _RUN_FIELDS}, "sim": sim}
     if ec.extractor_model is not None:      # only when set, so every earlier run keeps its hash
         blob["extractor_model"] = ec.extractor_model
+    if ec.buyer_variant is not None:
+        blob["buyer_variant"] = ec.buyer_variant
     return hashlib.sha256(json.dumps(blob, sort_keys=True, default=str).encode()).hexdigest()
 
 
@@ -182,7 +185,7 @@ def run_meta(ec: EvalConfig, n: int, defense: str, seed: int) -> dict:
             "eval_config_hash": config_hash(ec), "backend": ec.backend,
             "model": ec.model, "model_digest": _digest(ec.backend, ec.model), "scenario": n, "defense": defense,
             "seed": seed, "transport": ec.transport, "sim": sim_overrides(ec, defense),
-            "extractor_model": extractor_model(ec), "extractor_model_digest": _digest(ec.backend, extractor_model(ec)),
+            "extractor_model": extractor_model(ec), "buyer_variant": ec.buyer_variant, "extractor_model_digest": _digest(ec.backend, extractor_model(ec)),
             "message_bank_sha256": bank().sha256 if BANK_PATH.exists() else None,
             "extractor_prompt_sha256": hashlib.sha256(EXTRACTOR_SYSTEM.encode()).hexdigest(),
             "extractor_dataset_sha256": _file_sha(EXTRACTOR_SET), "python": platform.python_version(),
@@ -229,7 +232,7 @@ def run_one(ec: EvalConfig, n: int, defense: str, seed: int, meter: CostMeter, f
         # The scripted buyer reads claim cards under every defense, so every scripted run extracts.
         extractor: Extractor = LLMExtractor(ext_llm, make_extract_cache(ec))
     else:
-        buyer = LLMBuyer(llm, cfg, base_defense(defense))
+        buyer = LLMBuyer(llm, cfg, base_defense(defense), variant=ec.buyer_variant)
         # LLM-buyer baselines read raw text, not claims, so they skip extraction and overhead stays fair.
         extractor = LLMExtractor(ext_llm, make_extract_cache(ec)) if defense == "obt" else NullExtractor()
     if not isinstance(extractor, (LLMExtractor, NullExtractor)):
@@ -597,13 +600,14 @@ def main() -> None:
     ap.add_argument("--out", default=None)
     ap.add_argument("--transport", default="a2a", choices=["a2a", "inproc"])
     ap.add_argument("--extractor-model", default=None, help="extractor model if not the buyer's (E3, D28)")
+    ap.add_argument("--buyer-variant", default=None, choices=["trust-aware"], help="LLM buyer view variant (E2b)")
     ap.add_argument("--sim", default="", help="SimConfig overrides, e.g. b0_frac=0.025,window=5,grace=1")
     a = ap.parse_args()
     ec = EvalConfig(backend=a.backend, model=a.model, buyer=a.buyer, scenarios=tuple(parse_range(a.scenarios)),
                     defenses=tuple(a.defenses.split(",")), seeds=tuple(parse_range(a.seeds)), rounds=a.rounds,
                     extractor_eval=not a.no_extractor_eval, extractor_limit=a.extractor_limit, cache=a.cache,
                     transport=a.transport, sim=parse_sim(a.sim),
-                    extractor_model=a.extractor_model)
+                    extractor_model=a.extractor_model, buyer_variant=a.buyer_variant)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     name = f"eval_{a.buyer}_{a.model.replace(':', '-') if a.buyer == 'llm' else 'rule'}_{stamp}"
     out = Path(a.out) if a.out else RUNS / name

@@ -87,6 +87,24 @@ class MemoryView:
     raw_messages: list[str] = field(default_factory=list)   # only filled for the no-defense baseline
     main_id: str = MAIN     # the identity S_main currently speaks as (scenario 12 has several)
     reputation: tuple[float, int, Decimal] | None = None   # (score, outcomes, max order value); reputation only
+    rep_detail: tuple[int, int, float, Decimal, int] | None = None    # (completed, failed, theta, cap, n0)
+
+
+# E2b buyer view variant "trust-aware" (DECISIONS D30), frozen by sha256 in obt/config.py. Every number is filled
+# in by code from the same state the rest of the view shows.
+TRUST_AWARE_OBT = (
+    "TRUST GROWTH (computed by code): B rises only when an S_main order is delivered in full, and then becomes the "
+    "cold start {b0} plus the value of the largest order delivered in full so far ({largest} now, so B = {B}). "
+    "Many small orders therefore keep B small. The fastest way to grow B: once nothing is pending (P = $0), your "
+    "headroom is the whole B, so place one S_main order of {units} at {price} ({value}) and wait until it is "
+    "delivered before the next S_main order; if it is delivered in full, B rises to {B_next}. Right now P = {P} "
+    "and headroom is {headroom}.")
+TRUST_AWARE_REP = (
+    "REPUTATION GROWTH (computed by code): score = (completed + 1) / (completed + failed + 2) over S_main orders "
+    "resolved so far: {s} delivered in full by the promised round, {f} not (score {score}). Each S_main order "
+    "delivered in full raises the score and with it the largest allowed order (score x {cap}); one more completed "
+    "order would make the score {score_next} and allow orders up to {limit_next}. After {n0} resolved orders, S_main "
+    "orders are allowed only while the score is at least {theta}.")
 
 
 def build_view(*, game: BeerGame, ledger: Ledger, actions: ActionLog, notes: NoteLog,
@@ -130,7 +148,33 @@ def _money(x: float | Decimal) -> str:
     return f"${x:,.2f}"
 
 
-def render(v: MemoryView) -> str:
+def render(v: MemoryView, variant: str | None = None) -> str:
+    """The buyer's whole context. variant="trust-aware" (E2b) appends the frozen growth explanation."""
+    text = _render(v)
+    if variant is None:
+        return text
+    if variant != "trust-aware":
+        raise ValueError(f"unknown view variant {variant!r}")
+    if v.defense == "obt":
+        tr = v.track[v.main_id]
+        price = to_money(v.terms[MAIN]["nominal_price"])
+        k = int(tr.budget // price)                      # the lot that fits the whole B once nothing is pending
+        largest = max(tr.budget - tr.b0, to_money(0))
+        return text + "\n" + TRUST_AWARE_OBT.format(
+            b0=_money(tr.b0), largest=_money(largest), B=_money(tr.budget),
+            units=f"{k} unit{'' if k == 1 else 's'}", price=_money(price),
+            value=_money(k * price), B_next=_money(tr.b0 + max(largest, k * price)), P=_money(tr.pending_exposure),
+            headroom=_money(tr.headroom))
+    if v.rep_detail is not None:
+        s, f, theta, cap, n0 = v.rep_detail
+        nxt = (s + 2) / (s + f + 3)
+        return text + "\n" + TRUST_AWARE_REP.format(
+            s=s, f=f, score=f"{(s + 1) / (s + f + 2):.2f}", cap=_money(cap), score_next=f"{nxt:.2f}",
+            limit_next=_money(to_money(Decimal(str(nxt)) * cap)), n0=n0, theta=theta)
+    return text
+
+
+def _render(v: MemoryView) -> str:
     """Agent context. Built from structured fields only; raw text appears only in baseline modes."""
     L: list[str] = []
     L.append(f"ROUND {v.round} of {v.horizon}")

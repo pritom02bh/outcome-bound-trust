@@ -215,6 +215,9 @@ class Sim:
                        main_id=self.main_id, main_ids=self.main_ids)
         if self.cfg.defense == "reputation":
             v.reputation = self.reputation.limit(self.main_id, self.game.round)
+            s, f = self.reputation.outcomes(self.main_id, self.game.round)
+            rc = self.reputation.cfg
+            v.rep_detail = (s, f, rc.theta, rc.cap, rc.n0)
         if self.cfg.defense != "obt":
             # Every baseline keeps raw supplier messages in memory; OBT never does.
             v.raw_messages = [f"[round {m.round}] {m.text}"
@@ -382,6 +385,10 @@ class Sim:
             "cost": round(g.total_cost, 6),
             "phases": phases,
         }
+        if self.cfg.defense == "reputation":
+            # Reputation's trust state per round, for the trust-over-time figure (E2b).
+            score, resolved, limit = self.reputation.limit(self.main_id, t)
+            row["rep"] = {"score": score, "resolved": resolved, "limit": float(limit)}
         self.trace.append(row)
         return row
 

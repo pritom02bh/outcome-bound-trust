@@ -206,3 +206,102 @@ def report(rows: list[dict], defenses: list[str] | None = None) -> str:
         L.append(f"| {scenario_name(n)} | {p['runs']} | {p['events']} | {p['damage']:,.1f} | {p['bound']:,.1f} | "
                  f"{p['apriori']:,.1f} |")
     return "\n".join(L) + "\n"
+
+
+# ---------------------------------------------------------------- E2b (D30): trust-aware buyer view
+
+
+def series(rows: list[dict], d: str, key: str, scenario: int = 1) -> list[float]:
+    """Per round, mean over seeds of a trust quantity: key "B" (OBT budget) or "score" (reputation, trace['rep'])."""
+    per: dict[int, list[float]] = {}
+    for r in rows:
+        if r["defense"] != d or r["scenario"] != scenario:
+            continue
+        for t in r["trace"]:
+            v = t.get("B") if key == "B" else (t.get("rep") or {}).get("score")
+            if v is not None:
+                per.setdefault(t["round"], []).append(v)
+    return [mean(per[k]) for k in sorted(per)]
+
+
+def e2b_trust_svg(e2b: list[dict], e2: list[dict], e1: dict[str, list[dict]]) -> bytes:
+    """Honest S_main. Top: OBT budget B per round. Middle: reputation score per round. Bottom: S_main unit share.
+    Each panel overlays E2b (trust-aware LLM buyer), E2 (LLM buyer) and E1 (scripted buyer) where logged."""
+    import io
+
+    import matplotlib
+    matplotlib.use("Agg")
+    matplotlib.rcParams["svg.hashsalt"] = "obt"
+    import matplotlib.pyplot as plt
+    fig, axes = plt.subplots(3, 1, figsize=(6.5, 8.5), sharex=True)
+    runs = (("E2b trust-aware LLM", e2b, "-"), ("E2 LLM", e2, "--"), ("E1 scripted", None, ":"))
+    for label, rows, ls in runs:
+        obt = e1["obt"] if rows is None else rows
+        rep = e1["rep-strict"] if rows is None else rows
+        rep_d = "rep-strict"
+        b = series(obt, "obt", "B")
+        if b:
+            axes[0].plot(range(1, len(b) + 1), b, ls, label=label)
+        sc = series(rep, rep_d, "score")
+        if sc:
+            axes[1].plot(range(1, len(sc) + 1), sc, ls, label=label)
+        for d, rs, color in (("obt", obt, "C0"), (rep_d, rep, "C1")):
+            sh = share_by_round(rs, d)
+            if sh:
+                ma = [mean(sh[max(0, i - 4):i + 1]) for i in range(len(sh))]
+                axes[2].plot(range(1, len(ma) + 1), ma, ls, color=color,
+                             label=f"{'obt' if d == 'obt' else 'rep-strict'}, {label}")
+    axes[0].set_ylabel("OBT budget B ($)")
+    axes[1].set_ylabel("reputation score (rep-strict)")
+    axes[2].set_ylabel("S_main unit share (5-round mean)")
+    axes[2].set_xlabel("round (honest S_main, mean over seeds)")
+    for ax in axes:
+        ax.legend(fontsize=6)
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format="svg", metadata={"Date": None, "Creator": None})
+    plt.close(fig)
+    return buf.getvalue()
+
+
+def e2b_report(e2b: list[dict], e2: list[dict]) -> str:
+    """E2b vs E2 on the same defenses, scenarios and seeds. E2b runs no `none` defense, so its utility cost uses
+    E2's honest `none` run on the same seed as the reference (same game and demand; only the buyer view differs)."""
+    scen = sorted({r["scenario"] for r in e2b})
+    seeds = sorted({r["seed"] for r in e2b})
+    e2 = [r for r in e2 if r["scenario"] in scen and r["seed"] in seeds]
+    c2b, c2 = _cost(e2b), _cost(e2)
+    none = {s: c2[(1, "none", s)] for s in seeds if (1, "none", s) in c2}
+
+    def ci(xs):
+        return _fmt(mean(xs) if xs else None, *bootstrap_ci(xs))
+
+    def share(rows, d):
+        xs = [x for x in (main_share(r) for r in rows if r["defense"] == d and r["scenario"] == 1) if x is not None]
+        return f"{mean(xs):.3f}" if xs else "-"
+
+    def utility(c, d):
+        return [c[(1, d, s)] - none[s] for s in seeds if (1, d, s) in c and s in none]
+
+    def loss(c, d, n):
+        return [c[(n, d, s)] - c[(1, d, s)] for s in seeds if (n, d, s) in c and (1, d, s) in c]
+
+    L = ["## E2b: trust-aware buyer view (supplementary; E2 is the main result)", "",
+         "gpt-oss buyer with the frozen trust-aware view (D30); scenarios "
+         f"{', '.join(scenario_name(n) for n in scen)}; "
+         f"seeds {seeds}. Mean [95% bootstrap CI over seeds]. The E2 column is the same defense, scenarios and seeds "
+         "with the standard view. Utility cost is against E2's honest `none` run on the same seed.", ""]
+    for d in ("obt", "rep-strict"):
+        L += [f"### {d}", "", "| metric | E2b trust-aware | E2 standard view |", "|---|---|---|",
+              f"| S_main unit share, honest | {share(e2b, d)} | {share(e2, d)} |",
+              f"| utility cost, honest ($) | {ci(utility(c2b, d))} | {ci(utility(c2, d))} |"]
+        L += [f"| loss from lies, {scenario_name(n)} ($) | {ci(loss(c2b, d, n))} | {ci(loss(c2, d, n))} |"
+              for n in scen if n != 1]
+        L.append("")
+    for label, rows in (("E2b", e2b), ("E2, same scenarios and seeds", e2)):
+        db = damage_vs_bound(rows)
+        mx = None if db["max_ratio"] is None else round(db["max_ratio"], 3)
+        L.append(f"OBT damage vs bound, {label}: {db['events']} failure events in {db['runs_with_events']} runs; "
+                 f"damage ${db['total_damage']:,.1f} vs bound ${db['total_bound']:,.1f}; max per-run ratio {mx}; "
+                 f"bound held in every run: {db['all_ok']}.")
+    return "\n".join(L) + "\n"
