@@ -67,3 +67,22 @@ def test_eval_stops_right_after_the_first_violating_run(tmp_path, rule_llm, monk
     with pytest.raises(er.InvariantViolation):
         run_eval(ec, tmp_path, meter=CostMeter(tmp_path / "c.json"), fake=rule_llm)
     assert len(done) == 2                                          # no run after the violating one
+
+
+def test_extractor_model_can_differ_from_the_buyer_model(tmp_path, rule_llm, monkeypatch):
+    # E3 (D28): qwen3 buys, gpt-oss extracts. The extractor's model is part of the run config and provenance.
+    seen = []
+    real = er.make_llm
+
+    def spy(ec, tag, meter, fake=None, model=None):
+        seen.append((tag.split("|")[-1] if model is None else model, model))
+        return real(ec, tag, meter, fake, model)
+    monkeypatch.setattr(er, "make_llm", spy)
+    ec = EvalConfig(backend="fake", model="buyer-m", extractor_model="extract-m", buyer="scripted", scenarios=(1,),
+                    seeds=(1,), rounds=4, defenses=("obt",), extractor_eval=False)
+    run_eval(ec, tmp_path, meter=CostMeter(tmp_path / "c.json"), fake=rule_llm)
+    r = json.loads((tmp_path / "results.jsonl").read_text().splitlines()[0])
+    assert r["meta"]["extractor_model"] == "extract-m" and r["model"] == "buyer-m"
+    assert ("extract-m", "extract-m") in seen
+    assert er.config_hash(ec) != er.config_hash(EvalConfig(backend="fake", model="buyer-m", buyer="scripted"))
+    assert EvalConfig().extractor_model is None                   # default: the run's own model (E2 unchanged)

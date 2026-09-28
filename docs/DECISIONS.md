@@ -283,3 +283,11 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - **Why both:** neither alone is a fair picture of the baseline. Running both shows the reputation baseline at both ends of its front: when it's strict enough to be safe it barely trades, and when it trades it loses about 5× more than OBT.
   - **Implementation.** `eval.run.VARIANTS` maps a named variant to a Sim defense plus its settings. Each variant has its own run identity (config hash), while the eval as a whole keeps one shared `eval_config_hash`.
 - **E2 plan.** 12 scenarios × 6 defenses (`none`, `llm_selfcheck`, `provenance`, `rep-strict`, `rep-default`, `obt`) × 3 seeds = 216 LLM-buyer runs with gpt-oss:20b, on the OBT default above (`--sim b0_frac=0.05,window=0,grace=0`). Run one seed at a time with a report after each. The eval now stops right after the first run with an invariant or loss-bound violation, instead of at the end of the batch.
+
+## D28. E3 isolates the buyer model (user decision)
+- **E3:** qwen3:8b is the **buyer**, and gpt-oss:20b stays the **extractor** (as D24 says for every eval). 12 scenarios × {`none`, `obt`} × seed 1, on the E1 default (b0 5%, W 0, δ 0).
+  - So E3 changes exactly one thing relative to E2: the model that makes the purchasing decisions. The frozen extractor, whose prompt was tuned on gpt-oss, is the same.
+  - Extraction across models is covered separately by E4 (both models on the 199-item test set and the 30-item hard subset).
+- **Harness.** `EvalConfig.extractor_model` (CLI `--extractor-model`). When unset, the run's own model extracts, as in E1 and E2. It enters the config hash only when set, so every earlier run keeps its hash.
+  - Each run's `meta` records `extractor_model` and its digest. The extraction cache is keyed by the extractor's model and digest.
+  - Run usage adds up the buyer's and the extractor's calls and tokens.
