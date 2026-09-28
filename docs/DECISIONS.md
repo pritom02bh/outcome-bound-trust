@@ -119,6 +119,10 @@ The literal check would fail on correct behavior. So, as the user approved:
   - The per-event bound (§6) is unchanged: it already covers shortfall and late units.
   - Regression tests: an honest supplier with a later deadline does zero damage, and on a supplier early on some units and late on others only the late or missing units count.
 - **Why E1 and E2 never showed it.** No scripted scenario delivers before its deadline: each ships at the order round + lead, or late, or not at all, and a cited claim's `by_round` is never later than that. The recheck below confirms it.
+- **Recheck** (`eval/recheck_d21a.py`, `runs/recheck_d21a.json`): **no number changed.**
+  - **E1:** all 1,944 runs (1,296 OBT) were re-driven in process with the fixed counterfactual. Extraction came only from the cache: 0 misses, so no model calls. There were 0 cost mismatches with the logs, 0 changes to damage or Σ bound, and 0 changes to the bound check.
+  - **E2:** the LLM buyer's replies weren't logged verbatim, so its runs can't be re-driven without model calls. Instead each of the 36 OBT runs was checked from its trace: every executed S_main order cited only claims with `by_round` ≤ order round + lead, so no claim-backed unit could arrive early and damage is provably unchanged.
+  - `results/e1` and `results/e2` stand as published.
 
 ## D22. Reputation baseline: cold start, cap, and how it is compared (F9, user decision)
 F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders allowed iff `score ≥ θ` and per-order value ≤ `score × cap`. Two things were left open and are now settled:
@@ -301,3 +305,24 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
 - **Harness.** `EvalConfig.extractor_model` (CLI `--extractor-model`). When unset, the run's own model extracts, as in E1 and E2. It enters the config hash only when set, so every earlier run keeps its hash.
   - Each run's `meta` records `extractor_model` and its digest. The extraction cache is keyed by the extractor's model and digest.
   - Run usage adds up the buyer's and the extractor's calls and tokens.
+
+## D29. E6: adaptive attacker search against OBT (user request)
+- **Attacker** (`obt/attacks/adaptive.py`). 12 bounded parameters that cover every scripted scenario's behaviour and more:
+  - farm length, lie period and burst;
+  - claim-size multipliers for lying and honest rounds;
+  - the fraction of a lying lot that ships, and its delay past the deadline;
+  - a delay on honest rounds;
+  - invoice markup and offer discount on lying rounds;
+  - deadline stretch;
+  - 1–3 identities, re-entering under the next after a failed promise.
+
+  Like every scripted supplier it controls only its own messages, shipments and invoices.
+- **Objective.** Maximize damage / Σ bound (the share of OBT's per-failure-event bound an attacker realizes), scored by the worst of seeds 1–3. Scripted buyer, OBT at the E1 default (b0 5%, W 0, δ 0), 50 rounds.
+- **Search.** A fixed budget of 10,000 attacker evaluations (30,000 runs): 2,000 uniform random samples, then hill-climbing from the 4 best distinct points (Gaussian steps in the unit cube, σ = 0.15, shrinking after failures). Everything is driven by one seeded RNG (20260928). The best attacker is then re-scored on seeds 1–10 and under three E1 alternatives (W 10; δ 1; b0 10%).
+- **STOP.** Any run with damage above its bound (ratio > 1) or a broken runtime invariant raises at once.
+- **Extraction in E6: the rule extractor, in process** (a deviation from D24, recorded here).
+  - The search needs tens of thousands of runs whose messages are mostly new texts, which is about 80 hours of gpt-oss extraction.
+  - On the grounding-filtered run bank, the rule extractor reads exactly what gpt-oss reads (dev exact match 1.0), and inproc and A2A are identical (F11).
+  - E6 attacks the economics of the gate and budget; extraction attacks are covered by scenario 11 and E4.
+  - The best attacker found is confirmed with the gpt-oss extractor over A2A.
+- **History.** The first E6 search surfaced the D21a counterfactual defect (a STOP); it was fixed and E6 restarted from scratch.
