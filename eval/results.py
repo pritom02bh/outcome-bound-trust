@@ -21,7 +21,7 @@ from eval.stats import report
 from obt.attacks.suppliers import scenario_name
 
 # e1 grid points are summarized together as one grid (_e1), not as separate evals.
-SKIP = ("_invalid", "_archive", "cache", "message_bank", "tuning", "e1", "e4")
+SKIP = ("_invalid", "_archive", "cache", "message_bank", "tuning", "e1", "e4", "e6")
 
 
 def _read_rows(f: Path) -> list[dict]:
@@ -230,6 +230,31 @@ def _e4(runs: Path, out: Path) -> str | None:
     return "e4.md: extractor accuracy for both local models, hard subset with and without the guard"
 
 
+def _e6(runs: Path, out: Path) -> str | None:
+    f = runs / "e6" / "e6.json"
+    if not f.exists():
+        return None
+    d = json.loads(f.read_text())
+    qs = sorted(h["ratio"] for h in d["history"])
+    b, m = d["best"], d["max_damage"]
+    L = ["## E6: adaptive attacker search against OBT (damage / Σ bound; > 1 would be a STOP)", "",
+         f"{d['evaluations']} evaluations (budget {d['budget']}: {d['n_random']} random, then hill-climbing), seeds "
+         f"{d['seeds']}, RNG seed {d['rng_seed']}, {d['wall_s']} s. Ratio quantiles over all evaluations: median "
+         f"{qs[len(qs) // 2]:.3f}, p90 {qs[int(0.9 * len(qs))]:.3f}, max {qs[-1]:.4f}.", "",
+         f"**Max ratio {b['ratio']:.4f}** (damage {b['damage']} vs bound {b['sum_bound']}, worst seed; mean over "
+         f"seeds {b['mean_ratio']:.3f}). Most damage: {m['damage']} vs bound {m['sum_bound']} (ratio "
+         f"{m['ratio']:.3f}).", "", "| parameter | max-ratio attacker | max-damage attacker |", "|---|---|---|"]
+    for k in b["params"]:
+        L.append(f"| {k} | {b['params'][k]} | {m['params'][k]} |")
+    r = d["best_on_seeds_1_10"]
+    L += ["", f"Max-ratio attacker on seeds 1-10: worst {r['ratio']:.4f}, mean {r['mean_ratio']:.4f}.", "",
+          "| OBT config | worst ratio | mean ratio | damage | bound |", "|---|---|---|---|---|"]
+    for k, v in d["best_under_variants"].items():
+        L.append(f"| {k} | {v['ratio']:.4f} | {v['mean_ratio']:.4f} | {v['damage']} | {v['sum_bound']} |")
+    (out / "e6.md").write_text("\n".join(L) + "\n")
+    return "e6.md: adaptive attacker search, max damage/bound ratio and the attackers"
+
+
 def build(runs: Path, out: Path) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     built, index, pareto = {}, ["# Results (rebuilt from runs/ only)", ""], []
@@ -280,6 +305,9 @@ def build(runs: Path, out: Path) -> dict:
     e4 = _e4(runs, out)
     if e4:
         index.append("- " + e4)
+    e6 = _e6(runs, out)
+    if e6:
+        index.append("- " + e6)
     bank = _bank_md(runs)
     if bank:
         (out / "bank.md").write_text(bank)

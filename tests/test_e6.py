@@ -62,3 +62,18 @@ def test_a_ratio_above_one_stops_the_search(monkeypatch):
         "ratio": 1.2, "mean_ratio": 1.2, "damage": 12.0, "sum_bound": 10.0, "per_seed": []})
     with pytest.raises(e6.BoundViolation):
         e6.search(budget=5, n_random=5, seeds=(1,), rng_seed=0)
+
+
+def test_results_builder_writes_e6_summary(tmp_path):
+    import json
+    from eval import results
+    runs = tmp_path / "runs" / "e6"
+    runs.mkdir(parents=True)
+    best = {"params": Params().as_dict(), "ratio": 0.5, "mean_ratio": 0.4, "damage": 7.0, "sum_bound": 14.0}
+    ev = {"ratio": 0.5, "mean_ratio": 0.4, "damage": 7.0, "sum_bound": 14.0, "per_seed": []}
+    (runs / "e6.json").write_text(json.dumps({
+        "evaluations": 3, "budget": 3, "n_random": 2, "seeds": [1], "rng_seed": 0, "best": best, "max_damage": best,
+        "history": [best] * 3, "best_on_seeds_1_10": ev, "best_under_variants": {"v": ev}, "wall_s": 1.0}))
+    results.build(tmp_path / "runs", tmp_path / "out")
+    md = (tmp_path / "out" / "e6.md").read_text()
+    assert "0.5" in md and "farm_len" in md and "evaluations" in md
