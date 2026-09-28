@@ -346,7 +346,7 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
 ## D31. E2 extra seeds, and Enron candidates for a real-text extractor test (user requests)
 - **E2 seeds 4–5.** 72 more runs: `obt`, `rep-strict` and `rep-default` on all 12 scenarios, with the same config as E2 (gpt-oss buyer, E1 default, A2A, gpt-oss extractor) in the same run directory. They're resumed by config hash, so seeds 1–3 aren't rerun.
   - `ci.md` gives each row's seed count. Loss from lies for those three defenses uses 5 seeds; every other defense keeps 3.
-  - Utility cost is measured against the `none` run on the same seed, and `none` wasn't run for seeds 4–5, so utility cost stays at 3 seeds for every defense.
+  - Utility cost is measured against the `none` run on the same seed. So `none` is also run for seeds 4–5 on the honest and noisy-honest scenarios only (4 runs, user request): utility cost for `obt`, `rep-strict` and `rep-default` then uses 5 seeds, and `provenance` and `llm_selfcheck` stay at 3.
 - **Enron prep** (`eval/enron_prep.py`; no labels, no model calls).
   - **Corpus:** the CMU Enron Email Dataset, release 2015-05-07 (`https://www.cs.cmu.edu/~enron/enron_mail_20150507.tar.gz`, 443,254,787 bytes). It's stored in gitignored `runs/enron/`, and its sha256 is recorded in `data/enron_candidates.meta.json`.
   - **Own text only:** each message's plain-text body is cut at the first "Original Message" or forward marker, and quoted lines are dropped, so every sentence is the sender's own.
