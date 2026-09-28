@@ -1,3 +1,5 @@
 scenario|defense,cost,extra_cost_vs_none,blocked_main_orders
-1|obt,6243.5,,25.0
-9|obt,,,
+1|none,6326.0,0.0,0.0
+1|obt,6243.5,-82.5,25.0
+9|none,6350.0,0.0,0.0
+9|obt,6362.0,12.0,23.0

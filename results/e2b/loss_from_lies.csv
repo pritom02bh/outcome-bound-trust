@@ -1,0 +1,6 @@
+scenario,obt,rep-strict
+1_honest,0.0,0.0
+2_always_lie,129.17,360.5
+3_farm_then_lie,-10.25,0.0
+9_noisy_honest,0.67,4.67
+12_sybil_reentry,136.0,769.0

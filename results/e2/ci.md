@@ -1,26 +1,26 @@
-Mean over seeds with a 95% CI (percentile bootstrap over the 3 seeds, 10,000 resamples; with 3 seeds the interval is coarse). $ per run.
+Mean over seeds with a 95% CI (percentile bootstrap over seeds, 10,000 resamples). Seeds per row are given in the `seeds` column: a defense can have more seeds than another (extra seeds were run for some), and a utility cost needs the `none` run on the same seed. With few seeds the interval is coarse. $ per run.
 
 ## Attack loss per defense (loss from lies, mean of scenarios 2-12)
 
-| defense | mean [95% CI] | per seed |
-|---|---|---|
-| obt | 43.1 [32.8, 56.3] | s1: 32.8, s2: 40.1, s3: 56.3 |
-| none | 2,290.6 [2,127.5, 2,469.5] | s1: 2,127.5, s2: 2,469.5, s3: 2,274.6 |
-| provenance | 1,649.9 [1,471.5, 1,903.2] | s1: 1,574.9, s2: 1,471.5, s3: 1,903.2 |
-| llm_selfcheck | 740.8 [520.5, 934.1] | s1: 520.5, s2: 934.1, s3: 767.8 |
-| rep-strict | 190.4 [122.0, 248.0] | s1: 201.1, s2: 248.0, s3: 122.0 |
-| rep-default | 463.8 [368.7, 563.8] | s1: 563.8, s2: 459.1, s3: 368.7 |
+| defense | seeds | mean [95% CI] | per seed |
+|---|---|---|---|
+| obt | 3 | 43.1 [32.8, 56.3] | s1: 32.8, s2: 40.1, s3: 56.3 |
+| none | 3 | 2,290.6 [2,127.5, 2,469.5] | s1: 2,127.5, s2: 2,469.5, s3: 2,274.6 |
+| provenance | 3 | 1,649.9 [1,471.5, 1,903.2] | s1: 1,574.9, s2: 1,471.5, s3: 1,903.2 |
+| llm_selfcheck | 3 | 740.8 [520.5, 934.1] | s1: 520.5, s2: 934.1, s3: 767.8 |
+| rep-strict | 3 | 190.4 [122.0, 248.0] | s1: 201.1, s2: 248.0, s3: 122.0 |
+| rep-default | 3 | 463.8 [368.7, 563.8] | s1: 563.8, s2: 459.1, s3: 368.7 |
 
 ## Utility cost per defense (primary utility metric: cost − cost(none), honest S_main, same seed)
 
-| defense | utility cost, honest [95% CI] | utility cost, noisy-honest [95% CI] | S_main unit share, honest | S_main orders blocked, honest |
-|---|---|---|---|---|
-| obt | 298.3 [273.5, 329.5] | 328.5 [270.0, 381.0] | 0.054 | 0.3 |
-| none | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.596 | 0.0 |
-| provenance | 39.7 [26.0, 55.0] | 74.7 [54.0, 102.5] | 0.534 | 0.0 |
-| llm_selfcheck | 75.3 [44.0, 99.0] | 125.8 [102.0, 172.5] | 0.475 | 7.3 |
-| rep-strict | 291.5 [271.5, 308.0] | 326.3 [277.5, 355.0] | 0.070 | 2.0 |
-| rep-default | 63.3 [-15.0, 106.0] | 292.7 [222.0, 355.0] | 0.512 | 2.0 |
+| defense | seeds | utility cost, honest [95% CI] | utility cost, noisy-honest [95% CI] | S_main unit share, honest | S_main orders blocked, honest |
+|---|---|---|---|---|---|
+| obt | 3 | 298.3 [273.5, 329.5] | 328.5 [270.0, 381.0] | 0.054 | 0.3 |
+| none | 3 | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.596 | 0.0 |
+| provenance | 3 | 39.7 [26.0, 55.0] | 74.7 [54.0, 102.5] | 0.534 | 0.0 |
+| llm_selfcheck | 3 | 75.3 [44.0, 99.0] | 125.8 [102.0, 172.5] | 0.475 | 7.3 |
+| rep-strict | 3 | 291.5 [271.5, 308.0] | 326.3 [277.5, 355.0] | 0.070 | 2.0 |
+| rep-default | 3 | 63.3 [-15.0, 106.0] | 292.7 [222.0, 355.0] | 0.512 | 2.0 |
 
 ## Utility cost as a % of the honest run's total cost (cost(none, honest), same seed)
 
@@ -46,7 +46,7 @@ Noisy-honest is an honest supplier with random delays: any cost above no defense
 | rep-strict | 326.3 [277.5, 355.0] | 0.054 | 16.7 |
 | rep-default | 292.7 [222.0, 355.0] | 0.105 | 16.7 |
 
-## Loss from lies per scenario (mean [95% CI] over seeds)
+## Loss from lies per scenario (mean [95% CI] over each defense's seeds, as above)
 
 | scenario | obt | none | provenance | llm_selfcheck | rep-strict | rep-default |
 |---|---|---|---|---|---|---|

@@ -1,0 +1,11 @@
+scenario|defense,damage,sum_bound,reroute_cost_diff,resid,events,bound_ok
+12|obt,131.33,350.0,-3.0,7.67,25.0,True
+12|rep-strict,,,0.0,,0.0,
+1|obt,0.0,0.0,0.0,0.0,0.0,True
+1|rep-strict,,,0.0,,0.0,
+2|obt,122.5,336.0,-3.0,9.67,24.0,True
+2|rep-strict,,,0.0,,0.0,
+3|obt,4.5,14.0,-1.67,-13.08,1.0,True
+3|rep-strict,,,0.0,,0.0,
+9|obt,74.67,148.67,-3.0,-71.0,3.33,True
+9|rep-strict,,,0.0,,0.0,

@@ -1,0 +1,5 @@
+scenario|defense,cost,extra_cost_vs_none,blocked_main_orders
+1|obt,6297.33,,1.0
+1|rep-strict,6297.0,,0.0
+9|obt,6298.0,,0.0
+9|rep-strict,6301.67,,0.67
