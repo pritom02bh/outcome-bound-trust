@@ -144,18 +144,19 @@ def _fmt(m, lo, hi) -> str:
 def report(rows: list[dict], defenses: list[str] | None = None) -> str:
     defenses = defenses or list(dict.fromkeys(r["defense"] for r in rows))
     seeds = sorted({r["seed"] for r in rows})
-    L = [f"Mean over seeds with a 95% CI (percentile bootstrap over the {len(seeds)} seeds, {B:,} resamples; with "
-         f"{len(seeds)} seeds the interval is coarse). $ per run.", "",
-         "## Attack loss per defense (loss from lies, mean of scenarios 2-12)", "",
-         "| defense | mean [95% CI] | per seed |", "|---|---|---|"]
+    L = [f"Mean over seeds with a 95% CI (percentile bootstrap over seeds, {B:,} resamples). Seeds per row are given "
+         "in the `seeds` column: a defense can have more seeds than another (extra seeds were run for some), and a "
+         "utility cost needs the `none` run on the same seed. With few seeds the interval is coarse. $ per run.",
+         "", "## Attack loss per defense (loss from lies, mean of scenarios 2-12)", "",
+         "| defense | seeds | mean [95% CI] | per seed |", "|---|---|---|---|"]
     for d in defenses:
         v = attack_loss_by_seed(rows, d)
         xs = list(v.values())
-        L.append(f"| {d} | {_fmt(mean(xs) if xs else None, *bootstrap_ci(xs))} | "
+        L.append(f"| {d} | {len(xs)} | {_fmt(mean(xs) if xs else None, *bootstrap_ci(xs))} | "
                  + ", ".join(f"s{s}: {x:,.1f}" for s, x in v.items()) + " |")
     L += ["", "## Utility cost per defense (primary utility metric: cost − cost(none), honest S_main, same seed)", "",
-          "| defense | utility cost, honest [95% CI] | utility cost, noisy-honest [95% CI] | S_main unit share, "
-          "honest | S_main orders blocked, honest |", "|---|---|---|---|---|"]
+          "| defense | seeds | utility cost, honest [95% CI] | utility cost, noisy-honest [95% CI] | S_main unit "
+          "share, honest | S_main orders blocked, honest |", "|---|---|---|---|---|---|"]
     for d in defenses:
         u1 = list(utility_cost_by_seed(rows, d, 1).values())
         u9 = list(utility_cost_by_seed(rows, d, 9).values())
@@ -163,7 +164,7 @@ def report(rows: list[dict], defenses: list[str] | None = None) -> str:
         sh = [x for x in (main_share(r) for r in hon) if x is not None]
         blk = [r["metrics"]["main_orders_blocked"] for r in hon]
         share = f"{mean(sh):.3f}" if sh else "-"
-        L.append(f"| {d} | {_fmt(mean(u1) if u1 else None, *bootstrap_ci(u1))} | "
+        L.append(f"| {d} | {len(u1)} | {_fmt(mean(u1) if u1 else None, *bootstrap_ci(u1))} | "
                  f"{_fmt(mean(u9) if u9 else None, *bootstrap_ci(u9))} | {share} | "
                  f"{f'{mean(blk):.1f}' if blk else '-'} |")
     L += ["", "## Utility cost as a % of the honest run's total cost (cost(none, honest), same seed)", "",
@@ -184,7 +185,7 @@ def report(rows: list[dict], defenses: list[str] | None = None) -> str:
         blk = [r["metrics"]["main_orders_blocked"] for r in n9]
         L.append(f"| {d} | {_fmt(mean(u9) if u9 else None, *bootstrap_ci(u9))} | "
                  f"{f'{mean(sh):.3f}' if sh else '-'} | {f'{mean(blk):.1f}' if blk else '-'} |")
-    L += ["", "## Loss from lies per scenario (mean [95% CI] over seeds)", "",
+    L += ["", "## Loss from lies per scenario (mean [95% CI] over each defense's seeds, as above)", "",
           "| scenario | " + " | ".join(defenses) + " |", "|---|" + "---|" * len(defenses)]
     c = _cost(rows)
     for n in sorted({r["scenario"] for r in rows}):

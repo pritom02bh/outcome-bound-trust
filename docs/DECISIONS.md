@@ -342,3 +342,15 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - **Trust-over-time figure:** overlays E2 (LLM buyer) and E1 (scripted buyer).
     - E1's honest runs for the OBT default and `rep_cap200_th0.9` were re-driven from the extraction cache (no model calls, costs reproduced exactly) to get their reputation score per round: `eval/e2b.py`.
     - E2's reputation score per round wasn't logged, and its LLM-buyer runs can't be re-driven without model calls. So reputation overlays E2 by S_main share only; OBT's B per round is in every trace.
+
+## D31. E2 extra seeds, and Enron candidates for a real-text extractor test (user requests)
+- **E2 seeds 4–5.** 72 more runs: `obt`, `rep-strict` and `rep-default` on all 12 scenarios, with the same config as E2 (gpt-oss buyer, E1 default, A2A, gpt-oss extractor) in the same run directory. They're resumed by config hash, so seeds 1–3 aren't rerun.
+  - `ci.md` gives each row's seed count. Loss from lies for those three defenses uses 5 seeds; every other defense keeps 3.
+  - Utility cost is measured against the `none` run on the same seed, and `none` wasn't run for seeds 4–5, so utility cost stays at 3 seeds for every defense.
+- **Enron prep** (`eval/enron_prep.py`; no labels, no model calls).
+  - **Corpus:** the CMU Enron Email Dataset, release 2015-05-07 (`https://www.cs.cmu.edu/~enron/enron_mail_20150507.tar.gz`, 443,254,787 bytes). It's stored in gitignored `runs/enron/`, and its sha256 is recorded in `data/enron_candidates.meta.json`.
+  - **Own text only:** each message's plain-text body is cut at the first "Original Message" or forward marker, and quoted lines are dropped, so every sentence is the sender's own.
+  - **Candidate rules:**
+    - a delivery candidate has a quantity with a unit plus a deadline expression (by / no later than / on or before / due / deliver… / ship… / arriv… followed by a date, weekday or end-of-period phrase);
+    - a price candidate has a dollar amount plus a validity word.
+  - **Dedupe and sample:** candidates are deduplicated on normalized text and sorted, then 100 are sampled with seed 20260929 into `data/enron_candidates.csv`. Its columns are `message`, `has_delivery_claim`, `qty`, `deadline`, `has_price_claim`, `price`, `valid_until`, `notes`, with every label column empty for the user.

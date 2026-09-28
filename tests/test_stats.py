@@ -86,3 +86,14 @@ def test_trust_over_time_figure_is_deterministic():
     rows = [trace_row(1, d, s, 100, [(s, 5), (5, s)]) for d in ("obt", "rep-strict", "none") for s in (1, 2)]
     a, b = stats.trust_over_time_svg(rows), stats.trust_over_time_svg(rows)
     assert a == b and a.startswith(b"<?xml")
+
+
+def test_report_states_seed_counts_per_row_when_defenses_have_different_seeds():
+    rows = [row(n, d, s, 100 + n + s) for n in (1, 2) for d in ("none", "obt") for s in (1, 2, 3)]
+    rows += [row(n, "obt", s, 100 + n + s) for n in (1, 2) for s in (4, 5)]      # extra seeds, obt only
+    md = stats.report(rows)
+    attack = md.split("## Attack loss per defense")[1].split("##")[0]
+    assert "| obt | 5 |" in attack and "| none | 3 |" in attack
+    util = md.split("## Utility cost per defense")[1].split("##")[0]
+    assert "| obt | 3 |" in util                         # no `none` run for seeds 4-5, so utility stays at 3 seeds
+    assert "seeds per row" in md.lower()
