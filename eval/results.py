@@ -21,7 +21,7 @@ from eval.stats import report
 from obt.attacks.suppliers import scenario_name
 
 # e1 grid points are summarized together as one grid (_e1), not as separate evals.
-SKIP = ("_invalid", "_archive", "cache", "message_bank", "tuning", "e1")
+SKIP = ("_invalid", "_archive", "cache", "message_bank", "tuning", "e1", "e4")
 
 
 def _read_rows(f: Path) -> list[dict]:
@@ -204,6 +204,32 @@ def _e1(runs: Path, out: Path) -> str | None:
     return "e1/: e1.md, e1_summary.json, e1_pareto.svg (loss vs utility, fronts, default)"
 
 
+def _e4(runs: Path, out: Path) -> str | None:
+    f = runs / "e4" / "e4.json"
+    if not f.exists():
+        return None
+    d = json.loads(f.read_text())
+    L = ["## E4: extractor accuracy, both local models (frozen prompt)", "",
+         "| extractor | split | n | precision | recall | template precision | template recall | exact | "
+         "honest→UNTESTABLE | injected recorded |", "|---|---|---|---|---|---|---|---|---|---|"]
+    for name in sorted(d):
+        for split in ("test", "test_hard"):
+            e = d[name].get(split)
+            if e:
+                L.append(f"| {name} | {split} | {e['n_messages']} | {e['precision']} | {e['recall']} | "
+                         f"{e['template_precision']} | {e['template_recall']} | {e['exact_match']} | "
+                         f"{e.get('honest_untestable_rate')} | {e['injection']['injected_values_recorded']} |")
+    L += ["", "## E4: hard subset, shipping/ready/scheduled dates recorded as delivery deadlines", "",
+          "| extractor | LLM alone (no guard) | with the code guard |", "|---|---|---|"]
+    for name in sorted(d):
+        on, off = d[name].get("test_hard"), d[name].get("test_hard_no_guard")
+        if on and off:
+            L.append(f"| {name} | {off['hard']['delivery_recorded']}/{off['hard']['n']} | "
+                     f"{on['hard']['delivery_recorded']}/{on['hard']['n']} |")
+    (out / "e4.md").write_text("\n".join(L) + "\n")
+    return "e4.md: extractor accuracy for both local models, hard subset with and without the guard"
+
+
 def build(runs: Path, out: Path) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     built, index, pareto = {}, ["# Results (rebuilt from runs/ only)", ""], []
@@ -251,6 +277,9 @@ def build(runs: Path, out: Path) -> dict:
     e1 = _e1(runs, out)
     if e1:
         index.append("- " + e1)
+    e4 = _e4(runs, out)
+    if e4:
+        index.append("- " + e4)
     bank = _bank_md(runs)
     if bank:
         (out / "bank.md").write_text(bank)
