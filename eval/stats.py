@@ -63,6 +63,56 @@ def main_share(r: dict) -> float | None:
     return main / (main + back) if main + back else None
 
 
+def share_by_round(rows: list[dict], d: str, scenario: int = 1) -> list[float]:
+    """Per round, the S_main share of executed order units, averaged over seeds (rounds with no orders skipped)."""
+    per: dict[int, list[float]] = {}
+    for r in rows:
+        if r["defense"] != d or r["scenario"] != scenario:
+            continue
+        for t in r["trace"]:
+            main = sum(a[2] for a in t["actions"]
+                       if a[0] == "ORDER" and a[4] == "EXECUTED" and a[1].startswith("S_main"))
+            back = sum(a[2] for a in t["actions"] if a[0] == "ORDER" and a[4] == "EXECUTED"
+                       and not a[1].startswith("S_main"))
+            if main + back:
+                per.setdefault(t["round"], []).append(main / (main + back))
+    return [mean(per[k]) for k in sorted(per)]
+
+
+def trust_over_time_svg(rows: list[dict], defenses=("obt", "rep-strict", "none"), scenario: int = 1) -> bytes:
+    """S_main share of units per round, honest scenario, mean over seeds (5-round moving average drawn)."""
+    import io
+
+    import matplotlib
+    matplotlib.use("Agg")
+    matplotlib.rcParams["svg.hashsalt"] = "obt"
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(6.5, 3.8))
+    for d in defenses:
+        ys = share_by_round(rows, d, scenario)
+        if not ys:
+            continue
+        ma = [mean(ys[max(0, i - 4):i + 1]) for i in range(len(ys))]
+        ax.plot(range(1, len(ys) + 1), ma, label=d)
+    ax.set_xlabel("round")
+    ax.set_ylabel("S_main share of units (5-round mean)")
+    ax.set_ylim(0, 1)
+    ax.set_title("Trust over time: honest S_main", fontsize=9)
+    ax.legend(fontsize=7)
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format="svg", metadata={"Date": None, "Creator": None})
+    plt.close(fig)
+    return buf.getvalue()
+
+
+def utility_pct_by_seed(rows: list[dict], d: str, scenario: int = 1) -> dict[int, float]:
+    """seed -> utility cost as a % of the honest run's total cost without a defense (the utility-cost reference)."""
+    c = _cost(rows)
+    return {s: 100 * (c[(scenario, d, s)] - c[(scenario, "none", s)]) / c[(scenario, "none", s)]
+            for s in sorted({r["seed"] for r in rows}) if (scenario, d, s) in c and (scenario, "none", s) in c}
+
+
 def damage_vs_bound(rows: list[dict]) -> dict:
     obt = [r for r in rows if r["defense"] == "obt" and r["metrics"]["loss_bound"]["events"]]
     ratios = [r["metrics"]["loss_bound"]["damage"] / r["metrics"]["loss_bound"]["sum_bound"] for r in obt
@@ -116,6 +166,24 @@ def report(rows: list[dict], defenses: list[str] | None = None) -> str:
         L.append(f"| {d} | {_fmt(mean(u1) if u1 else None, *bootstrap_ci(u1))} | "
                  f"{_fmt(mean(u9) if u9 else None, *bootstrap_ci(u9))} | {share} | "
                  f"{f'{mean(blk):.1f}' if blk else '-'} |")
+    L += ["", "## Utility cost as a % of the honest run's total cost (cost(none, honest), same seed)", "",
+          "| defense | honest [95% CI] | noisy-honest [95% CI] |", "|---|---|---|"]
+    for d in defenses:
+        p1, p9 = list(utility_pct_by_seed(rows, d, 1).values()), list(utility_pct_by_seed(rows, d, 9).values())
+        f = lambda xs: "-" if not xs else (  # noqa: E731
+            f"{mean(xs):.2f}% [{bootstrap_ci(xs)[0]:.2f}, {bootstrap_ci(xs)[1]:.2f}]")
+        L.append(f"| {d} | {f(p1)} | {f(p9)} |")
+    L += ["", "## Scenario 9 (noisy-honest) utility cost, every defense", "",
+          "Noisy-honest is an honest supplier with random delays: any cost above no defense is utility lost to false "
+          "positives.", "", "| defense | utility cost [95% CI] | S_main unit share | S_main orders blocked |",
+          "|---|---|---|---|"]
+    for d in defenses:
+        u9 = list(utility_cost_by_seed(rows, d, 9).values())
+        n9 = [r for r in rows if r["defense"] == d and r["scenario"] == 9]
+        sh = [x for x in (main_share(r) for r in n9) if x is not None]
+        blk = [r["metrics"]["main_orders_blocked"] for r in n9]
+        L.append(f"| {d} | {_fmt(mean(u9) if u9 else None, *bootstrap_ci(u9))} | "
+                 f"{f'{mean(sh):.3f}' if sh else '-'} | {f'{mean(blk):.1f}' if blk else '-'} |")
     L += ["", "## Loss from lies per scenario (mean [95% CI] over seeds)", "",
           "| scenario | " + " | ".join(defenses) + " |", "|---|" + "---|" * len(defenses)]
     c = _cost(rows)

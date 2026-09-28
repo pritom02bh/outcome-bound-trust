@@ -12,6 +12,20 @@ Mean over seeds with a 95% CI (percentile bootstrap over the 1 seeds, 10,000 res
 |---|---|---|---|---|
 | obt | - | - | 0.292 | 25.0 |
 
+## Utility cost as a % of the honest run's total cost (cost(none, honest), same seed)
+
+| defense | honest [95% CI] | noisy-honest [95% CI] |
+|---|---|---|
+| obt | - | - |
+
+## Scenario 9 (noisy-honest) utility cost, every defense
+
+Noisy-honest is an honest supplier with random delays: any cost above no defense is utility lost to false positives.
+
+| defense | utility cost [95% CI] | S_main unit share | S_main orders blocked |
+|---|---|---|---|
+| obt | - | - | - |
+
 ## Loss from lies per scenario (mean [95% CI] over seeds)
 
 | scenario | obt |

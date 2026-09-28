@@ -17,7 +17,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from eval.run import markdown, summarize
-from eval.stats import report
+from eval.stats import report, trust_over_time_svg
 from obt.attacks.suppliers import scenario_name
 
 # e1 grid points are summarized together as one grid (_e1), not as separate evals.
@@ -284,6 +284,9 @@ def build(runs: Path, out: Path) -> dict:
             files["extractor.md"] = _extractor_md(ext)
         # Final-report statistics: bootstrap CIs over seeds, utility cost first, OBT damage vs bound.
         files["ci.md"] = report(rows, summary["defenses"])
+        if {"obt", "none"} <= set(summary["defenses"]) and any(r["scenario"] == 1 for r in rows):
+            files["trust_over_time.svg"] = trust_over_time_svg(
+                rows, tuple(d for d in ("obt", "rep-strict", "none") if d in summary["defenses"]))
         metas = sorted({json.dumps({k: r["meta"][k] for k in ("git_commit", "git_dirty", "config_hash", "model",
                                                               "model_digest", "message_bank_sha256",
                                                               "extractor_prompt_sha256", "extractor_dataset_sha256",

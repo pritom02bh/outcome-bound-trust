@@ -52,3 +52,37 @@ def test_report_markdown_has_every_section():
     for heading in ("Attack loss per defense", "Utility cost per defense", "Loss from lies per scenario",
                     "OBT damage vs bound", "95% CI"):
         assert heading in md
+
+
+def trace_row(n, d, s, cost, rounds):
+    """rounds: list of (S_main units, backup units) executed per round."""
+    tr = [{"round": t + 1, "actions": [["ORDER", "S_main", m, 5.0 * m, "EXECUTED", "OK", []],
+                                        ["ORDER", "S_backup", b, 6.0 * b, "EXECUTED", "OK", []]]}
+          for t, (m, b) in enumerate(rounds)]
+    r = row(n, d, s, cost)
+    r["trace"] = tr
+    return r
+
+
+def test_share_by_round_is_the_mean_over_seeds():
+    rows = [trace_row(1, "obt", 1, 100, [(0, 10), (5, 5)]), trace_row(1, "obt", 2, 100, [(10, 0), (5, 5)])]
+    assert stats.share_by_round(rows, "obt") == [0.5, 0.5]
+    rows.append(trace_row(1, "obt", 3, 100, [(0, 0), (1, 3)]))       # a round with no orders doesn't count
+    assert stats.share_by_round(rows, "obt") == [0.5, (0.5 + 0.5 + 0.25) / 3]
+
+
+def test_utility_cost_as_a_percent_of_the_honest_no_defense_cost():
+    rows = [row(1, "none", 1, 200), row(1, "obt", 1, 210), row(1, "none", 2, 100), row(1, "obt", 2, 120)]
+    assert stats.utility_pct_by_seed(rows, "obt") == {1: 5.0, 2: 20.0}
+
+
+def test_report_has_scenario_9_and_percent_sections():
+    rows = [row(n, d, s, 100 + n * (d == "none") + s) for n in (1, 9) for d in ("none", "obt") for s in (1, 2)]
+    md = stats.report(rows)
+    assert "Scenario 9 (noisy-honest) utility cost" in md and "% of the honest run's total cost" in md
+
+
+def test_trust_over_time_figure_is_deterministic():
+    rows = [trace_row(1, d, s, 100, [(s, 5), (5, s)]) for d in ("obt", "rep-strict", "none") for s in (1, 2)]
+    a, b = stats.trust_over_time_svg(rows), stats.trust_over_time_svg(rows)
+    assert a == b and a.startswith(b"<?xml")
