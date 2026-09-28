@@ -110,6 +110,16 @@ The literal check would fail on correct behavior. So, as the user approved:
 
 **Differenced decomposition (user decision).** `loss_from_lies = damage + reroute_cost_diff + resid`, with every term relative to the honest run with the same defense and seed. `reroute_cost_diff = reroute_cost(R) − reroute_cost(honest)`. The honest run's absolute `reroute_cost` (20.0 for OBT in the scripted eval) is reported separately as the defense's price of safety. An earlier version used the attack run's absolute reroute cost, which mixed the two bases and pushed `resid` negative. `resid` can still be nonzero from other blocks and trajectory differences, and it is reported as is.
 
+### D21a. Kept-promise counterfactual: early delivery keeps a promise (user-approved fix; found by E6)
+- **Defect.** In E6's first search (random attacker sampling, before any optimization), an attacker scored damage $3.00 against a bound of $0 with no failure events, and the loss-bound check failed (STOP).
+  - The attacker hadn't cheated. Its 2 S_main orders arrived honestly, 3 rounds *before* their promised round.
+  - A fully honest supplier that promises a later deadline than it needs showed the same thing: damage $68 / $62.5 / $45 at 1 / 3 / 5 extra rounds, with bound 0.
+  - Cause: R* (the kept-promise replay) delivered every claim-backed unit at exactly its claim's `by_round`. So the real run's extra holding cost from an early, honest delivery counted as damage.
+- **Fix.** "Deliver by round N" is kept by any delivery at or before N. In R* a claim-backed unit arrives at `min(actual arrival, by_round)`, and missing or late units move to `by_round`. Claims take actual arrivals earliest deadline first, earliest arrival first (`obt.lossbound.kept_ships`). Units beyond the claims carry no promise and keep their actual arrival.
+  - The per-event bound (§6) is unchanged: it already covers shortfall and late units.
+  - Regression tests: an honest supplier with a later deadline does zero damage, and on a supplier early on some units and late on others only the late or missing units count.
+- **Why E1 and E2 never showed it.** No scripted scenario delivers before its deadline: each ships at the order round + lead, or late, or not at all, and a cited claim's `by_round` is never later than that. The recheck below confirms it.
+
 ## D22. Reputation baseline: cold start, cap, and how it is compared (F9, user decision)
 F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders allowed iff `score ≥ θ` and per-order value ≤ `score × cap`. Two things were left open and are now settled:
 - **Cold start: probation.** θ applies only after `n0 = 3` resolved outcomes of that counterparty. Before that, orders are allowed with value ≤ `score × cap` (0.5 × cap for a newcomer). Taken literally, the rule would never trade with a newcomer: score 0.5 < θ means no orders and so no outcomes.

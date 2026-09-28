@@ -159,3 +159,34 @@ def test_violation_stops_the_eval(tmp_path, monkeypatch, rule_llm):
                     extractor_eval=False)
     with pytest.raises(LossBoundViolation):
         run_eval(ec, tmp_path, fake=rule_llm)
+
+
+# D21a (found by E6's search): a promise "by round N" is kept by any delivery at or before N. In R* a claim-backed
+# unit arrives at min(actual arrival, by_round); only missing or late units move to by_round.
+def test_kept_ships_keeps_early_units_and_moves_only_late_or_missing_ones():
+    from obt.lossbound import kept_ships
+    assert sorted(kept_ships([(10, 9)], [(6, 7), (4, 12)])) == [(4, 9), (6, 7)]      # 6 early stay, 4 late -> 9
+    assert sorted(kept_ships([(10, 9)], [(6, 7)])) == [(4, 9), (6, 7)]               # 4 missing -> 9
+    assert sorted(kept_ships([(10, 9)], [(10, 9)])) == [(10, 9)]                     # on time: unchanged
+    # Two claims, earliest deadline first; units beyond the claims carry no promise and keep their arrival.
+    # Claim 1 takes 3 units from round 4 (kept at 4); claim 2 takes the leftover 1 from round 4 (kept at 4) and
+    # 2 from round 10 (late: moved to 8); the last 2 units back no claim and keep round 10.
+    assert sorted(kept_ships([(3, 5), (3, 8)], [(4, 4), (4, 10)])) == [(1, 4), (2, 8), (2, 10), (3, 4)]
+
+
+def test_honest_supplier_with_a_later_deadline_does_no_damage():
+    from eval.e6 import run_one
+    from obt.attacks.adaptive import Params
+    for stretch in (1, 3, 5):
+        r = run_one(Params(farm_len=50, stretch=stretch), 1)
+        assert r["damage"] == 0 and r["bound_ok"] and r["events"] == 0, stretch
+
+
+def test_only_the_late_units_count_when_a_supplier_is_early_on_some_and_late_on_others():
+    # Honest rounds deliver early (stretch 3); lying rounds ship half, 2 rounds past the deadline.
+    from eval.e6 import run_one
+    from obt.attacks.adaptive import Params
+    mixed = run_one(Params(farm_len=10, lie_period=4, lie_burst=1, ship_frac=0.5, delay=2, stretch=3), 1)
+    on_time = run_one(Params(farm_len=10, lie_period=4, lie_burst=1, ship_frac=0.5, delay=2, stretch=0), 1)
+    assert mixed["bound_ok"] and on_time["bound_ok"] and mixed["events"] > 0
+    assert mixed["damage"] <= mixed["sum_bound"]

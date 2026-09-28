@@ -111,21 +111,34 @@ class _ReplaySupplier(Supplier):
         return SupplierReply(price, ships)
 
 
+def kept_ships(claim_units: list[tuple[int, int]], actual_ships: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """R*'s arrivals for one order (D21a). `claim_units`: (units, by_round) the order consumed per claim.
+
+    A promise "by round N" is kept by any delivery at or before N. Claims take actual arrivals earliest deadline
+    first, earliest arrival first; a claim-backed unit arrives at min(actual arrival, by_round), and a missing unit
+    at by_round. Units beyond the claims carry no promise and arrive as they actually did."""
+    left = sorted(actual_ships, key=lambda s: s[1])
+    out: list[tuple[int, int]] = []
+    for units, by in sorted(claim_units, key=lambda c: c[1]):
+        need = units
+        while need and left:
+            q, arr = left[0]
+            take = min(q, need)
+            out.append((take, min(arr, by)))
+            need -= take
+            left[0] = (q - take, arr)
+            if left[0][0] == 0:
+                left.pop(0)
+        if need:
+            out.append((need, by))
+    return out + [s for s in left if s[0] > 0]
+
+
 def _kept_main(sim: "Sim", p: dict, actual_ships: list[tuple[int, int]], actual_price: float):
     """S_main's delivery and invoice if it kept every promise this order relied on."""
     split = sim.gate.consumption.get(p["action_id"], [])
     a = sim.actions.get(p["action_id"])
-    ships = [(u, sim.ledger[cid].slots["by_round"]) for cid, u in split]
-    # Units not backed by a claim carry no promise and arrive as they actually did; the earliest actual
-    # arrivals stand for the claim-backed units.
-    covered = sum(u for _, u in split)
-    remaining = []
-    for q, arr in sorted(actual_ships, key=lambda s: s[1]):
-        take = min(q, covered)
-        covered -= take
-        if q - take > 0:
-            remaining.append((q - take, arr))
-    ships += remaining
+    ships = kept_ships([(u, sim.ledger[cid].slots["by_round"]) for cid, u in split], actual_ships)
     prices = [k for k in a.cited_claims if (c := sim.ledger.get(k)) is not None and c.template == "PRICE"]
     price = float(a.unit_price) if len(prices) == 1 else actual_price
     return price, tuple(ships)
