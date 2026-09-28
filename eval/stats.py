@@ -115,7 +115,7 @@ def report(rows: list[dict], defenses: list[str] | None = None) -> str:
         share = f"{mean(sh):.3f}" if sh else "-"
         L.append(f"| {d} | {_fmt(mean(u1) if u1 else None, *bootstrap_ci(u1))} | "
                  f"{_fmt(mean(u9) if u9 else None, *bootstrap_ci(u9))} | {share} | "
-                 f"{mean(blk) if blk else '-'} |")
+                 f"{f'{mean(blk):.1f}' if blk else '-'} |")
     L += ["", "## Loss from lies per scenario (mean [95% CI] over seeds)", "",
           "| scenario | " + " | ".join(defenses) + " |", "|---|" + "---|" * len(defenses)]
     c = _cost(rows)
