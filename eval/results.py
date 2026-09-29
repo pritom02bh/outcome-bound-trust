@@ -426,6 +426,9 @@ def build(runs: Path, out: Path) -> dict:
     e2c = _e2c(runs, out)
     if e2c:
         index.append("- " + e2c)
+    paper = _paper_data(runs, out)
+    if paper:
+        index.append("- " + paper)
     bank = _bank_md(runs)
     if bank:
         (out / "bank.md").write_text(bank)
@@ -441,6 +444,181 @@ def main() -> None:
     a = ap.parse_args()
     built = build(Path(a.runs), Path(a.out))
     print(f"{len(built)} evals -> {a.out}/")
+
+
+
+# ---------------------------------------------------------------- paper data (D35): everything eval/paper.py reads
+
+def _smooth(ys: list[float], k: int = 5) -> list[float]:
+    return [round(sum(ys[max(0, i - k + 1):i + 1]) / len(ys[max(0, i - k + 1):i + 1]), 4) for i in range(len(ys))]
+
+
+def _trust_block(rows: list[dict], defenses: dict[str, tuple[str, ...]]) -> dict:
+    from eval.stats import series, share_by_round
+    out = {}
+    for d, keys in defenses.items():
+        block = {}
+        for k in keys:
+            ys = share_by_round(rows, d) if k == "share" else series(rows, d, k)
+            if ys:
+                block[k] = _smooth(ys) if k == "share" else [round(y, 4) for y in ys]
+        if block:
+            out[d] = block
+    return out
+
+
+def _paper_data(runs: Path, out: Path) -> str | None:
+    from statistics import mean
+
+    from eval import e1, rep_grid
+    from eval.stats import (attack_loss_by_seed, bootstrap_ci, damage_vs_bound, main_share, utility_cost_by_seed,
+                            utility_pct_by_seed)
+    read = lambda p: _read_rows(p / "results.jsonl") if (p / "results.jsonl").exists() else []  # noqa: E731
+    e2, e2b, e2c = read(runs / "e2"), read(runs / "e2b"), read(runs / "e2c")
+    if not e2:
+        return None
+    fd = out / "figdata"
+    fd.mkdir(parents=True, exist_ok=True)
+    tables: dict = {}
+    fmt = lambda xs, nd=1: "-" if not xs else (  # noqa: E731
+        f"{mean(xs):,.{nd}f} [{bootstrap_ci(xs)[0]:,.{nd}f}, {bootstrap_ci(xs)[1]:,.{nd}f}]")
+
+    # Trust over time (honest supplier; share as a 5-round mean).
+    e1s = [json.loads(x) for x in (runs / "e2b" / "e1_scripted.jsonl").read_text().splitlines()] \
+        if (runs / "e2b" / "e1_scripted.jsonl").exists() else []
+    trust = {"E2 LLM": _trust_block(e2, {"obt": ("B", "share"), "rep-strict": ("share",)}),
+             "E2b trust-aware": _trust_block(e2b, {"obt": ("B", "share"), "rep-strict": ("score", "share")}),
+             "E2c planner": _trust_block(e2c, {"obt+planner": ("B", "share"), "rep+planner": ("score", "share"),
+                                               "rep-n18": ("score", "share")}),
+             "E1 scripted": _trust_block(e1s, {"obt": ("B", "share"), "rep-strict": ("score", "share")})}
+    (fd / "trust.json").write_text(json.dumps({k: v for k, v in trust.items() if v}, indent=1, sort_keys=True))
+
+    # Pareto: E1's OBT grid and the D33 reputation grid (scripted buyer).
+    if (runs / "e1").exists():
+        s = e1.summarize_grid(runs / "e1", read=read)
+        g = rep_grid.summarize(runs / "rep_grid", none_dir=runs / "e1" / "none", read=read) \
+            if (runs / "rep_grid").exists() else {"points": {}, "front": [], "pick": None}
+        obt = [{"name": n, "utility_cost": p["utility_cost"], "attack_loss": p["attack_loss"],
+                "front": n in s["front"]} for n, p in sorted(s["points"].items()) if p["defense"] == "obt"]
+        rep = [{"name": n, "utility_cost": p["utility_cost"], "attack_loss": p["attack_loss"],
+                "front": n in g["front"], "never_trades": p["never_trades"], "locked": p["locked"]}
+               for n, p in sorted(g["points"].items())]
+        none = s["points"].get("none", {})
+        (fd / "pareto.json").write_text(json.dumps({
+            "obt": obt, "reputation": rep, "none": {"utility_cost": none.get("utility_cost", 0),
+                                                   "attack_loss": none.get("attack_loss", 0)},
+            "chosen": {"obt": s["default"], "reputation": g["pick"]}}, indent=1, sort_keys=True))
+        tables["e1_obt_front"] = {
+            "caption": "OBT Pareto front over b0, W and grace (E1, scripted buyer; $ per run). Chosen default marked.",
+            "columns": ["config", "utility cost", "loss from lies", "default"],
+            "rows": [[n, f"{s['points'][n]['utility_cost']:.1f}", f"{s['points'][n]['attack_loss']:.1f}",
+                      "yes" if n == s["default"] else ""] for n in s["front"] if s["points"][n]["attack_loss"] > 0]}
+        if g["points"]:
+            tables["reputation_grid"] = {
+                "caption": "Reputation grid over probation n0, threshold and cap (scripted buyer; $ per run). "
+                           "Configs that lock out or never trade with an honest supplier are degenerate.",
+                "columns": ["n0", "theta", "cap", "utility cost", "loss from lies", "locks out", "never trades",
+                            "chosen"],
+                "rows": [[p["rep_n0"], p["rep_theta"], f"{p['rep_cap']:.0f}", f"{p['utility_cost']:.1f}",
+                          f"{p['attack_loss']:.1f}", "yes" if p["locked"] else "", "yes" if p["never_trades"] else "",
+                          "yes" if n == g["pick"] else ""]
+                         for n, p in sorted(g["points"].items(), key=lambda kv: (kv[1]["utility_cost"],
+                                                                                 kv[1]["attack_loss"]))]}
+
+    # Damage vs bound per run (OBT runs with failure events) and the E6 extremes.
+    dmg = {}
+    for label, rows, d in (("E2 obt", e2, "obt"), ("E2c obt+planner", e2c, "obt+planner")):
+        pts = [{"damage": r["metrics"]["loss_bound"]["damage"], "sum_bound": r["metrics"]["loss_bound"]["sum_bound"],
+                "events": len(r["metrics"]["loss_bound"]["events"])} for r in rows
+               if r["defense"] == d and r["metrics"]["loss_bound"]["events"]]
+        if pts:
+            dmg[label] = pts
+    e6f = runs / "e6" / "e6.json"
+    if e6f.exists():
+        e6 = json.loads(e6f.read_text())
+        for key, label in (("best", "E6 max ratio"), ("max_damage", "E6 max damage")):
+            dmg[label] = [{"damage": e6[key]["damage"], "sum_bound": e6[key]["sum_bound"], "events": None}]
+        tables["e6"] = {"caption": f"Adaptive attacker search against OBT ({e6['evaluations']:,} attackers, "
+                                   "worst of 3 seeds). A ratio above 1 would break the bound.",
+                        "columns": ["attacker", "damage", "sum of bounds", "damage / bound"],
+                        "rows": [[label, f"{e6[k]['damage']:.1f}", f"{e6[k]['sum_bound']:.1f}", f"{e6[k]['ratio']:.3f}"]
+                                 for k, label in (("best", "max ratio"), ("max_damage", "max damage"))]}
+    (fd / "damage_bound.json").write_text(json.dumps(dmg, indent=1, sort_keys=True))
+
+    # Main LLM-buyer results: E2 with E2c alongside (5 seeds where run), and per-scenario loss.
+    rows = e2 + e2c
+    order = ["obt", "obt+planner", "rep-n18", "rep+planner", "rep-strict", "rep-default", "llm_selfcheck",
+             "provenance", "none"]
+    defenses = [d for d in order if any(r["defense"] == d for r in rows)]
+    main_rows = []
+    for d in defenses:
+        al = list(attack_loss_by_seed(rows, d).values())
+        uc = list(utility_cost_by_seed(rows, d).values())
+        up = list(utility_pct_by_seed(rows, d).values())
+        sh = [x for x in (main_share(r) for r in rows if r["defense"] == d and r["scenario"] == 1) if x is not None]
+        main_rows.append([d, len(al), fmt(al), fmt(uc), f"{mean(up):.2f}" if up else "-",
+                          f"{mean(sh):.3f}" if sh else "-"])
+    tables["main"] = {"caption": "LLM buyer (gpt-oss:20b): loss from lies (mean of scenarios 2-12) and utility "
+                                 "cost with an honest supplier, mean [95% bootstrap CI over seeds], $ per run.",
+                      "columns": ["defense", "seeds", "loss from lies", "utility cost", "utility (% of cost)",
+                                  "S_main share"], "rows": main_rows}
+    from obt.attacks.suppliers import scenario_name
+    scen = [scenario_name(n) for n in range(2, 13)]
+    cost = {(r["scenario"], r["defense"], r["seed"]): r["total_cost"] for r in rows}
+    means, cis = {}, {}
+    for n, name in zip(range(2, 13), scen):
+        for d in defenses:
+            xs = [cost[(n, d, s)] - cost[(1, d, s)] for s in sorted({k[2] for k in cost})
+                  if (n, d, s) in cost and (1, d, s) in cost]
+            if xs:
+                means[f"{name}|{d}"] = round(mean(xs), 2)
+                cis[f"{name}|{d}"] = [round(v, 2) for v in bootstrap_ci(xs)]
+    (fd / "loss.json").write_text(json.dumps({"defenses": defenses, "scenarios": scen, "mean": means, "ci": cis},
+                                             indent=1, sort_keys=True))
+    tables["loss_by_scenario"] = {"caption": "Loss from lies per scenario (LLM buyer, mean over seeds, $ per run).",
+                                  "columns": ["scenario", *defenses],
+                                  "rows": [[s.split("_", 1)[1].replace("_", " "),
+                                            *[f"{means[f'{s}|{d}']:,.1f}" if f"{s}|{d}" in means else "-"
+                                              for d in defenses]] for s in scen]}
+    db = damage_vs_bound([r for r in rows if r["defense"] == "obt"])
+    tables["damage_vs_bound"] = {"caption": "OBT damage against the per-event bound (E2, LLM buyer).",
+                                 "columns": ["failure events", "runs", "damage", "sum of bounds", "max damage/bound"],
+                                 "rows": [[db["events"], db["runs_with_events"], f"{db['total_damage']:,.1f}",
+                                           f"{db['total_bound']:,.1f}",
+                                           "-" if db["max_ratio"] is None else f"{db['max_ratio']:.3f}"]]}
+
+    # Extractor (E4) and the second buyer model (E3, and E3b once run).
+    e4f = runs / "e4" / "e4.json"
+    if e4f.exists():
+        e4 = json.loads(e4f.read_text())
+        tables["extractor"] = {
+            "caption": "Extractor on the 199-item test set and the 30-item hard subset (shipping/ready/scheduled "
+                       "dates recorded as delivery deadlines, without and with the code guard).",
+            "columns": ["extractor", "precision", "recall", "exact", "hard: LLM alone", "hard: with guard"],
+            "rows": [[m, d["test"]["precision"], d["test"]["recall"], d["test"]["exact_match"],
+                      f"{d['test_hard_no_guard']['hard']['delivery_recorded']}/30",
+                      f"{d['test_hard']['hard']['delivery_recorded']}/30"] for m, d in sorted(e4.items())]}
+    e3_rows = []
+    for label, rs in (("E3 qwen3:8b", read(runs / "e3")), ("E3b qwen3:8b", read(runs / "e3b"))):
+        for d in sorted({r["defense"] for r in rs}):
+            al = list(attack_loss_by_seed(rs, d).values())
+            e3_rows.append([label, d, f"{mean(al):,.1f}" if al else "-"])
+    if e3_rows:
+        tables["second_model"] = {"caption": "Second buyer model (qwen3:8b; gpt-oss extractor), loss from lies, "
+                                             "mean of scenarios 2-12, seed 1.",
+                                  "columns": ["run", "defense", "loss from lies"], "rows": e3_rows}
+    hf = runs / "horizon" / "summary.json"
+    if hf.exists():
+        h = json.loads(hf.read_text())
+        tables["horizon"] = {"caption": "Horizon check (scripted buyer): utility cost as a % of the honest run's "
+                                        "total cost, and loss from lies, at 50 and 100 rounds.",
+                             "columns": ["defense", "utility % (T=50)", "utility % (T=100)", "loss (T=50)",
+                                         "loss (T=100)"],
+                             "rows": [[d, f"{v['50']['utility_pct']:.2f}", f"{v['100']['utility_pct']:.2f}",
+                                       f"{v['50']['attack_loss']:.1f}", f"{v['100']['attack_loss']:.1f}"]
+                                      for d, v in h["defenses"].items()]}
+    (out / "tables.json").write_text(json.dumps(tables, indent=1, sort_keys=True))
+    return "figdata/ and tables.json: data for eval/paper.py (figures and LaTeX tables)"
 
 
 if __name__ == "__main__":

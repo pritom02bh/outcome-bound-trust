@@ -414,3 +414,23 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   3. **Claims recorded from non-commitments:** recorded claims on rows labeled `is_commitment = no`.
 
   The eval refuses any row without an `is_commitment` label.
+
+### D32a. E2c harness bug: obt+planner ran without extraction (found in the paper-table export)
+- **Defect.** On the LLM-buyer path, `eval/run.py` chose the extractor with `defense == "obt"`. The variant `obt+planner` therefore got the `NullExtractor` meant for raw-text baselines. With every claim UNTESTABLE, the planner correctly never ordered from S_main (S_main share 0, loss 0, utility cost = backup-only premium). **All 60 E2c `obt+planner` runs are invalid.**
+  - The reputation variants were unaffected: reputation reads raw text, so the `NullExtractor` is correct for them.
+  - E2 and E2b used plain `obt` and were unaffected.
+  - The planner's unit tests built the Sim directly with an extractor, so they missed it.
+- **Fix.** The extractor is chosen by the base defense (`base_defense(defense) == "obt"`). A new test checks that every OBT variant extracts and every reputation variant doesn't.
+- **Recovery.** Once E2c's process exits, the 60 invalid rows are moved (not deleted) to `runs/e2c/_invalid_obt_planner_nullextractor.jsonl`, and `obt+planner` is re-run on all 12 scenarios × 5 seeds on the fixed harness (step 0 of the overnight chain). The re-run carries a later commit in its `meta.git_commit`.
+
+## D35. Overnight chain: paper assets, horizon check, E3b (user request)
+- **`eval/overnight.sh`**, started with `nohup caffeinate -i` and logging to `runs/overnight.log`, so it continues even if the session idles or hits a usage limit.
+  - It waits for E2c's process to exit and checks that E2c finished cleanly with no violation. Then it runs, strictly in order: the D32a re-run of `obt+planner` and E2c's report; paper assets; the horizon check; E3b; and a final refresh of results and figures.
+  - Any failed step stops the chain. `eval.run` and `eval.horizon` exit non-zero on any invariant or loss-bound violation. Only local models are used, and E5 is never run.
+- **Paper assets** (`eval/paper.py`, from `results/` only).
+  - `make results` exports the data behind every figure (`results/figdata/`: trust over time, the Pareto grids, damage vs bound per run plus the E6 extremes, per-scenario loss with CIs) and every main table (`results/tables.json`), computed by the same statistics code as the reports.
+  - `eval/paper.py` reads only those files. It writes vector PDFs (`paper/figures/`: Pareto front, trust over time, damage vs bound, loss by scenario) in one style: 8 pt text, a 7 pt minimum at print size (checked in code), embedded fonts, and fixed metadata so rebuilds are byte-identical.
+  - It also writes booktabs LaTeX tables (`paper/tables/`), escaping LaTeX special characters.
+- **Horizon check** (`eval/horizon.py`). Scripted buyer at 100 rounds (all 12 scenarios, seeds 1–3) for `none` (the utility reference), the OBT default and the chosen reputation config, compared with the same configs' 50-round runs from E1 and the D33 grid.
+  - Reported: utility cost as a % of the honest run's total cost without a defense, and loss from lies. If OBT's cost is mostly cold start, the percentage should fall as the horizon doubles.
+- **E3b.** qwen3:8b buyer with the gpt-oss extractor, `obt+planner` and `rep+planner`, all 12 scenarios, seed 1 (24 runs), on the fixed harness.

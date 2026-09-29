@@ -249,7 +249,8 @@ def run_one(ec: EvalConfig, n: int, defense: str, seed: int, meter: CostMeter, f
         buyer = LLMBuyer(llm, cfg, base_defense(defense), variant=ec.buyer_variant,
                          planner=bool(variant_opts(defense).get("planner")))
         # LLM-buyer baselines read raw text, not claims, so they skip extraction and overhead stays fair.
-        extractor = LLMExtractor(ext_llm, make_extract_cache(ec)) if defense == "obt" else NullExtractor()
+        extractor = (LLMExtractor(ext_llm, make_extract_cache(ec)) if base_defense(defense) == "obt"
+                     else NullExtractor())
     if not isinstance(extractor, (LLMExtractor, NullExtractor)):
         raise RuntimeError("eval runs must use the LLM extractor (D24)")
     t0 = time.time()

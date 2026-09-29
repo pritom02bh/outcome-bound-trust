@@ -97,3 +97,22 @@ def test_obt_planner_variant_is_its_own_defense():
     assert er.base_defense("obt+planner") == "obt" and er.variant_opts("obt+planner") == {"planner": True}
     assert er.variant_opts("obt") == {}
     assert er.config_hash(ec, "obt+planner") != er.config_hash(ec, "obt")
+
+
+def test_llm_buyer_obt_variants_extract_claims(tmp_path):
+    # E2c bug: the LLM-buyer path chose the extractor by `defense == "obt"`, so "obt+planner" got the NullExtractor,
+    # had no claims to cite, and never traded. Every OBT variant must extract; reputation variants read raw text.
+    from eval.run import run_eval
+    from obt.llm import CostMeter
+
+    def llm(system, user):
+        if "checkable claims" in system:
+            return json.dumps({"claims": []})
+        return json.dumps({"s_main_order": None, "backup_qty": 20, "next_lot_request": 5, "note": "",
+                           "note_cites": []})
+    ec = EvalConfig(backend="fake", model="fake", buyer="llm", scenarios=(1,), seeds=(1,), rounds=3,
+                    defenses=("obt", "obt+planner", "rep+planner", "rep-n18"), extractor_eval=False)
+    run_eval(ec, tmp_path, meter=CostMeter(tmp_path / "c.json"), fake=llm)
+    got = {r["defense"]: r["usage"]["extractor"] for r in
+           (json.loads(x) for x in (tmp_path / "results.jsonl").read_text().splitlines())}
+    assert got == {"obt": "llm", "obt+planner": "llm", "rep+planner": "null", "rep-n18": "null"}
