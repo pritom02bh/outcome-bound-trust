@@ -111,6 +111,9 @@ VARIANTS: dict[str, tuple] = {
     "rep-strict": ("reputation", {"rep_cap": 200.0, "rep_theta": 0.9}),     # the D22 rule point on E1's front
     "rep-default": ("reputation", {"rep_cap": 200.0, "rep_theta": 0.8}),    # the D22 default
     "obt+planner": ("obt", {}, {"planner": True}),                          # D32: code order planner
+    # D33: the non-degenerate reputation config (probation n0 18, theta 0.9, cap $200), plain and with the planner.
+    "rep-n18": ("reputation", {"rep_n0": 18, "rep_theta": 0.9, "rep_cap": 200.0}),
+    "rep+planner": ("reputation", {"rep_n0": 18, "rep_theta": 0.9, "rep_cap": 200.0}, {"planner": True}),
 }
 
 

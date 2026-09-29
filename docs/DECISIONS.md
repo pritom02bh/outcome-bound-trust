@@ -366,3 +366,21 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
 - **Verification.** The TLA+ buyer is fully nondeterministic (any order, any citations), so the planner is one of its refinements and needs no spec change (DESIGN §7).
   - Unit tests: orders only when P = $0; sized to min(desired, headroom ÷ price, capacity); cites the offer; the remainder goes to backup; reputation stays within the allowed value.
   - A full planner run with a fake LLM keeps every invariant, grows B more than 5× in 30 rounds, and never proposes an order the gate blocks.
+
+## D33. Reputation lock-out fix: probation grid (user request and decision)
+- **Grid run** (`eval/rep_grid.py`, `runs/rep_grid/summary.json`). n0 ∈ {3, 8, 18} × θ ∈ {0.8, 0.85, 0.9} × cap ∈ {$100, $200, $400}; all 12 scenarios, seeds 1–3, scripted buyer, gpt-oss extractor from the cache (all 776 grid messages were cached, so no model calls), A2A. 972 runs, 0 invariant violations. The utility reference is E1's `none`.
+- **Findings.**
+  - **Score lock-out** (REP_SCORE blocks on an honest supplier) happens only at n0 = 3 with θ 0.85 or 0.9, and only with cap $200 or $400. Those 4 points block 138 honest orders over 3 seeds, with utility cost 443.7.
+  - **Longer probation removes the lock-out.** Every n0 = 8 and n0 = 18 point trades freely with an honest supplier (utility cost 0), but loses $702–$1,020 per run to attacks. The lowest is n0 18, θ 0.9, cap $200, at $702.1.
+  - **Every cap $100 point never trades,** for every n0 and θ: utility cost $494.2, the backup-only ceiling, with attack loss 0. A newcomer's limit (0.5 × cap = $50) is below one lot's value, so these points are blocked by the cap (REP_CAP), not by the score. (E1 found the same for cap ≤ $100.)
+    - This is also why the analytic score rule marks n0 3 / θ 0.85–0.9 / cap $100 as locking while the runs show no REP_SCORE blocks: the cap blocks every order first.
+  - **Reputation's non-locking front has a gap.** The front runs from (utility 0, loss $702) straight to the never-trade cluster (utility $494.2, loss 0). No non-locking point lies in between.
+- **The D22 rule, taken literally, is degenerate here.** The reference is OBT+planner's utility cost. Its scripted counterpart is the scripted OBT default, $344.2 in E1 (the scripted buyer plans exactly like D32). The rule's nearest front point is then a cap-$100 point (|494.2 − 344.2| = 150 < 344.2), `rep_n18_th0.85_cap100`, which **never trades**. That would make rep+planner meaningless.
+- **Decision (user): exclude never-trading configs as degenerate, like lock-out.** A config that never trades with an honest supplier (0 S_main orders executed in every honest-scenario run) is excluded from the front, just as a config that locks an honest supplier out is. This **corrects the rule's intent**: the D22 rule is meant to choose among working baselines, and a baseline that can never trade isn't one. It is not an outcome-based choice.
+  - The non-degenerate front is then the trading group, which ties at utility 0; the tie-break (lower attack loss) gives **n0 18, θ 0.9, cap $200** (attack loss $702.1).
+  - `eval/rep_grid.py` marks `never_trades` and excludes it (tested).
+- **Finding: reputation's front is binary, OBT's is not.** Every non-degenerate reputation config either trades freely with an honest supplier (utility cost 0) and loses $702–$1,020 per run to attacks, or it never trades. No setting of n0, θ or cap gives an intermediate point.
+  - OBT's E1 front has intermediate operating points: utility cost $292–$453 with attack loss $202 down to $36.
+  - The E2c report includes the full grid and both fronts.
+- **Variants for E2c** (`eval.run.VARIANTS`): `rep-n18` (reputation, n0 18, θ 0.9, cap $200) and `rep+planner` (the same config with the D32 planner).
+- **E2c.** `obt+planner`, `rep+planner` and `rep-n18` on all 12 scenarios × seeds 1–5, with the gpt-oss buyer and the E1 default, over A2A with the gpt-oss extractor. That's 180 runs, compared with E2. It stops on any violation.

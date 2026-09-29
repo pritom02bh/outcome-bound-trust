@@ -280,6 +280,36 @@ def _e2b(runs: Path, out: Path) -> str | None:
     return "e2b/: trust-aware buyer view vs E2 (e2b.md) and trust over time with E2 and E1 overlays"
 
 
+def _grid_md(runs: Path) -> str:
+    """D33: the full reputation grid and its front, next to OBT's E1 front (scripted buyer, same config)."""
+    root = runs / "rep_grid"
+    if not root.exists() or not (runs / "e1" / "none").exists():
+        return ""
+    from eval import e1, rep_grid
+    read = lambda p: _read_rows(p / "results.jsonl")  # noqa: E731
+    g = rep_grid.summarize(root, none_dir=runs / "e1" / "none", read=read)
+    L = ["", "## Reputation grid (D33; scripted buyer; n0 x θ x cap)", "",
+         f"Non-degenerate front (excluding configs that lock out an honest supplier or never trade with one): "
+         f"{', '.join(g['front'])}. Chosen (D22 rule, nearest the OBT reference utility {g['reference_utility']}): "
+         f"**{g['pick']}**.", "",
+         "| config | n0 | θ | cap | utility cost | attack loss | locked | never trades | front |",
+         "|---|---|---|---|---|---|---|---|---|"]
+    for name, p in sorted(g["points"].items(), key=lambda kv: (kv[1]["utility_cost"], kv[1]["attack_loss"])):
+        mark = "chosen" if name == g["pick"] else ("yes" if name in g["front"] else "")
+        L.append(f"| {name} | {p['rep_n0']} | {p['rep_theta']} | {p['rep_cap']:.0f} | {p['utility_cost']:.1f} | "
+                 f"{p['attack_loss']:.1f} | {p['locked']} | {p['never_trades']} | {mark} |")
+    if (runs / "e1").exists():
+        s = e1.summarize_grid(runs / "e1", read=read)
+        obt = sorted((s["points"][n]["utility_cost"], s["points"][n]["attack_loss"], n) for n in s["front"]
+                     if s["points"][n]["attack_loss"] > 0)
+        L += ["", "**Finding.** Reputation's front is binary: every non-degenerate reputation config either trades "
+              "freely with an honest supplier (utility cost 0) and loses heavily to attacks, or never trades. OBT's "
+              "front (E1, same scripted buyer) has intermediate operating points that trade with an honest supplier "
+              "and bound the loss:", "", "| OBT config (E1 front) | utility cost | attack loss |", "|---|---|---|"]
+        L += [f"| {n} | {u:.1f} | {a:.1f} |" for u, a, n in obt]
+    return "\n".join(L) + "\n"
+
+
 def _e2c(runs: Path, out: Path) -> str | None:
     f = runs / "e2c" / "results.jsonl"
     if not f.exists() or not (runs / "e2" / "results.jsonl").exists():
@@ -293,7 +323,8 @@ def _e2c(runs: Path, out: Path) -> str | None:
     d = out / "e2c"
     d.mkdir(parents=True, exist_ok=True)
     (d / "ci.md").write_text("E2c (D32, D33) next to E2: the planner defenses and the new reputation config, "
-                             "with E2's defenses and its `none` utility reference.\n\n" + report(rows, defenses))
+                             "with E2's defenses and its `none` utility reference.\n\n" + report(rows, defenses)
+                             + _grid_md(runs))
     e1 = {}
     ef = runs / "e2b" / "e1_scripted.jsonl"
     if ef.exists():

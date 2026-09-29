@@ -29,6 +29,15 @@ def test_pick_is_the_non_locking_front_point_nearest_the_reference():
     assert front == ["a", "b", "e"] and pick == "b"
 
 
+def test_never_trading_points_are_degenerate_and_excluded_like_lock_out():
+    # D33: correcting the D22 rule's intent, not an outcome-based choice.
+    pts = {"trades": {"utility_cost": 0.0, "attack_loss": 702.0, "locked": False, "never_trades": False},
+           "trades2": {"utility_cost": 0.0, "attack_loss": 900.0, "locked": False, "never_trades": False},
+           "never": {"utility_cost": 494.2, "attack_loss": 0.0, "locked": False, "never_trades": True}}
+    front, pick = rep_grid.choose(pts, reference_utility=344.2)
+    assert front == ["trades"] and pick == "trades"
+
+
 def test_summary_marks_empirical_lock_out(tmp_path, rule_llm):
     root = tmp_path / "rg"
     kw = dict(backend="fake", model="fake", scenarios=(1, 2), seeds=(1,), rounds=30)
