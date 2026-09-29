@@ -55,3 +55,29 @@ def test_extract_dedupes_and_writes_an_unlabeled_sample(tmp_path):
     assert all(all(r[k] == "" for k in list(r)[1:]) for r in rows)
     assert ep.extract(arc, tmp_path / "again.csv", n=100, seed=1) == meta
     assert (tmp_path / "again.csv").read_bytes() == out.read_bytes()
+
+
+def test_quoted_printable_bodies_are_decoded(tmp_path):
+    raw = (b"Message-ID: <x>\nFrom: a@enron.com\nSubject: s\nContent-Type: text/plain; charset=us-ascii\n"
+           b"Content-Transfer-Encoding: quoted-printable\n\n"
+           b"We will deliver 500 barrels by May 15.=20 The price is $4.2=\n"
+           b"5 per MMBtu, firm through Friday.\n")
+    arc = tmp_path / "qp.tar.gz"
+    _tar(arc, {"maildir/a/sent/1.": raw})
+    out = tmp_path / "c.csv"
+    ep.extract(arc, out, n=10, seed=1)
+    msgs = [r["message"] for r in csv.DictReader(out.open())]
+    assert "The price is $4.25 per MMBtu, firm through Friday." in msgs
+    assert not any("=20" in m or "=\n" in m for m in msgs)
+
+
+def test_undeclared_quoted_printable_is_decoded_too(tmp_path):
+    raw = (b"Message-ID: <x>\nFrom: a@enron.com\nSubject: s\nContent-Type: text/plain; charset=us-ascii\n"
+           b"Content-Transfer-Encoding: 7bit\n\n"
+           b"The price is $4.2=\n5 per MMBtu, firm=20through Friday. If x = 5 then y.\n")
+    arc = tmp_path / "qp7.tar.gz"
+    _tar(arc, {"maildir/a/sent/1.": raw})
+    out = tmp_path / "c.csv"
+    ep.extract(arc, out, n=10, seed=1)
+    msgs = [r["message"] for r in csv.DictReader(out.open())]
+    assert "The price is $4.25 per MMBtu, firm through Friday." in msgs

@@ -16,6 +16,7 @@ import email
 import email.policy
 import hashlib
 import json
+import quopri
 import random
 import re
 import tarfile
@@ -44,6 +45,7 @@ _PRICE = re.compile(r"\$\s?\d[\d,]*(?:\.\d+)?")
 _VALID = re.compile(r"\b(?:valid|good (?:until|through|thru|till|for)|firm|guaranteed|expires?|expiration|"
                     r"effective|through|thru|until|till|holds?)\b", re.I)
 _CUT = re.compile(r"^-{3,}\s*(?:original message|forwarded by)|^-{5,} forwarded|^_{5,}|^from:\s", re.I | re.M)
+_QP_SIGNS = re.compile(rb"=(?:20|09|3D|\r?\n)")
 _SENT = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])")
 
 
@@ -114,10 +116,15 @@ def extract(archive: Path, out: Path = OUT, n: int = 100, seed: int = SEED) -> d
                 continue
             try:
                 msg = email.message_from_bytes(f.read(), policy=email.policy.compat32)
-                body = msg.get_payload(decode=False)
+                if msg.is_multipart():
+                    continue
+                # Decode transfer encodings (quoted-printable leaves "=20" and soft line breaks otherwise).
+                raw = msg.get_payload(decode=True) or b""
+                # Some bodies carry quoted-printable text under a 7bit header (pasted or forwarded): decode it too.
+                if _QP_SIGNS.search(raw):
+                    raw = quopri.decodestring(raw)
+                body = raw.decode(msg.get_content_charset() or "latin-1", errors="replace")
             except Exception:
-                continue
-            if not isinstance(body, str):
                 continue
             scanned += 1
             for s in own_sentences(body):
