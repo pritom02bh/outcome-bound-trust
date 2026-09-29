@@ -97,3 +97,14 @@ def test_report_states_seed_counts_per_row_when_defenses_have_different_seeds():
     util = md.split("## Utility cost per defense")[1].split("##")[0]
     assert "| obt | 3 |" in util                         # no `none` run for seeds 4-5, so utility stays at 3 seeds
     assert "seeds per row" in md.lower()
+
+
+def test_generic_trust_panels_figure():
+    rows = [trace_row(1, "obt", 1, 100, [(1, 5), (5, 1)]), trace_row(1, "obt+planner", 1, 100, [(3, 3), (6, 0)])]
+    for r in rows:
+        for i, t in enumerate(r["trace"]):
+            t["B"] = 5.0 + i
+    panels = [("OBT budget B ($)", [("E2 obt", rows, "obt", "B"), ("E2c obt+planner", rows, "obt+planner", "B")]),
+              ("S_main unit share", [("E2 obt", rows, "obt", "share"), ("E2c", rows, "obt+planner", "share")])]
+    a = stats.trust_panels_svg(panels, "title")
+    assert a == stats.trust_panels_svg(panels, "title") and a.startswith(b"<?xml")

@@ -78,3 +78,23 @@ def test_e2b_report_overlays_e2_and_e1(tmp_path):
     assert svg.startswith(b"<?xml") and svg == stats.e2b_trust_svg(e2b, e2, e1)
     md = stats.e2b_report(e2b, e2)
     assert "trust-aware" in md and "S_main unit share" in md and "damage vs bound" in md.lower()
+
+
+def test_e2c_section_merges_with_e2(tmp_path, rule_llm):
+    from eval import results
+    base = dict(backend="fake", model="fake", buyer="llm", scenarios=(1, 2), seeds=(1,), rounds=6,
+                sim={"b0_frac": 0.05, "window": 0, "grace": 0}, extractor_eval=False)
+
+    def fake(system, user):
+        if "checkable claims" in system:
+            return rule_llm(system, user)
+        return json.dumps({"s_main_order": None, "backup_qty": 20, "next_lot_request": 5, "note": "",
+                           "note_cites": []})
+    run_eval(EvalConfig(**base, defenses=("none", "obt")), tmp_path / "runs" / "e2",
+             meter=CostMeter(tmp_path / "c.json"), fake=fake)
+    run_eval(EvalConfig(**base, defenses=("obt+planner",)), tmp_path / "runs" / "e2c",
+             meter=CostMeter(tmp_path / "c.json"), fake=fake)
+    results.build(tmp_path / "runs", tmp_path / "out")
+    ci = (tmp_path / "out" / "e2c" / "ci.md").read_text()
+    assert "| obt+planner |" in ci and "| obt |" in ci
+    assert (tmp_path / "out" / "e2c" / "trust_over_time.svg").exists()

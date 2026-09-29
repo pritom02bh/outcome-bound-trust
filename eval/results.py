@@ -17,11 +17,11 @@ from collections import defaultdict
 from pathlib import Path
 
 from eval.run import markdown, summarize
-from eval.stats import e2b_report, e2b_trust_svg, report, trust_over_time_svg
+from eval.stats import e2b_report, e2b_trust_svg, report, trust_over_time_svg, trust_panels_svg
 from obt.attacks.suppliers import scenario_name
 
 # e1 grid points are summarized together as one grid (_e1), not as separate evals.
-SKIP = ("_invalid", "_archive", "cache", "message_bank", "tuning", "e1", "e4", "e6")
+SKIP = ("_invalid", "_archive", "cache", "message_bank", "tuning", "e1", "e4", "e6", "rep_grid")
 
 
 def _read_rows(f: Path) -> list[dict]:
@@ -280,6 +280,39 @@ def _e2b(runs: Path, out: Path) -> str | None:
     return "e2b/: trust-aware buyer view vs E2 (e2b.md) and trust over time with E2 and E1 overlays"
 
 
+def _e2c(runs: Path, out: Path) -> str | None:
+    f = runs / "e2c" / "results.jsonl"
+    if not f.exists() or not (runs / "e2" / "results.jsonl").exists():
+        return None
+    e2c, e2 = _read_rows(f), _read_rows(runs / "e2" / "results.jsonl")
+    rows = e2 + e2c
+    new = list(dict.fromkeys(r["defense"] for r in e2c))
+    order = ["obt", "obt+planner", "rep-strict", "rep-default", *[d for d in new if d != "obt+planner"], "none",
+             "provenance", "llm_selfcheck"]
+    defenses = [d for d in order if any(r["defense"] == d for r in rows)]
+    d = out / "e2c"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "ci.md").write_text("E2c (D32, D33) next to E2: the planner defenses and the new reputation config, "
+                             "with E2's defenses and its `none` utility reference.\n\n" + report(rows, defenses))
+    e1 = {}
+    ef = runs / "e2b" / "e1_scripted.jsonl"
+    if ef.exists():
+        for line in ef.read_text().splitlines():
+            r = json.loads(line)
+            e1.setdefault(r["defense"], []).append(r)
+    reps = [x for x in new if x != "obt+planner"]
+    panels = [("OBT budget B ($)", [("E2 obt (LLM)", e2, "obt", "B"), ("E2c obt+planner", e2c, "obt+planner", "B"),
+                                    ("E1 scripted obt", e1.get("obt", []), "obt", "B")]),
+              ("reputation score", [(f"E2c {x}", e2c, x, "score") for x in reps]
+               + [("E1 scripted rep-strict", e1.get("rep-strict", []), "rep-strict", "score")]),
+              ("S_main unit share (5-round mean)", [("E2 obt", e2, "obt", "share"),
+                                                   ("E2c obt+planner", e2c, "obt+planner", "share"),
+                                                   ("E2 rep-strict", e2, "rep-strict", "share")]
+               + [(f"E2c {x}", e2c, x, "share") for x in reps])]
+    (d / "trust_over_time.svg").write_bytes(trust_panels_svg(panels, "Trust over time: E2c vs E2 (honest S_main)"))
+    return "e2c/: planner defenses and the new reputation config vs E2 (ci.md, trust_over_time.svg)"
+
+
 def build(runs: Path, out: Path) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     built, index, pareto = {}, ["# Results (rebuilt from runs/ only)", ""], []
@@ -339,6 +372,9 @@ def build(runs: Path, out: Path) -> dict:
     e2b = _e2b(runs, out)
     if e2b:
         index.append("- " + e2b)
+    e2c = _e2c(runs, out)
+    if e2c:
+        index.append("- " + e2c)
     bank = _bank_md(runs)
     if bank:
         (out / "bank.md").write_text(bank)

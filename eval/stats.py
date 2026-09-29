@@ -306,3 +306,32 @@ def e2b_report(e2b: list[dict], e2: list[dict]) -> str:
                  f"damage ${db['total_damage']:,.1f} vs bound ${db['total_bound']:,.1f}; max per-run ratio {mx}; "
                  f"bound held in every run: {db['all_ok']}.")
     return "\n".join(L) + "\n"
+
+
+def trust_panels_svg(panels: list[tuple[str, list[tuple[str, list[dict], str, str]]]], title: str,
+                     scenario: int = 1) -> bytes:
+    """Stacked trust-over-time panels. Each line: (label, rows, defense, key) with key "B" (OBT budget), "score"
+    (reputation, trace['rep']) or "share" (S_main unit share, 5-round mean). Honest scenario, mean over seeds."""
+    import io
+
+    import matplotlib
+    matplotlib.use("Agg")
+    matplotlib.rcParams["svg.hashsalt"] = "obt"
+    import matplotlib.pyplot as plt
+    fig, axes = plt.subplots(len(panels), 1, figsize=(6.5, 2.9 * len(panels)), sharex=True, squeeze=False)
+    for ax, (ylabel, lines) in zip(axes[:, 0], panels):
+        for label, rows, d, key in lines:
+            ys = share_by_round(rows, d, scenario) if key == "share" else series(rows, d, key, scenario)
+            if key == "share" and ys:
+                ys = [mean(ys[max(0, i - 4):i + 1]) for i in range(len(ys))]
+            if ys:
+                ax.plot(range(1, len(ys) + 1), ys, label=label)
+        ax.set_ylabel(ylabel)
+        ax.legend(fontsize=6)
+    axes[0, 0].set_title(title, fontsize=9)
+    axes[-1, 0].set_xlabel("round (honest S_main, mean over seeds)")
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format="svg", metadata={"Date": None, "Creator": None})
+    plt.close(fig)
+    return buf.getvalue()
