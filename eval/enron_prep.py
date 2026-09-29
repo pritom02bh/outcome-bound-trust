@@ -69,12 +69,32 @@ def _norm(s: str) -> str:
     return " ".join(re.sub(r"[^a-z0-9$./ ]", " ", s.lower()).split())
 
 
-def download(url: str = URL, dest: Path = ARCHIVE) -> dict:
+EXPECTED_BYTES = 443_254_787          # the server's Content-Length for this release
+
+
+def download(url: str = URL, dest: Path = ARCHIVE, expected: int = EXPECTED_BYTES, attempts: int = 8) -> dict:
+    """Resumable: continues a partial download with HTTP Range requests and accepts the file only at full size."""
     dest.parent.mkdir(parents=True, exist_ok=True)
-    if not dest.exists():
-        tmp = dest.with_suffix(".part")
-        urllib.request.urlretrieve(url, tmp)
-        tmp.replace(dest)
+    tmp = dest.with_suffix(".part")
+    for _ in range(attempts):
+        if dest.exists():
+            break
+        have = tmp.stat().st_size if tmp.exists() else 0
+        req = urllib.request.Request(url, headers={"Range": f"bytes={have}-"} if have else {})
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r, tmp.open("ab" if have else "wb") as f:
+                if have and r.status != 206:          # server ignored the range: start over
+                    f.seek(0)
+                    f.truncate()
+                while chunk := r.read(1 << 20):
+                    f.write(chunk)
+        except OSError:
+            continue
+        if tmp.stat().st_size == expected:
+            tmp.replace(dest)
+    if not dest.exists() or dest.stat().st_size != expected:
+        got = tmp.stat().st_size if tmp.exists() else 0
+        raise RuntimeError(f"download incomplete after {attempts} attempts: {got} of {expected} bytes")
     h = hashlib.sha256()
     with dest.open("rb") as f:
         for chunk in iter(lambda: f.read(1 << 20), b""):
