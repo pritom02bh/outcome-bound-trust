@@ -196,6 +196,7 @@ class LLMBuyer:
     cfg: GameConfig
     defense: str = "obt"
     variant: str | None = None          # view variant, e.g. "trust-aware" (E2b, D30); None = the E2 view
+    planner: bool = False               # D32: code sizes and cites the S_main order from the LLM's desired total
     stats: dict = field(default_factory=lambda: {"calls": 0, "parse_failures": 0, "replans": 0,
                                                  "selfcheck_vetoes": 0, "selfcheck_calls": 0})
 
@@ -234,6 +235,19 @@ class LLMBuyer:
             need = max(0, self.target - view.position)
             if need:
                 api.order(BACKUP, qty=need)
+            return
+        if self.planner:
+            # D32: the LLM states only its desired total this round; code decides the S_main part.
+            from .planner import plan_obt, plan_reputation
+            desired = d.backup_qty + (d.s_main_order.qty if d.s_main_order is not None else 0)
+            if self.defense == "obt":
+                plan_obt(view, desired, api, self.cfg)
+            elif self.defense == "reputation":
+                plan_reputation(view, desired, api, self.cfg)
+            else:
+                raise ValueError(f"no planner for defense {self.defense!r}")
+            if d.note:
+                api.note(d.note, d.note_cites)
             return
         backup = d.backup_qty
         o = d.s_main_order

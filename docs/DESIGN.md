@@ -198,6 +198,8 @@ The damage from one broken promise is linear in the trust budget the counterpart
   Config A, with 3 rounds and 2 suppliers, did not finish; its partial run is reported separately. A symmetry cross-check backs these up, and random simulation plus spec–code trace replay cover the full bounds (2 suppliers, 2 items, 6 rounds). The full bounds are not verified exhaustively. The invariant-by-config coverage table and all outputs are in `spec/results/`.
 - **Runtime monitors** (`obt/monitor.py`): check I1–I4, I6, I7 after every phase of every run. I1 is re-derived by a second implementation of the §6 table from a pre-commit gate snapshot. Violations go into each run's metrics; the eval fails loudly if the total isn't 0.
 
+**Buyer behaviour is outside the verified core.** The TLA+ buyer (`Propose` in `spec/OBT.tla`) is fully nondeterministic. In any round it may propose nothing, or one ORDER to any supplier for any item and any quantity within the model's bounds, citing **any subset of claim ids**, including unknown ones. It may also write any note, and code proposes the payments. So every concrete buyer is a refinement of that buyer: the scripted buyer, the LLM buyer, and the D32 order planner, which only chooses among orders the buyer could always have proposed. I1–I4 therefore hold for all of them, and adding the planner needed no spec change. The Python buyer may also place a backup order in the same round as an S_main order. Backup orders pass the gate as `OK`, touch no claim, and don't count toward any S_main counterparty's exposure P(c).
+
 ## 8. Environment
 
 Beer Game variant, 50 rounds, seeded demand.

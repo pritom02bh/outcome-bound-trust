@@ -107,9 +107,10 @@ _RUN_FIELDS = ("backend", "model", "buyer", "rounds", "cache", "transport")
 
 
 # Named defense variants (DECISIONS D27): one Sim defense run with its own settings, reported as its own column.
-VARIANTS: dict[str, tuple[str, dict]] = {
+VARIANTS: dict[str, tuple] = {
     "rep-strict": ("reputation", {"rep_cap": 200.0, "rep_theta": 0.9}),     # the D22 rule point on E1's front
     "rep-default": ("reputation", {"rep_cap": 200.0, "rep_theta": 0.8}),    # the D22 default
+    "obt+planner": ("obt", {}, {"planner": True}),                          # D32: code order planner
 }
 
 
@@ -119,6 +120,12 @@ def base_defense(defense: str) -> str:
 
 def sim_overrides(ec: EvalConfig, defense: str) -> dict:
     return {**ec.sim, **VARIANTS.get(defense, (defense, {}))[1]}
+
+
+def variant_opts(defense: str) -> dict:
+    """Buyer-side options of a named variant (e.g. the D32 planner); {} for plain defenses."""
+    v = VARIANTS.get(defense)
+    return dict(v[2]) if v is not None and len(v) > 2 else {}
 
 
 def sim_config(ec: EvalConfig, defense: str = "obt") -> SimConfig:
@@ -143,6 +150,8 @@ def config_hash(ec: EvalConfig, defense: str = "obt") -> str:
     stale run); for every plain defense it is the eval's shared config hash."""
     sim = dataclasses.asdict(sim_config(ec, defense))
     sim.pop("defense")                      # part of the run key, not of the config
+    if variant_opts(defense):               # buyer-side variant options are part of that variant's identity
+        sim["variant_opts"] = variant_opts(defense)
     blob = {"eval": {k: getattr(ec, k) for k in _RUN_FIELDS}, "sim": sim}
     if ec.extractor_model is not None:      # only when set, so every earlier run keeps its hash
         blob["extractor_model"] = ec.extractor_model
@@ -228,11 +237,14 @@ def run_one(ec: EvalConfig, n: int, defense: str, seed: int, meter: CostMeter, f
     if ec.buyer == "scripted":
         if defense == "llm_selfcheck":
             raise ValueError("llm_selfcheck needs an LLM buyer")
+        if variant_opts(defense).get("planner"):
+            raise ValueError("the planner (D32) wraps the LLM buyer; the scripted buyer already plans in code")
         buyer = ScriptedClaimBuyer(cfg)
         # The scripted buyer reads claim cards under every defense, so every scripted run extracts.
         extractor: Extractor = LLMExtractor(ext_llm, make_extract_cache(ec))
     else:
-        buyer = LLMBuyer(llm, cfg, base_defense(defense), variant=ec.buyer_variant)
+        buyer = LLMBuyer(llm, cfg, base_defense(defense), variant=ec.buyer_variant,
+                         planner=bool(variant_opts(defense).get("planner")))
         # LLM-buyer baselines read raw text, not claims, so they skip extraction and overhead stays fair.
         extractor = LLMExtractor(ext_llm, make_extract_cache(ec)) if defense == "obt" else NullExtractor()
     if not isinstance(extractor, (LLMExtractor, NullExtractor)):

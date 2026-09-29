@@ -9,8 +9,10 @@ E2_SIM = {"b0_frac": 0.05, "window": 0, "grace": 0}
 
 
 def test_variants_are_the_user_decisions():
-    assert er.VARIANTS == {"rep-strict": ("reputation", {"rep_cap": 200.0, "rep_theta": 0.9}),
-                           "rep-default": ("reputation", {"rep_cap": 200.0, "rep_theta": 0.8})}
+    # E2's two reputation variants (D27) must never change; later variants (D32, D33) are added alongside.
+    assert er.VARIANTS["rep-strict"] == ("reputation", {"rep_cap": 200.0, "rep_theta": 0.9})
+    assert er.VARIANTS["rep-default"] == ("reputation", {"rep_cap": 200.0, "rep_theta": 0.8})
+    assert er.VARIANTS["obt+planner"] == ("obt", {}, {"planner": True})
 
 
 def test_variant_resolves_to_reputation_with_its_overrides():

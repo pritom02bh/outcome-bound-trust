@@ -354,3 +354,15 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
     - a delivery candidate has a quantity with a unit plus a deadline expression (by / no later than / on or before / due / deliver… / ship… / arriv… followed by a date, weekday or end-of-period phrase);
     - a price candidate has a dollar amount plus a validity word.
   - **Dedupe and sample:** candidates are deduplicated on normalized text and sorted, then 100 are sampled with seed 20260929 into `data/enron_candidates.csv`. Its columns are `message`, `has_delivery_claim`, `qty`, `deadline`, `has_price_claim`, `price`, `valid_until`, `notes`, with every label column empty for the user.
+
+## D32. OBT order planner: "obt+planner" and "rep+planner" (user decision)
+- **Why.** E2 and E2b showed that the gpt-oss buyer keeps OBT's trust from growing: its overlapping 1-unit orders pin B near b0, even when the view spells out the growth rule with numbers. The planner moves order sizing into code. The LLM gives only its desired total quantity for the round (`backup_qty` + any S_main quantity it proposed), and the planner splits it (`obt/planner.py`).
+- **obt+planner.** Order from S_main only when nothing is pending (P = $0), sized to min(desired, headroom ÷ claimed price, offer capacity), citing the current offer's DELIVERY claims and its one PRICE claim. The rest goes to S_backup. The next lot request is sized to the budget expected once pending orders are honored.
+  - This is the scripted buyer's "pulse" (D10), since B(c) grows only with the largest single honored order. Every order still passes the unchanged gate.
+- **rep+planner.** The reputation equivalent. The score grows with each completed order whatever its size, so the growth-optimal policy orders **every** round, up to the allowed order value (score × cap) at the nominal price, with the rest to backup. The next lot request equals the allowed size.
+  - Its reputation settings are the D33 choice.
+- **Plain `obt` is unchanged.** Variants carry buyer-side options (`VARIANTS[name][2]`), which are part of that variant's config hash. The existing variants' hashes are unchanged (checked against E2's runs).
+  - The planner wraps only the LLM buyer. The scripted buyer already plans in code, and combining it with the planner is refused.
+- **Verification.** The TLA+ buyer is fully nondeterministic (any order, any citations), so the planner is one of its refinements and needs no spec change (DESIGN §7).
+  - Unit tests: orders only when P = $0; sized to min(desired, headroom ÷ price, capacity); cites the offer; the remainder goes to backup; reputation stays within the allowed value.
+  - A full planner run with a fake LLM keeps every invariant, grows B more than 5× in 30 rounds, and never proposes an order the gate blocks.
