@@ -310,6 +310,26 @@ def _grid_md(runs: Path) -> str:
     return "\n".join(L) + "\n"
 
 
+def _commits_md(runs: Path, e2c: list[dict]) -> str:
+    """Which git commits E2c's runs were recorded on, and the check that a mid-run fix changed no decision."""
+    by: dict = {}
+    for i, r in enumerate(e2c, 1):
+        by.setdefault(r["meta"]["git_commit"][:10], []).append(i)
+    if len(by) < 2:
+        return ""
+    L = ["**Provenance.** E2c's runs span two git commits:"]
+    L += [f"runs {v[0]}-{v[-1]} ({len(v)} runs) on `{k}`" for k, v in by.items()]
+    L = [L[0] + " " + "; ".join(L[1:]) + "."]
+    f = runs / "e2c" / "commit_check.json"
+    if f.exists():
+        c = json.loads(f.read_text())
+        L.append(f"The second commit adds only the A2A keep-alive fix ({c['obt_diff']}): it changes connection "
+                 f"handling, not any decision logic. Check: {c['configs']} with E2c's settings, scenarios {c['scenarios']}, "
+                 f"seed {c['seed']}, {c['buyer']} buyer, {c['transport']}, run on both commits: "
+                 f"{c['identical']}/{c['runs_compared']} runs identical ({c['compared']}).")
+    return " ".join(L) + "\n\n"
+
+
 def _e2c(runs: Path, out: Path) -> str | None:
     f = runs / "e2c" / "results.jsonl"
     if not f.exists() or not (runs / "e2" / "results.jsonl").exists():
@@ -323,8 +343,8 @@ def _e2c(runs: Path, out: Path) -> str | None:
     d = out / "e2c"
     d.mkdir(parents=True, exist_ok=True)
     (d / "ci.md").write_text("E2c (D32, D33) next to E2: the planner defenses and the new reputation config, "
-                             "with E2's defenses and its `none` utility reference.\n\n" + report(rows, defenses)
-                             + _grid_md(runs))
+                             "with E2's defenses and its `none` utility reference.\n\n" + _commits_md(runs, e2c)
+                             + report(rows, defenses) + _grid_md(runs))
     e1 = {}
     ef = runs / "e2b" / "e1_scripted.jsonl"
     if ef.exists():
