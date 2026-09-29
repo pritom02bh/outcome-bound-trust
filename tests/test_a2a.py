@@ -106,3 +106,26 @@ def test_servers_are_shut_down_after_a_run():
     for ep in sim.transport.registry.values():
         with pytest.raises(httpx.HTTPError):
             httpx.get(ep.url + ".well-known/agent-card.json", timeout=1)
+
+
+def test_a_connection_idle_longer_than_uvicorns_default_keep_alive_still_works():
+    # E2c crashed on httpcore.ReadError: uvicorn closes idle keep-alive connections after 5 s by default, while an
+    # LLM buyer waits ~7 s between supplier calls, so the client could send on a connection being closed.
+    import time
+    tr = A2ATransport(make_supplier(1, G, 0), G)
+    try:
+        ep = tr.registry[MAIN]
+        tr.call(ep.url, ep.token, {"op": "offer", "round": 1, "request_qty": 20})
+        time.sleep(6.5)
+        assert "text" in tr.call(ep.url, ep.token, {"op": "offer", "round": 2, "request_qty": 20})
+    finally:
+        tr.close()
+
+
+def test_servers_keep_idle_connections_open_longer_than_any_buyer_gap():
+    # The close/send race needs a keep-alive timeout shorter than the gap between calls; rule it out by config.
+    tr = A2ATransport(make_supplier(1, G, 0), G)
+    try:
+        assert all(s.server.config.timeout_keep_alive >= 3600 for s in tr._servers)
+    finally:
+        tr.close()

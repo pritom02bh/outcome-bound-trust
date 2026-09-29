@@ -168,7 +168,10 @@ class _Server:
         handler = DefaultRequestHandler(agent_executor=Executor(), task_store=InMemoryTaskStore(), agent_card=self.card)
         app = Starlette(routes=create_agent_card_routes(self.card) + create_jsonrpc_routes(handler, "/"))
         app.add_middleware(BearerAuth)
-        self.server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
+        # Keep idle connections open for an hour: uvicorn's 5 s default races with an LLM buyer's ~7 s gaps between
+        # calls (the client can send on a connection the server is closing), which crashed E2c once.
+        self.server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning",
+                                                    timeout_keep_alive=3600))
         self.thread = threading.Thread(target=self.server.run, daemon=True)
         self.thread.start()
         deadline = time.time() + 10

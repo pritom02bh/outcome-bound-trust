@@ -271,6 +271,10 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
 - **Analysis channel.** The scripted supplier's intent/truth flag is ground truth for analysis only. It's read out of band from the host object in the same process, never over A2A, and no defense reads it.
 - **Acceptance.** For all 12 scenarios (scripted buyer, seed 0), `inproc` and `a2a` give identical ledgers (claim ids, counterparties, slots, statuses, source hashes), actions, costs and traces. The same holds for the `none` and `reputation` baselines on scenarios 1, 3 and 12.
 - **Overhead (measured).** About 1.4 ms per exchange on localhost and 0.11 s to start a run's servers. A 50-round scripted run takes 0.76 s over A2A, against 0.05 s in-process. Servers and clients are shut down at the end of every run (tested).
+- **Keep-alive (fixed after E2c crashed at run 68).** uvicorn closes idle keep-alive connections after 5 s by default. An LLM buyer waits about 7 s between supplier calls, so the client could send on a connection the server was closing, which gave `httpcore.ReadError`. Scripted runs call within milliseconds, so they never hit it.
+  - The servers now keep idle connections for an hour (`timeout_keep_alive=3600`, tested).
+  - Retries were not added: retrying an `order` blindly could place it twice.
+  - The crashed run wasn't recorded, and E2c resumed from the 67 finished runs, which were all clean.
 - **SDK log noise.** a2a-sdk 1.1.5 logs "Dispatcher task is not running. Cannot wait for event dispatch." at the teardown of every request answered with a single `Message`. That is the SDK's documented immediate-reply pattern, and the reply has already been delivered (parity is exact). Only that exact message is filtered; every other SDK warning and error still shows.
 
 ## D26. Reproducibility (F12)
