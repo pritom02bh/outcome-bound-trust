@@ -50,9 +50,9 @@ def test_extract_dedupes_and_writes_an_unlabeled_sample(tmp_path):
     rows = list(csv.DictReader(out.open()))
     assert [r["message"] for r in rows].count("We will deliver 500 barrels by May 15.") == 1
     assert len(rows) == 2 and meta["unique_candidates"] == 2 and meta["messages_scanned"] == 4
-    assert list(rows[0]) == ["message", "has_delivery_claim", "qty", "deadline", "has_price_claim", "price",
-                             "valid_until", "notes"]
-    assert all(all(r[k] == "" for k in list(r)[1:]) for r in rows)
+    assert list(rows[0]) == ep.COLUMNS
+    assert {r["stratum"] for r in rows} == {"delivery", "price"}                     # filled by code
+    assert all(all(r[k] == "" for k in list(r)[2:]) for r in rows)                 # every label empty
     assert ep.extract(arc, tmp_path / "again.csv", n=100, seed=1) == meta
     assert (tmp_path / "again.csv").read_bytes() == out.read_bytes()
 

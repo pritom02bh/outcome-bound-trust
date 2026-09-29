@@ -29,7 +29,11 @@ URL = "https://www.cs.cmu.edu/~enron/enron_mail_20150507.tar.gz"
 VERSION = "CMU Enron Email Dataset, release 2015-05-07 (enron_mail_20150507.tar.gz)"
 ARCHIVE = RUNS / "enron" / "enron_mail_20150507.tar.gz"
 OUT = Path(__file__).resolve().parent.parent / "data" / "enron_candidates.csv"
-COLUMNS = ["message", "has_delivery_claim", "qty", "deadline", "has_price_claim", "price", "valid_until", "notes"]
+# `stratum` is filled by code (D34); every other column after `message` is a label for the user.
+COLUMNS = ["message", "stratum", "is_commitment", "has_delivery_claim", "qty", "deadline", "has_price_claim", "price",
+           "valid_until", "notes"]
+CANDIDATES = RUNS / "enron" / "candidates_all.jsonl"
+PER_STRATUM = 50
 SEED = 20260929
 
 _UNIT = (r"units?|pieces?|pcs|cases?|boxes|tons?|tonnes?|barrels?|bbls?|gallons?|mw|mwh|mmbtu|dth|decatherms?|"
@@ -104,7 +108,39 @@ def download(url: str = URL, dest: Path = ARCHIVE, expected: int = EXPECTED_BYTE
     return {"url": url, "version": VERSION, "bytes": dest.stat().st_size, "sha256": h.hexdigest()}
 
 
-def extract(archive: Path, out: Path = OUT, n: int = 100, seed: int = SEED) -> dict:
+def stratum(delivery: bool, price: bool) -> str:
+    # A sentence that looks like both is a delivery candidate: those are the rarer stratum.
+    return "delivery" if delivery else "price"
+
+
+def stratified(cands: list[tuple[str, bool, bool]], per_stratum: int = PER_STRATUM,
+               seed: int = SEED) -> tuple[list[tuple[str, str]], dict]:
+    """per_stratum random delivery-like and per_stratum random price-only candidates (D34)."""
+    pools = {"delivery": sorted(c for c in cands if c[1]), "price": sorted(c for c in cands if c[2] and not c[1])}
+    rng = random.Random(seed)
+    rows: list[tuple[str, str]] = []
+    meta: dict = {}
+    for name in ("delivery", "price"):
+        take = rng.sample(pools[name], min(per_stratum, len(pools[name])))
+        rows += [(s, name) for s, _, _ in take]
+        meta[name] = {"pool": len(pools[name]), "sampled": len(take)}
+    rng.shuffle(rows)
+    meta["seed"] = seed
+    meta["rule"] = "delivery-like (including rows that are also price-like) vs price-only"
+    return rows, meta
+
+
+def write_rows(rows: list[tuple[str, str]], out: Path) -> None:
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(COLUMNS)
+        for s, st in rows:
+            w.writerow([s, st] + [""] * (len(COLUMNS) - 2))
+
+
+def extract(archive: Path, out: Path = OUT, n: int = 100, seed: int = SEED, per_stratum: int | None = None,
+            save: Path | None = None) -> dict:
     seen: dict[str, tuple[str, bool, bool]] = {}
     scanned = sentences = 0
     with tarfile.open(archive, "r:gz") as t:
@@ -133,21 +169,24 @@ def extract(archive: Path, out: Path = OUT, n: int = 100, seed: int = SEED) -> d
                 if (d or p) and _norm(s) not in seen:
                     seen[_norm(s)] = (s, d, p)
     cands = sorted(seen.values())                     # sorted, so the seeded sample doesn't depend on tar order
-    sample = random.Random(seed).sample(cands, min(n, len(cands)))
-    out.parent.mkdir(parents=True, exist_ok=True)
-    with out.open("w", newline="") as fh:
-        w = csv.writer(fh)
-        w.writerow(COLUMNS)
-        for s, _, _ in sample:
-            w.writerow([s] + [""] * (len(COLUMNS) - 1))
-    return {"messages_scanned": scanned, "sentences": sentences, "unique_candidates": len(cands),
-            "delivery_like": sum(d for _, d, _ in cands), "price_like": sum(p for _, _, p in cands),
-            "sampled": len(sample), "seed": seed}
+    if save is not None:
+        save.parent.mkdir(parents=True, exist_ok=True)
+        save.write_text("".join(json.dumps(c) + "\n" for c in cands))
+    stats = {"messages_scanned": scanned, "sentences": sentences, "unique_candidates": len(cands),
+             "delivery_like": sum(d for _, d, _ in cands), "price_like": sum(p for _, _, p in cands), "seed": seed}
+    if per_stratum is not None:
+        rows, strata = stratified(cands, per_stratum, seed)
+        stats["strata"] = strata
+    else:
+        rows = [(s, stratum(d, p)) for s, d, p in random.Random(seed).sample(cands, min(n, len(cands)))]
+    write_rows(rows, out)
+    stats["sampled"] = len(rows)
+    return stats
 
 
 def main() -> None:
     src = download()
-    meta = extract(ARCHIVE)
+    meta = extract(ARCHIVE, per_stratum=PER_STRATUM, save=CANDIDATES)
     meta = {"source": src, **meta, "rules": {"delivery": "quantity with a unit + deadline expression",
                                              "price": "dollar amount + validity word"}}
     OUT.with_suffix(".meta.json").write_text(json.dumps(meta, indent=1) + "\n")
