@@ -389,3 +389,20 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - The E2c report includes the full grid and both fronts.
 - **Variants for E2c** (`eval.run.VARIANTS`): `rep-n18` (reputation, n0 18, θ 0.9, cap $200) and `rep+planner` (the same config with the D32 planner).
 - **E2c.** `obt+planner`, `rep+planner` and `rep-n18` on all 12 scenarios × seeds 1–5, with the gpt-oss buyer and the E1 default, over A2A with the gpt-oss extractor. That's 180 runs, compared with E2. It stops on any violation.
+
+## D34. Enron real-text check: stratified sample and per-stratum metrics (user decision)
+- **Sample.** 50 random delivery-like and 50 random price-only candidates, seed 20260929, replacing the random 100 (which had only 5 delivery-like rows; kept in `runs/enron/candidates_v2_random.*`).
+  - A sentence that looks like both is in the delivery stratum, the rarer one.
+  - Pool sizes and the seed are in `data/enron_candidates.meta.json` (`strata`). The full candidate list is saved in `runs/enron/candidates_all.jsonl`.
+- **Columns.** `message`, `stratum` (filled by code), then the user's labels: `is_commitment` (yes/no) before the slot columns `has_delivery_claim`, `qty`, `deadline`, `has_price_claim`, `price`, `valid_until`, then `notes`.
+- **The frozen extractor on real text (confirmed before labeling).** The claim schema speaks in rounds and widgets, so a claim from Enron text should end up UNTESTABLE. Two independent code-level reasons, each tested with adversarial LLM outputs that propose the claim anyway:
+  - `item` is a closed type (`Literal["widget"]`), so "barrels", "MMBtu" and the like fail validation.
+  - F5 grounding accepts a deadline only in round wording ("by / no later than … round N") and a validity only as "until / through … round N". So calendar dates ("May 15", "12/31", "Friday") give no candidate, and even an invented round number is refused. Quantities must also be next to units, widgets, pcs or pieces.
+
+  The rule extractor refuses them too.
+- **Eval** (`eval/enron_eval.py`, run after labeling; gpt-oss extractor from the cache, and the rule extractor as a baseline). Reported per stratum, never pooled:
+  1. **Wrong claims recorded:** recorded (PENDING) claims that don't match a labeled claim. This is the safety metric, with a target of 0. A recorded claim matches only if the label has the same quantity or price and a deadline or validity written as that round number.
+  2. **Real commitments marked UNTESTABLE:** labeled claims in rows labeled `is_commitment = yes` that weren't recorded. This is the schema's coverage limit, and it's expected to be near 100%.
+  3. **Claims recorded from non-commitments:** recorded claims on rows labeled `is_commitment = no`.
+
+  The eval refuses any row without an `is_commitment` label.
