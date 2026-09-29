@@ -353,6 +353,11 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - **Candidate rules:**
     - a delivery candidate has a quantity with a unit plus a deadline expression (by / no later than / on or before / due / deliver… / ship… / arriv… followed by a date, weekday or end-of-period phrase);
     - a price candidate has a dollar amount plus a validity word.
+  - **Decoding** (added after the first run showed "=20"-style artifacts). Transfer encodings are decoded, and quoted-printable text is also decoded where it sits under a 7bit header (pasted or forwarded). Multipart messages are skipped. The first, undecoded sample is kept in `runs/enron/candidates_v1_qp_undecoded.*`.
+  - **Download.** CMU's server returned 503 for about an hour. The download resumes with HTTP Range requests and is accepted only at the full 443,254,787 bytes (sha256 `b3da1b3f…8ca7`).
+  - **Result.** 517,401 messages scanned, 3,542,014 sentences, and 3,529 unique candidates: 126 delivery-like and 3,409 price-like.
+    - The random 100 has 5 delivery-like and 96 price-like rows, many of them news or newsletter text rather than commitments.
+    - Whether to stratify or tighten the rules is the user's call; the sample was not changed.
   - **Dedupe and sample:** candidates are deduplicated on normalized text and sorted, then 100 are sampled with seed 20260929 into `data/enron_candidates.csv`. Its columns are `message`, `has_delivery_claim`, `qty`, `deadline`, `has_price_claim`, `price`, `valid_until`, `notes`, with every label column empty for the user.
 
 ## D32. OBT order planner: "obt+planner" and "rep+planner" (user decision)

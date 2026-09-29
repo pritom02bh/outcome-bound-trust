@@ -1,0 +1,19 @@
+{
+ "source": {
+  "url": "https://www.cs.cmu.edu/~enron/enron_mail_20150507.tar.gz",
+  "version": "CMU Enron Email Dataset, release 2015-05-07 (enron_mail_20150507.tar.gz)",
+  "bytes": 443254787,
+  "sha256": "b3da1b3fe0369ec3140bb4fbce94702c33b7da810ec15d718b3fadf5cd748ca7"
+ },
+ "messages_scanned": 517401,
+ "sentences": 3542014,
+ "unique_candidates": 3529,
+ "delivery_like": 126,
+ "price_like": 3409,
+ "sampled": 100,
+ "seed": 20260929,
+ "rules": {
+  "delivery": "quantity with a unit + deadline expression",
+  "price": "dollar amount + validity word"
+ }
+}
