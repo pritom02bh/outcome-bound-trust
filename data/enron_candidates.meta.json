@@ -10,8 +10,20 @@
  "unique_candidates": 3529,
  "delivery_like": 126,
  "price_like": 3409,
- "sampled": 100,
  "seed": 20260929,
+ "strata": {
+  "delivery": {
+   "pool": 126,
+   "sampled": 50
+  },
+  "price": {
+   "pool": 3403,
+   "sampled": 50
+  },
+  "seed": 20260929,
+  "rule": "delivery-like (including rows that are also price-like) vs price-only"
+ },
+ "sampled": 100,
  "rules": {
   "delivery": "quantity with a unit + deadline expression",
   "price": "dollar amount + validity word"
