@@ -83,7 +83,7 @@ def test_make_results_rebuilds_from_runs_only(tmp_path, rule_llm, monkeypatch):
     out = tmp_path / "results"
     built = results.build(runs, out)
     assert (out / "eval_a" / "summary.md").exists() and (out / "eval_a" / "loss_from_lies.csv").exists()
-    assert (out / "eval_a" / "extractor.md").exists() and (out / "index.md").exists()
+    assert (out / "eval_a" / "extractor.md").exists() and (out / "evals.md").exists()
     assert "95% CI" in (out / "eval_a" / "ci.md").read_text()
     assert built["eval_a"]["summary"]["loss_from_lies"] == rep["summary"]["loss_from_lies"]
     first = {p.name: p.read_bytes() for p in (out / "eval_a").iterdir()}

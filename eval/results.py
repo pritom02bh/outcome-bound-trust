@@ -565,7 +565,8 @@ def build(runs: Path, out: Path) -> dict:
     if bank:
         (out / "bank.md").write_text(bank)
         index.append("- bank.md: semantic reader checks and extractor dev tuning")
-    (out / "index.md").write_text("\n".join(index) + "\n")
+    # evals.md, not index.md: on a case-insensitive filesystem index.md is the hand-written INDEX.md.
+    (out / "evals.md").write_text("\n".join(index) + "\n")
     return built
 
 
