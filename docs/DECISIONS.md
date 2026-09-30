@@ -627,3 +627,35 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
 - **Check.** Every number in `paper/NUMBERS.md` and `paper/tables/` is identical to `v1.2-paper-assets`. The only differences:
   - B's runtime was removed, as asked.
   - One RQ4 row was added, pointing to the trust-over-time figure. It carries no number.
+
+## D40. Loss per 100 S_main units (user request)
+- **Why.** Loss from lies alone flatters a defense that simply stops trading with the main supplier: it loses little because it buys little. This metric is loss per unit actually traded with S_main in the attack runs, so defenses are compared per unit traded.
+- **Definition** (`eval/stats.py`: `per_unit_runs`, `loss_per_100_units`).
+  - For each attack run (scenarios 2–12) whose honest run (same defense and seed) exists, take:
+    - its loss from lies, cost − the honest run's cost;
+    - its executed S_main order units, counted as in the S_main share (any S_main identity, EXECUTED orders).
+  - **Per defense:** 100 × Σ loss ÷ Σ units over the attack scenarios within a seed, using only seeds with every attack scenario (as for loss from lies). Then the mean [95% bootstrap CI] over seeds.
+  - **Per scenario:** 100 × Σ loss ÷ Σ units over seeds.
+  - It is a ratio of sums, not a mean of per-run ratios, so an attack run that bought nothing from S_main doesn't divide by zero. "n/a" only where the defense bought no S_main unit at all.
+- **Reported** for E2, E2c and E5:
+  - next to loss from lies and the S_main share, in a new column of `main` and `e5` and in the new `loss_per_unit` table (which adds S_main units per attack run and the S_main share in attack runs);
+  - per scenario in `loss_per_unit_by_scenario` (gpt-oss) and `e5_loss_per_unit_by_scenario`;
+  - under RQ1 in `paper/NUMBERS.md`.
+  - The per-run trace is `results/per_unit/runs.csv`. `eval/verify_release.py` recomputes the exported values from it.
+- No model call is involved. It's computed from existing run records by `make results`.
+
+## D41. Overnight batch: E5 seeds 2–3, per-unit metric, refresh (user decision)
+- **Part A, paid** (`python -m eval.e5_paid seeds`):
+  - Setup: GPT-5.6 Luna and Terra, `obt+planner` and `none`, all 12 scenarios, seeds 2 and 3, on the E5 v2 setup. That's reasoning effort `low`, the frozen gpt-oss extractor (D24), and the run-scoped reply cache (D37a: fresh sampling, no reuse across runs). Luna runs first, then Terra.
+  - The user authorized `OBT_ALLOW_PAID=1` for Part A only, with **no harness spending cap** (the account balance is the limit). The ledger still records every call.
+  - A cost projection from v2's seed-1 spend is logged first, for the record only: $11.84 ($1.12 Luna, $10.72 Terra).
+  - The seeds share seed 1's config hash, so they join the same E5 evals, and resume skips work already done.
+- **Stop rules for the whole chain** (`eval/overnight2.sh`, `runs/overnight2.log`):
+  - Stop on an invariant or loss-bound violation, a test failure, or an API billing/quota/auth error.
+  - Other API or transport errors are retried with backoff (up to 20 attempts per model). Resuming a run replays its own paid calls from the run-scoped cache at no cost.
+  - Error text is scrubbed of anything key-like before it's logged.
+- **Parts B and C:**
+  - Rebuild results (E5 over seeds 1–3, mean [95% bootstrap CI]; the D40 metric), the paper tables, `NUMBERS.md`, the workbook and the pack (`paper_pack_v1.4.zip`; v1.3's zip is kept).
+  - Refresh `results/INDEX.md` and this entry's outcome (`eval/release_notes.py`).
+  - Check against `v1.3-paper-pack` with `eval/verify_release.py`: every number not depending on the new runs or the new metric must be identical, and every new number must trace to its source.
+  - Run all tests, then commit and tag `v1.4-results`. No push.

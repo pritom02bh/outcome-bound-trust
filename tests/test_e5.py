@@ -165,3 +165,71 @@ def test_v2_projection_counts_every_call_and_what_is_spent(tmp_path, monkeypatch
     assert luna["runs"] == 12 and luna["usd"] == pytest.approx(12 * (50_000 * 0.2 + 5_000 * 1.2) / 1e6)
     assert p["parts"][f"{e5_paid.TERRA} none"]["runs"] == 12
     assert p["total_usd"] == pytest.approx(3.0 + p["rest_usd"])
+
+
+# ---- D41: seeds 2-3 (overnight batch)
+
+class _Quota(Exception):
+    pass
+
+
+def test_seeds_config_has_no_harness_cap_and_joins_the_seed_1_eval():
+    c = e5_paid.eval_config(e5_paid.TERRA, seeds=(2, 3), cap=e5_paid.NO_CAP)
+    assert c.seeds == (2, 3) and c.cap_usd == float("inf")
+    assert er.config_hash(c) == er.config_hash(e5_paid.eval_config(e5_paid.TERRA))   # resume skips seed 1
+
+
+def test_classify_stops_only_on_violations_and_billing_quota_auth():
+    import httpx
+    import openai
+    req = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+
+    def status(code, body):
+        return openai.APIStatusError("x", response=httpx.Response(code, request=req), body=body)
+    assert e5_paid.classify(er.InvariantViolation("x")) == "violation"
+    assert e5_paid.classify(er.LossBoundViolation("x")) == "violation"
+    q = openai.RateLimitError("You exceeded your current quota", response=httpx.Response(429, request=req),
+                              body={"code": "insufficient_quota"})
+    assert e5_paid.classify(q) == "quota"
+    assert e5_paid.classify(status(401, {"code": "invalid_api_key"})) == "quota"
+    assert e5_paid.classify(openai.RateLimitError("slow down", response=httpx.Response(429, request=req),
+                                                  body=None)) == "retry"
+    assert e5_paid.classify(status(503, None)) == "retry"
+    assert e5_paid.classify(openai.APIConnectionError(request=req)) == "retry"
+    assert e5_paid.classify(RuntimeError("a2a hiccup")) == "retry"
+
+
+def test_seeds_stage_retries_transient_errors_and_stops_on_quota(monkeypatch, tmp_path):
+    import httpx
+    import openai
+    req = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+    monkeypatch.setattr(e5_paid, "_load_key", lambda *a: None)
+    monkeypatch.setattr(e5_paid, "OUT", tmp_path)
+    monkeypatch.setattr(e5_paid, "project_seeds", lambda **k: {"projected_total_usd": 0})
+    monkeypatch.setattr(e5_paid, "seed_spend", lambda *a: {})
+    calls = []
+
+    def flaky(model, seeds, cap):
+        calls.append(model)
+        assert seeds == (2, 3) and cap == float("inf")
+        if len(calls) == 1:
+            raise openai.APIConnectionError(request=req)
+    monkeypatch.setattr(e5_paid, "run_models", flaky)
+    waits = []
+    e5_paid.seeds_stage(sleep=waits.append)
+    assert calls == [e5_paid.LUNA, e5_paid.LUNA, e5_paid.TERRA] and waits == [60]     # Luna first, then Terra
+
+    def quota(model, seeds, cap):
+        raise openai.RateLimitError("quota sk-live-abcdef123456 exceeded", response=httpx.Response(429, request=req),
+                                    body={"code": "insufficient_quota"})
+    monkeypatch.setattr(e5_paid, "run_models", quota)
+    with pytest.raises(e5_paid.ChainStop) as e:
+        e5_paid.seeds_stage(sleep=waits.append)
+    assert e.value.kind == "quota" and "abcdef123456" not in str(e.value)             # key-like text scrubbed
+
+    def violation(model, seeds, cap):
+        raise er.InvariantViolation("I1")
+    monkeypatch.setattr(e5_paid, "run_models", violation)
+    with pytest.raises(e5_paid.ChainStop) as e:
+        e5_paid.seeds_stage(sleep=waits.append)
+    assert e.value.kind == "violation"                                                # never retried

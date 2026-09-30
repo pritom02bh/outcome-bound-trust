@@ -361,3 +361,54 @@ def loss_split(rows: list[dict], d: str) -> dict:
             "damage": None if any(x is None for x in dm) else round(mean(dm), 4),
             "reroute": round(mean(p[2] for p in parts), 4), "resid": round(mean(p[3] for p in parts), 4),
             "n": len(parts)}
+
+
+def main_units(r: dict) -> int:
+    """Executed order units bought from S_main (any of its identities) in one run; same rule as main_share."""
+    return sum(qty for t in r["trace"] for kind, cp, qty, *rest in t["actions"]
+               if kind == "ORDER" and rest[1] == "EXECUTED" and cp.startswith("S_main"))
+
+
+def attack_units(r: dict) -> tuple[int, int]:
+    """(S_main units, all executed order units) in one run."""
+    main = back = 0
+    for t in r["trace"]:
+        for kind, cp, qty, *rest in t["actions"]:
+            if kind == "ORDER" and rest[1] == "EXECUTED":
+                main, back = (main + qty, back) if cp.startswith("S_main") else (main, back + qty)
+    return main, main + back
+
+
+def per_unit_runs(rows: list[dict], d: str) -> list[dict]:
+    """Every attack run (scenarios 2-12) of defense d whose honest run (same seed) exists: its loss from lies and the
+    units it bought from S_main (DECISIONS D40)."""
+    by = {(r["scenario"], r["seed"]): r for r in rows if r["defense"] == d}
+    out = []
+    for (n, s), r in sorted(by.items()):
+        if n == 1 or (1, s) not in by:
+            continue
+        main, total = attack_units(r)
+        out.append({"scenario": n, "seed": s, "loss": r["total_cost"] - by[(1, s)]["total_cost"],
+                    "main_units": main, "all_units": total})
+    return out
+
+
+def loss_per_100_units(rows: list[dict], d: str) -> dict:
+    """Loss from lies per 100 S_main units (D40): 100 x sum of losses / sum of S_main units over the attack runs.
+    by_seed: over scenarios 2-12 within a seed (only seeds with every attack scenario, as attack_loss_by_seed);
+    by_scenario: over seeds. None where no S_main unit was bought."""
+    runs = per_unit_runs(rows, d)
+    attacks = {x["scenario"] for x in runs}
+    ratio = lambda xs: (100 * sum(x["loss"] for x in xs) / sum(x["main_units"] for x in xs)  # noqa: E731
+                        if sum(x["main_units"] for x in xs) else None)
+    by_seed = {}
+    for s in sorted({x["seed"] for x in runs}):
+        xs = [x for x in runs if x["seed"] == s]
+        if {x["scenario"] for x in xs} == attacks:
+            by_seed[s] = ratio(xs)
+    by_scenario = {n: ratio([x for x in runs if x["scenario"] == n]) for n in sorted(attacks)}
+    full = [x for x in runs if x["seed"] in by_seed]
+    return {"by_seed": by_seed, "by_scenario": by_scenario,
+            "units_per_run": mean(x["main_units"] for x in full) if full else None,
+            "attack_share": (sum(x["main_units"] for x in full) / sum(x["all_units"] for x in full))
+            if full and sum(x["all_units"] for x in full) else None}

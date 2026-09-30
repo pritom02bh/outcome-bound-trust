@@ -1,4 +1,4 @@
-"""Paper pack: paper_pack/ and paper_pack_v1.3.zip, from results/, paper/, docs/ and spec/results/ only.
+"""Paper pack: paper_pack/ and paper_pack_<VERSION>.zip, from results/, paper/, docs/ and spec/results/ only.
 
     python -m eval.pack          # build, verify, zip; exits non-zero if any number in the workbook disagrees
 
@@ -22,7 +22,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PACK = ROOT / "paper_pack"
-ZIP = ROOT / "paper_pack_v1.3.zip"
+VERSION = "v1.4"                 # the release this pack belongs to (tag v1.4-results)
+ZIP = ROOT / f"paper_pack_{VERSION}.zip"
 TJ = "results/tables.json"
 NUMERIC = re.compile(r"^-?[\d,]*\d(\.\d+)?$")
 TOKEN = re.compile(r"(?<![A-Za-z0-9.])-?\d[\d,]*(?:\.\d+)?(?![A-Za-z\d])")
@@ -60,6 +61,12 @@ COLUMNS = {
     "violation": "property TLC reported violated", "distinct_states": "distinct states when TLC stopped",
     "depth": "search depth (PASS) or counterexample length (CAUGHT)",
     "runtime_s": "wall-clock seconds (B: not reported, host sleep)",
+    "loss per 100 S_main units": "100 x loss from lies / units bought from S_main in the attack runs (D40), "
+                                 "$ per 100 units; mean [95% CI over seeds] where shown",
+    "S_main units per attack run": "mean units bought from S_main per attack run (D40)",
+    "S_main share (attack runs)": "S_main units / all executed order units, attack runs (D40)",
+    "eval": "experiment the row comes from", "seed": "seed", "loss_from_lies": "cost − cost of the honest run, $",
+    "s_main_units": "units bought from S_main in the run", "all_units": "all executed order units in the run",
 }
 
 
@@ -163,6 +170,9 @@ def sheets() -> list[tuple[str, list[tuple]]]:
                      *csvs("horizon__t100__rep-n18")]),
         ("reputation grid", [tblock("reputation_grid")]),
         ("Enron", [tblock("enron")]),
+        ("loss per unit", [tblock("loss_per_unit"), tblock("loss_per_unit_by_scenario"),
+                           *([tblock("e5_loss_per_unit_by_scenario")] if "e5_loss_per_unit_by_scenario" in _tables()
+                             else []), cblock("results/per_unit/runs.csv")]),
         ("TLA+ verification", [tlc_block("quick", "quick"), tlc_block("fallbackA2", "A′"), tlc_block("fallbackB", "B"),
                                tlc_block("quick_b01", "quick, B0 = 1"), tlc_block("fallbackA2_b01", "A′, B0 = 1"),
                                coverage_block()]),
@@ -177,7 +187,7 @@ def workbook(path: Path, sh: list) -> None:
     wb = Workbook()
     readme = wb.active
     readme.title = "README"
-    readme.append(["Outcome-Bound Trust: all results (tag v1.3-paper-pack). Built from results/ and spec/results/ "
+    readme.append([f"Outcome-Bound Trust: all results (tag {VERSION}-results). Built from results/ and spec/results/ "
                    "only by `python -m eval.pack`; numbers are as printed in the paper tables and NUMBERS.md."])
     readme.append([])
     readme.append(["sheet", "block", "source (file → key)", "column", "meaning"])

@@ -5,6 +5,8 @@
                                                     #   re-project the rest of Plan B from the pilot's real tokens
     OBT_ALLOW_PAID=1 python -m eval.e5_paid rest    # everything else (Luna first, then Terra) if pilot spend +
                                                     #   re-projected rest <= GO_USD; otherwise stops and says so
+    OBT_ALLOW_PAID=1 python -m eval.e5_paid seeds   # D41: seeds 2-3 on the v2 setup, Luna then Terra, no harness
+                                                    #   cap; retries transient errors, stops on quota/billing/auth
     python -m eval.e5_paid v2-plan                  # v2 (D37a): projection only, from v1's real per-call tokens
     OBT_ALLOW_PAID=1 python -m eval.e5_paid v2      # v2: every buyer run again with the run-scoped reply cache,
                                                     #   plus Terra none; runs only if spent + projection <= GO_USD
@@ -67,9 +69,9 @@ def plan() -> list[dict]:
     return items
 
 
-def eval_config(model: str, scenarios=SCENARIOS) -> er.EvalConfig:
+def eval_config(model: str, scenarios=SCENARIOS, seeds=(1,), cap: float = CAP_USD) -> er.EvalConfig:
     return er.EvalConfig(backend="openai", model=model, buyer="llm", scenarios=tuple(scenarios),
-                         defenses=DEFENSES[model], seeds=(1,), extractor_eval=False, cap_usd=CAP_USD, cache=True,
+                         defenses=DEFENSES[model], seeds=tuple(seeds), extractor_eval=False, cap_usd=cap, cache=True,
                          sim=dict(SIM), extractor_model=LOCAL_EXTRACTOR, extractor_backend="ollama",
                          extractor_eval_model=model)
 
@@ -156,8 +158,8 @@ def _load_key(env: Path = Path(__file__).resolve().parent.parent / ".env") -> No
     raise Abort("OPENAI_API_KEY not found in .env")
 
 
-def meter() -> llm.CostMeter:
-    return llm.CostMeter(cap=CAP_USD)
+def meter(cap: float = CAP_USD) -> llm.CostMeter:
+    return llm.CostMeter(cap=cap)
 
 
 def ledger(runs: Path = RUNS) -> list[dict]:
@@ -170,9 +172,9 @@ def usage(rows: list[dict]) -> dict:
             "reasoning": sum(r.get("reasoning_tokens", 0) for r in rows), "usd": sum(r["usd"] for r in rows)}
 
 
-def run_models(model: str, scenarios=SCENARIOS) -> dict:
+def run_models(model: str, scenarios=SCENARIOS, seeds=(1,), cap: float = CAP_USD) -> dict:
     """E5 eval runs for one model (resumable). Raises on any invariant or loss-bound violation (STOP rule)."""
-    report = er.run_eval(eval_config(model, scenarios), OUT / DIRS[model], meter())
+    report = er.run_eval(eval_config(model, scenarios, seeds, cap), OUT / DIRS[model], meter(cap))
     if report["stopped"]:
         raise Abort(f"hard stop: {report['stopped']}")
     return report
@@ -310,8 +312,109 @@ def v2() -> dict:
     return {"spent_usd": spent, "projection": proj}
 
 
+# ------------------------------------------------------------------ D41: seeds 2-3 (overnight batch)
+
+NO_CAP = float("inf")          # the user lifted the harness cap for this batch; the account balance is the limit
+SEEDS23 = (2, 3)
+STOP_CODES = {"insufficient_quota", "billing_hard_limit_reached", "billing_not_active", "invalid_api_key",
+              "account_deactivated"}
+
+
+class ChainStop(RuntimeError):
+    """Stops the overnight chain: `kind` is violation, quota (billing/quota/auth) or persistent."""
+
+    def __init__(self, kind: str, msg: str) -> None:
+        super().__init__(msg)
+        self.kind = kind
+
+
+def _safe(msg: str) -> str:
+    """Error text for the log with anything key-like removed."""
+    import re
+    return re.sub(r"sk-[A-Za-z0-9_\-*.]{4,}", "sk-<redacted>", msg)[:500]
+
+
+def classify(e: BaseException) -> str:
+    """violation | quota | retry. Only billing, quota and auth errors stop a run for good; any other API or
+    transport error is retried (resuming a run replays its own paid calls from the run-scoped cache, D37a)."""
+    if isinstance(e, (er.InvariantViolation, er.LossBoundViolation)):
+        return "violation"
+    try:
+        import openai
+    except ImportError:
+        return "retry"
+    if isinstance(e, openai.APIStatusError):
+        code = str(getattr(e, "code", "") or "")
+        text = str(e).lower()
+        if e.status_code in (401, 402, 403) or code in STOP_CODES or "quota" in text or "billing" in text:
+            return "quota"
+    return "retry"
+
+
+def seed_spend(runs: Path = RUNS) -> dict:
+    """Ledger spend per model and seed for E5 v2 (seed 1: the v2 calls, after v1's last call)."""
+    v1 = runs / "e5" / "_v1_shared_cache"
+    v1_end = max((json.loads(x)["ts"] for d in DIRS.values() if (v1 / d / "llm_calls.jsonl").exists()
+                  for x in (v1 / d / "llm_calls.jsonl").read_text().splitlines()), default=0.0)
+    out: dict = {}
+    for r in ledger(runs):
+        p = r["run"].split("|")
+        if r["ts"] <= v1_end or len(p) < 4 or not p[2].startswith("s"):
+            continue
+        u = out.setdefault(r["model"], {}).setdefault(p[2], {"calls": 0, "input": 0, "output": 0, "reasoning": 0,
+                                                              "usd": 0.0})
+        u["calls"] += 1
+        u["input"] += r["prompt_tokens"]
+        u["output"] += r["completion_tokens"]
+        u["reasoning"] += r.get("reasoning_tokens", 0)
+        u["usd"] += r["usd"]
+    return out
+
+
+def project_seeds(runs: Path = RUNS, seeds=SEEDS23) -> dict:
+    """For the record only: v2's seed-1 spend per model x the number of new seeds."""
+    s1 = {m: v.get("s1", {}).get("usd", 0.0) for m, v in seed_spend(runs).items()}
+    per_model = {m: round(usd * len(seeds), 4) for m, usd in s1.items()}
+    return {"seed1_usd": {m: round(v, 4) for m, v in s1.items()}, "projected_usd": per_model,
+            "projected_total_usd": round(sum(per_model.values()), 4), "seeds": list(seeds)}
+
+
+def seeds_stage(seeds=SEEDS23, attempts: int = 20, sleep=None) -> dict:
+    import time
+    sleep = sleep or time.sleep
+    _load_key()
+    proj = project_seeds(seeds=seeds)
+    (OUT / "seeds23_projection.json").write_text(json.dumps(proj, indent=1) + "\n")
+    print(f"projection (record only, not a limit): {json.dumps(proj)}", flush=True)
+    for model in (LUNA, TERRA):
+        for k in range(1, attempts + 1):
+            try:
+                run_models(model, seeds=seeds, cap=NO_CAP)
+                break
+            except Exception as e:                  # noqa: BLE001 - classified below; violations never retried
+                kind = classify(e)
+                msg = _safe(f"{type(e).__name__}: {e}")
+                if kind in ("violation", "quota"):
+                    raise ChainStop(kind, msg) from None
+                if k == attempts:
+                    raise ChainStop("persistent", f"{attempts} attempts failed; last: {msg}") from None
+                wait = min(60 * 2 ** (k - 1), 900)
+                print(f"transient error on {model} (attempt {k}/{attempts}): {msg}; retrying in {wait}s", flush=True)
+                sleep(wait)
+    spend = seed_spend()
+    (OUT / "spend_by_seed.json").write_text(json.dumps(spend, indent=1) + "\n")
+    return {"projection": proj, "spend_by_seed": spend, "ledger_usd": llm.CostMeter(cap=NO_CAP).spent()}
+
+
 def main(argv: list[str] | None = None) -> None:
     stage = (argv or [None])[0]
+    if stage == "seeds":
+        try:
+            print(json.dumps(seeds_stage(), indent=1, default=str))
+        except ChainStop as e:
+            print(f"CHAIN STOP ({e.kind}): {e}", flush=True)
+            sys.exit({"violation": 2, "quota": 3, "persistent": 4}[e.kind])
+        return
     if stage == "v2-plan":
         print(json.dumps(project_v2(), indent=1, default=str))
         return
