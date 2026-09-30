@@ -1,4 +1,99 @@
 {
+ "bound_tightness": {
+  "caption": "Bound tightness: the largest per-run ratio of damage to the sum of per-event bounds, per eval (runs with failure events). A ratio above 1 would break the bound.",
+  "columns": [
+   "eval",
+   "defense",
+   "runs",
+   "failure events",
+   "damage",
+   "sum of bounds",
+   "max damage/bound",
+   "held"
+  ],
+  "rows": [
+   [
+    "E2 (gpt-oss)",
+    "obt",
+    32,
+    406,
+    "2,314.0",
+    "6,179.5",
+    "0.655",
+    "yes"
+   ],
+   [
+    "E2c (gpt-oss)",
+    "obt+planner",
+    30,
+    369,
+    "2,771.5",
+    "7,343.0",
+    "0.698",
+    "yes"
+   ],
+   [
+    "E3 (qwen3)",
+    "obt",
+    6,
+    48,
+    "457.0",
+    "1,271.5",
+    "0.468",
+    "yes"
+   ],
+   [
+    "E3b (qwen3)",
+    "obt+planner",
+    6,
+    69,
+    "601.5",
+    "1,576.0",
+    "0.549",
+    "yes"
+   ],
+   [
+    "E5 v2 (Luna)",
+    "obt+planner",
+    6,
+    73,
+    "653.5",
+    "1,748.0",
+    "0.526",
+    "yes"
+   ],
+   [
+    "E5 v2 (Terra)",
+    "obt+planner",
+    6,
+    73,
+    "653.5",
+    "1,748.0",
+    "0.526",
+    "yes"
+   ],
+   [
+    "E6 (adaptive search)",
+    "obt",
+    "10,000 attackers",
+    "-",
+    "12.0",
+    "14.0",
+    "0.857",
+    "yes"
+   ],
+   [
+    "E7 (k = 1, 2, 4)",
+    "obt",
+    "-",
+    "-",
+    "-",
+    "-",
+    "0.653",
+    "yes"
+   ]
+  ]
+ },
  "budget_k": {
   "caption": "Budget growth multiplier k, B = b0 + k x max honored exposure (E7, scripted buyer, OBT default, 12 scenarios x 3 seeds). Damage ratios use the per-event bound and the k-scaled a-priori bound. k = 1 at 50 rounds matches E1 in 33/36 runs (all 36 with E1's extractor).",
   "columns": [
@@ -145,6 +240,71 @@
    ]
   ]
  },
+ "e5": {
+  "caption": "Paid buyer models (E5 v2; reasoning effort low; frozen gpt-oss extractor; OBT default; seed 1; every buyer call sampled fresh): loss from lies (mean of scenarios 2-12) = damage + reroute + resid, utility cost against the same model's none run, $ per run.",
+  "columns": [
+   "buyer",
+   "defense",
+   "loss from lies",
+   "damage",
+   "reroute",
+   "resid",
+   "utility cost",
+   "utility (% of cost)",
+   "S_main share",
+   "max damage/bound"
+  ],
+  "rows": [
+   [
+    "GPT-5.6 Luna",
+    "obt+planner",
+    "160.0",
+    "59.4",
+    "0.0",
+    "100.6",
+    "322.0",
+    "5.65",
+    "0.304",
+    "0.526"
+   ],
+   [
+    "GPT-5.6 Luna",
+    "none",
+    "812.8",
+    "n/a",
+    "0.0",
+    "812.8",
+    "0.0",
+    "0.00",
+    "0.952",
+    "-"
+   ],
+   [
+    "GPT-5.6 Terra",
+    "obt+planner",
+    "158.0",
+    "59.4",
+    "0.0",
+    "98.6",
+    "312.0",
+    "5.46",
+    "0.298",
+    "0.526"
+   ],
+   [
+    "GPT-5.6 Terra",
+    "none",
+    "942.2",
+    "n/a",
+    "0.0",
+    "942.2",
+    "0.0",
+    "0.00",
+    "0.940",
+    "-"
+   ]
+  ]
+ },
  "e6": {
   "caption": "Adaptive attacker search against OBT (10,000 attackers, worst of 3 seeds). A ratio above 1 would break the bound.",
   "columns": [
@@ -165,6 +325,61 @@
     "195.0",
     "395.0",
     "0.494"
+   ]
+  ]
+ },
+ "enron": {
+  "caption": "Frozen extractors on 100 labeled real Enron sentences (50 delivery-like, 50 price-only). Wrong claims recorded is the safety metric (target 0); commitments the schema cannot express (calendar dates, non-widget units) come out UNTESTABLE.",
+  "columns": [
+   "extractor",
+   "stratum",
+   "rows",
+   "commitments",
+   "claims UNTESTABLE",
+   "recorded",
+   "wrong recorded",
+   "from non-commitments"
+  ],
+  "rows": [
+   [
+    "gpt-oss:20b",
+    "delivery",
+    50,
+    1,
+    "1/1",
+    0,
+    0,
+    0
+   ],
+   [
+    "gpt-oss:20b",
+    "price",
+    50,
+    9,
+    "9/9",
+    0,
+    0,
+    0
+   ],
+   [
+    "rule",
+    "delivery",
+    50,
+    1,
+    "1/1",
+    0,
+    0,
+    0
+   ],
+   [
+    "rule",
+    "price",
+    50,
+    9,
+    "9/9",
+    0,
+    0,
+    0
    ]
   ]
  },
@@ -201,6 +416,22 @@
     1.0,
     1.0,
     "21/30",
+    "0/30"
+   ],
+   [
+    "gpt-5.6-luna",
+    1.0,
+    0.9898,
+    0.9849,
+    "21/30",
+    "0/30"
+   ],
+   [
+    "gpt-5.6-terra",
+    1.0,
+    1.0,
+    1.0,
+    "18/30",
     "0/30"
    ]
   ]

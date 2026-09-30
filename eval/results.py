@@ -755,6 +755,16 @@ def _paper_data(runs: Path, out: Path) -> str | None:
             "rows": [[m, d["test"]["precision"], d["test"]["recall"], d["test"]["exact_match"],
                       f"{d['test_hard_no_guard']['hard']['delivery_recorded']}/30",
                       f"{d['test_hard']['hard']['delivery_recorded']}/30"] for m, d in sorted(e4.items())]}
+        # E5 (D37): the paid models' own extraction, measured only in their extractor eval.
+        for name in ("luna", "terra"):
+            xf = runs / "e5" / name / "extractor.json"
+            if xf.exists():
+                x = json.loads(xf.read_text())["extractor"]
+                k = next(k for k in x if k.startswith("llm:") and ":" not in k[4:].replace("gpt-5.6", ""))
+                tables["extractor"]["rows"].append(
+                    [k[4:], x[k]["precision"], x[k]["recall"], x[k]["exact_match"],
+                     f"{x[k + ':test_hard:no_guard']['hard']['delivery_recorded']}/30",
+                     f"{x[k + ':test_hard']['hard']['delivery_recorded']}/30"])
     from eval.stats import loss_split
     e3_rows = []
     money = lambda x: "n/a" if x is None else f"{x:,.1f}"  # noqa: E731
@@ -795,6 +805,64 @@ def _paper_data(runs: Path, out: Path) -> str | None:
                              "rows": [[d, f"{v['50']['utility_pct']:.2f}", f"{v['100']['utility_pct']:.2f}",
                                        f"{v['50']['attack_loss']:.1f}", f"{v['100']['attack_loss']:.1f}"]
                                       for d, v in h["defenses"].items()]}
+    # E5 v2 (D37a): paid buyers, each against its own none (seed 1). v1 is superseded and not exported.
+    e5l, e5t = read(runs / "e5" / "luna"), read(runs / "e5" / "terra")
+    if e5l or e5t:
+        e5_rows = []
+        for model, rs in (("GPT-5.6 Luna", e5l), ("GPT-5.6 Terra", e5t)):
+            for d in ("obt+planner", "none"):
+                r = _e5_row(model, rs, d, rs)
+                if not r["runs"]:
+                    continue
+                sp = r["split"]
+                e5_rows.append([model, d, money(sp["loss"]), money(sp["damage"]), money(sp["reroute"]),
+                                money(sp["resid"]), money(r["util"].get(1)),
+                                "-" if r["util_pct"].get(1) is None else f"{r['util_pct'][1]:.2f}",
+                                "-" if r["share"] is None else f"{r['share']:.3f}",
+                                "-" if r["max_ratio"] is None else f"{r['max_ratio']:.3f}"])
+        tables["e5"] = {
+            "caption": "Paid buyer models (E5 v2; reasoning effort low; frozen gpt-oss extractor; OBT default; seed 1; "
+                       "every buyer call sampled fresh): loss from lies (mean of scenarios 2-12) = damage + reroute + "
+                       "resid, utility cost against the same model's none run, $ per run.",
+            "columns": ["buyer", "defense", "loss from lies", "damage", "reroute", "resid", "utility cost",
+                        "utility (% of cost)", "S_main share", "max damage/bound"],
+            "rows": e5_rows}
+    # Enron real-text check (D34, D38): per stratum, never pooled.
+    ef = runs / "enron" / "eval.json"
+    if ef.exists():
+        en = json.loads(ef.read_text())
+        tables["enron"] = {
+            "caption": "Frozen extractors on 100 labeled real Enron sentences (50 delivery-like, 50 price-only). "
+                       "Wrong claims recorded is the safety metric (target 0); commitments the schema cannot express "
+                       "(calendar dates, non-widget units) come out UNTESTABLE.",
+            "columns": ["extractor", "stratum", "rows", "commitments", "claims UNTESTABLE", "recorded",
+                        "wrong recorded", "from non-commitments"],
+            "rows": [[name.replace("llm:", ""), st, x["rows"], x["commitments"],
+                      f"{x['commitment_claims_untestable']}/{x['commitment_claims']}", x["recorded_claims"],
+                      x["wrong_claims_recorded"], x["recorded_from_non_commitments"]]
+                     for name in sorted(en) for st in sorted(en[name]) for x in [en[name][st]]]}
+    # Bound tightness: the largest per-run damage / sum of per-event bounds in every OBT eval (DESIGN §6).
+    tight = []
+    for label, rs, d in (("E2 (gpt-oss)", e2, "obt"), ("E2c (gpt-oss)", e2c, "obt+planner"),
+                         ("E3 (qwen3)", read(runs / "e3"), "obt"), ("E3b (qwen3)", read(runs / "e3b"), "obt+planner"),
+                         ("E5 v2 (Luna)", e5l, "obt+planner"), ("E5 v2 (Terra)", e5t, "obt+planner")):
+        lbs = [r["metrics"]["loss_bound"] for r in rs if r["defense"] == d and r["metrics"]["loss_bound"]["events"]]
+        ratios = [lb["damage"] / lb["sum_bound"] for lb in lbs if lb["sum_bound"]]
+        if lbs:
+            tight.append([label, d, len(lbs), sum(len(lb["events"]) for lb in lbs),
+                          f"{sum(lb['damage'] for lb in lbs):,.1f}", f"{sum(lb['sum_bound'] for lb in lbs):,.1f}",
+                          f"{max(ratios):.3f}", "yes" if all(lb["ok"] is not False for lb in lbs) else "NO"])
+    if e6f.exists():
+        tight.append(["E6 (adaptive search)", "obt", f"{e6['evaluations']:,} attackers", "-", f"{e6['best']['damage']:.1f}",
+                      f"{e6['best']['sum_bound']:.1f}", f"{e6['best']['ratio']:.3f}", "yes"])
+    if e7f.exists():
+        tight.append(["E7 (k = 1, 2, 4)", "obt", "-", "-", "-", "-",
+                      f"{max(p['max_ratio'] for v in e7['points'].values() for p in v.values()):.3f}", "yes"])
+    tables["bound_tightness"] = {
+        "caption": "Bound tightness: the largest per-run ratio of damage to the sum of per-event bounds, per eval "
+                   "(runs with failure events). A ratio above 1 would break the bound.",
+        "columns": ["eval", "defense", "runs", "failure events", "damage", "sum of bounds", "max damage/bound",
+                    "held"], "rows": tight}
     (out / "tables.json").write_text(json.dumps(tables, indent=1, sort_keys=True))
     return "figdata/ and tables.json: data for eval/paper.py (figures and LaTeX tables)"
 

@@ -179,7 +179,12 @@ def build(results: Path, out: Path) -> dict:
     (out / "tables").mkdir(parents=True, exist_ok=True)
     for name, t in tables.items():
         (out / "tables" / f"{name}.tex").write_text(table_tex(name, t))
-    return {"figures": len(sizes), "tables": len(tables), "min_font_pt": min(sizes, default=MIN_PT)}
+    numbers = None
+    from eval import numbers as nb
+    if set(nb.REQUIRED) <= set(tables) and (results / "figdata" / "pareto.json").exists():
+        numbers = nb.write(results, out, results.parent / "spec" / "results").name
+    return {"figures": len(sizes), "tables": len(tables), "min_font_pt": min(sizes, default=MIN_PT),
+            "numbers": numbers}
 
 
 def main() -> None:

@@ -61,3 +61,21 @@ def test_refuses_text_below_7pt():
     with pytest.raises(ValueError, match="7"):
         paper.check_fonts(fig)
     plt.close(fig)
+
+
+def test_numbers_md_cites_a_source_for_every_number():
+    # NUMBERS.md is built from results/ only; every headline number names its file and key.
+    from pathlib import Path
+
+    import pytest
+
+    from eval import numbers
+    root = Path(__file__).resolve().parent.parent
+    if not (root / "results" / "tables.json").exists():
+        pytest.skip("no results/ built")
+    out = numbers.entries(root / "results", root / "spec" / "results")
+    assert [rq for rq, _ in numbers.RQS] == list(out) and all(out.values())
+    for rows in out.values():
+        for claim, value, unit, seeds, source in rows:
+            assert value not in ("", None) and unit and seeds and source
+            assert "results/" in source or "spec/results/" in source or "main[" in source or "e5[" in source
