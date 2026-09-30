@@ -1,15 +1,16 @@
 \begin{table}[t]
 \centering
 \small
-\caption{Second buyer model (qwen3:8b; gpt-oss extractor), loss from lies, mean of scenarios 2-12, seed 1.}
+\caption{Second buyer model (qwen3:8b; gpt-oss extractor; seed 1): loss from lies split into damage (broken promises), reroute and resid (everything else, e.g. the buyer's own over-stocking), mean over attack runs, \$ per run. Damage is n/a for a defense without claims.}
 \label{tab:second_model}
-\begin{tabular}{lrr}
+\begin{tabular}{lrrrrrr}
 \toprule
-run & defense & loss from lies \\
+run & defense & attack runs & loss from lies & damage & reroute & resid \\
 \midrule
-E3 qwen3:8b & none & 6,934.0 \\
-E3 qwen3:8b & obt & 3,189.1 \\
-E3b qwen3:8b & obt+planner & 3,032.9 \\
+E3 & none & 11 & 6,934.0 & n/a & 0.0 & 6,934.0 \\
+E3 & obt & 11 & 3,189.1 & 41.5 & -235.6 & 3,383.2 \\
+E3b & obt+planner & 11 & 1,705.3 & 54.7 & 0.0 & 1,650.6 \\
+E3b & rep+planner & 11 & 1,636.4 & n/a & 0.0 & 1,636.4 \\
 \bottomrule
 \end{tabular}
 \end{table}

@@ -4,19 +4,22 @@ Mean over seeds with a 95% CI (percentile bootstrap over seeds, 10,000 resamples
 
 | defense | seeds | mean [95% CI] | per seed |
 |---|---|---|---|
-| obt+planner | 1 | 2,070.3 [2,070.3, 2,070.3] | s1: 2,070.3 |
+| obt+planner | 1 | 1,705.3 [1,705.3, 1,705.3] | s1: 1,705.3 |
+| rep+planner | 1 | 1,636.4 [1,636.4, 1,636.4] | s1: 1,636.4 |
 
 ## Utility cost per defense (primary utility metric: cost − cost(none), honest S_main, same seed)
 
 | defense | seeds | utility cost, honest [95% CI] | utility cost, noisy-honest [95% CI] | S_main unit share, honest | S_main orders blocked, honest |
 |---|---|---|---|---|---|
 | obt+planner | 0 | - | - | 0.292 | 0.0 |
+| rep+planner | 0 | - | - | 0.959 | 0.0 |
 
 ## Utility cost as a % of the honest run's total cost (cost(none, honest), same seed)
 
 | defense | honest [95% CI] | noisy-honest [95% CI] |
 |---|---|---|
 | obt+planner | - | - |
+| rep+planner | - | - |
 
 ## Scenario 9 (noisy-honest) utility cost, every defense
 
@@ -25,20 +28,24 @@ Noisy-honest is an honest supplier with random delays: any cost above no defense
 | defense | utility cost [95% CI] | S_main unit share | S_main orders blocked |
 |---|---|---|---|
 | obt+planner | - | 0.151 | 0.0 |
+| rep+planner | - | 0.439 | 0.0 |
 
 ## Loss from lies per scenario (mean [95% CI] over each defense's seeds, as above)
 
-| scenario | obt+planner |
-|---|---|
-| 1_honest | 0.0 [0.0, 0.0] |
-| 2_always_lie | 75.5 [75.5, 75.5] |
-| 3_farm_then_lie | -13.0 [-13.0, -13.0] |
-| 4_slow_drift | 107.0 [107.0, 107.0] |
-| 5_price_bait | 3,097.5 [3,097.5, 3,097.5] |
-| 6_vague | 11,897.5 [11,897.5, 11,897.5] |
-| 7_far_deadlines | 697.0 [697.0, 697.0] |
-| 8_claim_splitting | 742.0 [742.0, 742.0] |
-| 9_noisy_honest | -41.0 [-41.0, -41.0] |
+| scenario | obt+planner | rep+planner |
+|---|---|---|
+| 1_honest | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] |
+| 2_always_lie | 75.5 [75.5, 75.5] | 1,451.0 [1,451.0, 1,451.0] |
+| 3_farm_then_lie | -13.0 [-13.0, -13.0] | 353.0 [353.0, 353.0] |
+| 4_slow_drift | 107.0 [107.0, 107.0] | 795.0 [795.0, 795.0] |
+| 5_price_bait | 3,097.5 [3,097.5, 3,097.5] | 1,329.0 [1,329.0, 1,329.0] |
+| 6_vague | 11,897.5 [11,897.5, 11,897.5] | 1,156.0 [1,156.0, 1,156.0] |
+| 7_far_deadlines | 697.0 [697.0, 697.0] | 1,222.0 [1,222.0, 1,222.0] |
+| 8_claim_splitting | 742.0 [742.0, 742.0] | 4,512.0 [4,512.0, 4,512.0] |
+| 9_noisy_honest | -41.0 [-41.0, -41.0] | 730.0 [730.0, 730.0] |
+| 10_farm_fail_refarm | 54.2 [54.2, 54.2] | 2,453.8 [2,453.8, 2,453.8] |
+| 11_extraction_attack | 347.5 [347.5, 347.5] | 1,412.2 [1,412.2, 1,412.2] |
+| 12_sybil_reentry | 1,794.0 [1,794.0, 1,794.0] | 2,586.5 [2,586.5, 2,586.5] |
 
 ## OBT damage vs bound (every OBT run with at least one failure event)
 

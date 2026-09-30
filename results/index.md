@@ -4,7 +4,7 @@
 - **e2b**: 30 runs, config `aeec456814fe`, commit `88b8efda2e`: ci.md, loss_bound.csv, loss_from_lies.csv, provenance.json, summary.md, utility.csv
 - **e2c**: 180 runs, config `e3ae87b55a9b`, commit `3535c74acf`: ci.md, loss_bound.csv, loss_from_lies.csv, provenance.json, summary.md, utility.csv
 - **e3**: 24 runs, config `b0f8ce39929e`, commit `a7e7463cfa`: ci.md, loss_bound.csv, loss_from_lies.csv, loss_vs_utility.svg, provenance.json, summary.md, trust_over_time.svg, utility.csv
-- **e3b**: 9 runs, config `1bbc9574eaa1`, commit `b23cb6909b`: ci.md, loss_bound.csv, loss_from_lies.csv, provenance.json, summary.md, utility.csv
+- **e3b**: 24 runs, config `1bbc9574eaa1`, commit `b23cb6909b`: ci.md, loss_bound.csv, loss_from_lies.csv, provenance.json, summary.md, utility.csv
 - **horizon__t100__none**: 36 runs, config `67333cab20ad`, commit `b23cb6909b`: ci.md, loss_bound.csv, loss_from_lies.csv, loss_vs_utility.svg, provenance.json, summary.md, utility.csv
 - **horizon__t100__obt**: 36 runs, config `7b65a44d3e31`, commit `b23cb6909b`: ci.md, loss_bound.csv, loss_from_lies.csv, provenance.json, summary.md, utility.csv
 - **horizon__t100__rep-n18**: 36 runs, config `a97c4089b4aa`, commit `b23cb6909b`: ci.md, loss_bound.csv, loss_from_lies.csv, provenance.json, summary.md, utility.csv
