@@ -22,7 +22,7 @@ Tier 2 below checks this empirically.
   - **B:** 1 supplier, 2 items, 3 rounds.
 
   In addition, every guard mutant that can act at a config's bounds is caught there.
-- **Budget growth multiplier K (D36).** All of the above is at K = 1. K = 2 also passes at quick and A′, with every applicable mutant caught, but those bounds can't tell K = 2 from K = 1 (the probe below). So **K > 1 is not claimed as verified** at any bound.
+- **Budget growth multiplier K (D36–D36b).** Everything above is at K = 1. Two more K = 1 configs with B0 = 1 (quick and A′, where the earned budget does bind) are also exhaustively verified. **K > 1 is not model-checked**: no bound checked exhaustively ever makes the K = 2 budget bind once trust is earned (see the K section). K > 1 rests on the runtime monitors.
 - **Not claimed:** exhaustive verification at the full bounds (2 suppliers, 2 items, 6 rounds), or at config A (2 suppliers, 1 item, 3 rounds). Neither exhaustive search finished. Both are reported below as partial, non-exhaustive evidence.
 - **Two-supplier behavior over 3+ rounds is not covered by a completed exhaustive search.** It is covered by:
   - the partial exhaustive run of config A (547M states, 0 violations);
@@ -32,7 +32,7 @@ Tier 2 below checks this empirically.
 
 ## Tier 1: exhaustive checks
 
-Common constants: `Claims = {k1, k2, k3}`, `Orders = {o1, o2}`, `Pays = {p1}`, `Notes = {n1}`, `W = 1`, `K = 1` (see the K section below), `NoRef = NoRef`, symmetry as above. No state constraints.
+Common constants: `Claims = {k1, k2, k3}`, `Orders = {o1, o2}`, `Pays = {p1}`, `Notes = {n1}`, `W = 1`, `K = 1`, `MaxQty = 2` (see the K section below), `NoRef = NoRef`, symmetry as above. No state constraints.
 
 | config | Sups | Items | MaxRound | B0 | MinLead | unmutated result | distinct states | depth | runtime |
 |---|---|---|---|---|---|---|---|---|---|
@@ -134,48 +134,77 @@ Python reason codes reached in the unmutated campaigns:
 
 No trace ended early from deadlock: every trace reached the final round's execute step.
 
-## Budget growth multiplier K (DECISIONS D36, D36a)
+## Budget growth multiplier K (DECISIONS D36, D36a, D36b)
 
-`OBT.tla` now takes `K` as a constant: `Bud(s) = B0 + K * MaxOf(earned)`, with `ASSUME K \in Nat \ {0}`. `run_mutants.sh` reads `K` from the environment (default 1); K ≠ 1 tags its outputs `<bounds>_k<K>_*`. `run_k2.sh` runs everything in this section.
+**Outcome: K = 1 is exhaustively verified. K > 1 is not model-checked; it rests on the runtime monitors (0 violations in E7 at k ∈ {1, 2, 4}).** No bound we could check exhaustively exercises the K-scaled budget, so no K = 2 claim is made. The runs below are kept as evidence for that conclusion.
+
+`OBT.tla` takes `K` (`Bud(s) = B0 + K * MaxOf(earned)`, `ASSUME K \in Nat \ {0}`) and `MaxQty`, the largest order the buyer proposes (`ASSUME MaxQty \in Nat \ {0}`). K = 1 and MaxQty = 2 reproduce every earlier result.
+- `run_mutants.sh` reads `K`, `B0V` (overrides B0) and `MAXQ` from the environment, and tags outputs `<bounds>[_b0<B0>][_q<MaxQty>][_k<K>]_*`.
+- `run_k2.sh` is the K = 1 reproduction plus the D36a runs.
+- `run_b1.sh` is the B0 = 1 chain.
+- `run_nonvacuity.sh` runs the `KProbe.tla` witnesses.
 
 **K = 1 reproduces the committed results** (`k1_repro/`). Every verdict is identical, and the exhaustive runs match exactly:
 
 | config | unmutated, committed | unmutated, K = 1 rerun | verdicts |
 |---|---|---|---|
-| quick | 55,007,884 states · depth 30 | 55,007,884 · 30 | 9/9 identical (ITEM, XSUP-* no-op PASS at 55,007,884 · 30) |
+| quick | 55,007,884 states · depth 30 | 55,007,884 · 30 | 9/9 identical |
 | A′ | 116,548,616 · 22 | 116,548,616 · 22 | 9/9 identical (3 N/A) |
 
-The caught mutants' counterexample counts differ from the committed ones, as expected under `-workers auto` (see Mutants above). For example, quick I1 went from 1,397,603 · 23 to 1,338,745 · 24, and A′ I1 from 24,189,963 · 21 to 19,395,933 · 21.
+The caught mutants' counterexample counts differ, as expected under `-workers auto` (see Mutants above). For example, quick I1 went from 1,397,603 · 23 to 1,338,745 · 24.
 
-**K = 2** (`quick_k2_*`, `fallbackA2_k2_*`). All pass, and every applicable mutant is caught.
+**Non-vacuity: does a bound exercise K?** `KProbe.tla` (which EXTENDS OBT) states two probes as invariants that must be *violated*. Each counterexample is a witness:
+- `BudgetNeverBindsWhenEarned`: a gate decision is OVER_BUDGET while the supplier's earned term is > 0. This is the strict test (D36b): the K-scaled budget actually stops something.
+- `KNeverChangesADecision`: K = 1 and K = 2 decide a reachable gate action differently.
 
-| mutant | quick, K = 2 | A′, K = 2 |
+| bounds | K | budget binds while earned > 0 | K changes a decision | files |
+|---|---|---|---|---|
+| quick (B0 = 2), control | 1 | none, exhaustive 55,007,884 | none, exhaustive 55,007,884 | `k_probe/control/` |
+| A′ (B0 = 2) | 1 | none, exhaustive 116,548,616 | — | `k_probe/a2_*` |
+| quick, B0 = 1 | 1 | witness · 425,799 · 19 steps | witness · 502,922 · 19 | `quick_b01_nonvacuity.txt` |
+| A′, B0 = 1 | 1 | witness · 4,377,371 · 19 | witness · 5,726,867 · 19 | `fallbackA2_b01_nonvacuity.txt` |
+| quick, B0 = 1 | **2** | **none**, exhaustive 50,129,774 | witness · 570,131 · 19 | `quick_b01_k2_nonvacuity.txt` |
+| A′, B0 = 1 | **2** | **none**, exhaustive 114,223,584 | witness · 4,118,656 · 19 | `fallbackA2_b01_k2_nonvacuity.txt` |
+| quick, B0 = 1, MaxQty = 3 | **2** | **none**, exhaustive 104,249,158 (213 s) | not run | `k_probe/q3_trial/` |
+| A′, B0 = 1, MaxQty = 3 | **2** | **none**, exhaustive 247,833,128 (571 s) | not run | `k_probe/q3_trial/` |
+
+**Reading.** At K = 2 the budget is at least B0 + 2 once any trust is earned. With two order ids, three rounds at most, and orders of up to 2 (or 3) units, the pending exposure never exceeds it. So the K = 2 limit only ever binds at B0: before trust is earned, or during a cool-down.
+
+At B0 = 1, K = 2 does admit orders that K = 1 blocks, so the state spaces differ. But the K-scaled limit is never tight, and under D36b's strict criterion the K = 2 runs are vacuous. Larger order-id pools or more rounds might exercise it. The one tried earlier, a third order id at quick, found no witness in 10 minutes with its queue still growing, so we don't pursue it.
+
+The K = 2 runs at the B0 = 2 bounds (`quick_k2_*`, `fallbackA2_k2_*`, D36a) all pass with every applicable mutant caught. Their state spaces are identical to K = 1's, so they are not claimed either.
+
+**B0 = 1 at K = 1** (`quick_b01_*`, `fallbackA2_b01_*`). These are two more exhaustive K = 1 configs, where the earned budget does bind (the witness above):
+
+| mutant | quick, B0 = 1 | A′, B0 = 1 |
 |---|---|---|
-| none | **PASS** · 55,007,884 · 30 · 252 s | **PASS** · 116,548,616 · 22 · 542 s |
-| I1 | caught I1 · 1,449,810 · 24 · 8 s | caught I1 · 22,323,315 · 21 · 119 s |
-| I2 | caught I2 · 2,072,406 · 24 · 10 s | N/A (1) |
-| I4 | caught I4 · 20,273 · 19 · 2 s | caught I4 · 711,192 · 18 · 7 s |
-| I6 | caught I6 · 2,515 · 13 · 0 s | caught I6 · 14,451 · 12 · 1 s |
-| I7 | caught I7 · 6,633,047 · 28 · 34 s | N/A (2) |
-| ITEM | PASS (no-op) · 55,007,884 · 30 · 248 s | N/A (3) |
-| XSUP-RECEIPT | PASS (no-op) · 55,007,884 · 30 · 240 s | caught I7 · 442,523 · 16 · 5 s |
-| XSUP-BUDGET | PASS (no-op) · 55,007,884 · 30 · 253 s | caught I2 · 373,240 · 16 · 4 s |
+| none | **PASS** · 50,119,694 · 30 · 150 s | **PASS** · 114,223,584 · 22 · 365 s |
+| I1 | caught I1 · 2,627 · 15 · 1 s | caught I1 · 31,268 · 14 · 2 s |
+| I2 | caught I2 · 1,556,377 · 24 · 6 s | no violation (exhaustive) |
+| I4 | caught I4 · 21,277 · 19 · 2 s | caught I4 · 684,712 · 18 · 5 s |
+| I6 | no violation (exhaustive) | no violation (exhaustive) |
+| I7 | no violation (exhaustive) | no violation (exhaustive) |
+| ITEM | PASS (no-op, 1 item) | PASS (no-op, 1 item) |
+| XSUP-RECEIPT | PASS (no-op, 1 supplier) | caught I7 · 422,076 · 17 · 3 s |
+| XSUP-BUDGET | PASS (no-op, 1 supplier) | caught I2 · 416,340 · 16 · 3 s |
 
-Runtimes are wall-clock, on a host that was also running the E3b LLM runs (ollama). That is why the K = 1 reruns were also slower than the committed runs, for example 217 s vs 168 s at quick. No host sleep occurred.
+"No violation (exhaustive)" means that with the guard removed, TLC completes with no violation (`N/A(no-viol)` in the summaries). At B0 = 1 the tighter budget blocks the orders that over-consume capacity or double-credit receipts before those guards are needed. Each of these mutants is caught at the B0 = 2 bounds (mutant coverage below).
 
-**At these bounds K = 2 checks nothing that K = 1 doesn't.** The K = 2 state spaces are identical to K = 1's, and a probe shows why (`k_probe/`). The probe is `OBT.tla` plus two scratch invariants, run at K = 1:
+**Mutant coverage, K = 1** (`k_coverage.txt`, `coverage_k.py`). Every mutant is caught in at least one config:
 
-| probe invariant | meaning | quick | A′ |
-|---|---|---|---|
-| `NoEarned` | no supplier ever has earned trust | **violated** (11,349 states) | **violated** (434,601 states) |
-| `KNeverDecides` | no order or payment is ever judged OVER_BUDGET while its supplier's earned term is > 0 | **holds**, exhaustive (55,007,884) | **holds**, exhaustive (116,548,616) |
+| mutant | quick | A′ | B | quick B0 = 1 | A′ B0 = 1 |
+|---|---|---|---|---|---|
+| I1 | caught | caught | caught | caught | caught |
+| I2 | caught | N/A | caught | caught | no viol. |
+| I4 | caught | caught | caught | caught | caught |
+| I6 | caught | caught | caught | no viol. | no viol. |
+| I7 | caught | N/A | caught | no viol. | no viol. |
+| ITEM | no-op | N/A | caught | no-op | no-op |
+| XSUP-RECEIPT | no-op | caught | no-op | no-op | caught |
+| XSUP-BUDGET | no-op | caught | no-op | no-op | caught |
+| unmutated | PASS | PASS | PASS | PASS | PASS |
 
-So earned trust does arise, but once it has, the budget never binds. Only order ids {o1, o2} exist, and an order is 1–2 units, so too little pending exposure is left to exceed B0 + earned. K scales only the earned term, so it can't change any gate decision at these bounds, for any K ≥ 1.
-
-**What is verified:**
-- K = 1: exhaustive at quick, A′ and B.
-- K = 2: exhaustive at quick and A′, but vacuously, since the configurations are behaviorally the same as K = 1.
-- **No bound has yet exercised K > 1 where it matters.** That needs bounds at which `KNeverDecides` is violated. B0 = 1 at the quick and A′ bounds gives such a witness (`k_probe/candidates/`); a third order id found none within 10 minutes. See DECISIONS D36a, which is open. B was not rerun at K = 2 (too slow, per the request) and was not probed.
+**K = 2: not model-checked** (no bound passes the strict non-vacuity test).
 
 ## Coverage: invariant by evidence
 
@@ -196,7 +225,10 @@ So earned trust does arise, but once it has, the budget never binds. Only order 
 
 ```
 spec/run_mutants.sh quick|fallbackA2|fallbackB|tiny     # SYM=0 disables symmetry; ONLY="I2 I7" runs a subset; K=2 sets the multiplier
-spec/run_k2.sh                                           # K = 1 reproduction check + K = 2 at quick and A′ (D36)
+spec/run_k2.sh                                           # K = 1 reproduction check + K = 2 at quick and A′ (D36a)
+spec/run_b1.sh                                           # B0 = 1 configs with non-vacuity probes (D36b; stops at K = 2)
+K=2 B0V=1 MAXQ=3 spec/run_nonvacuity.sh quick            # KProbe witnesses at any bounds
+python spec/coverage_k.py                                # mutant coverage per verified K
 python -m spec.make_crosscheck                           # after tiny, SYM=0 tiny, and ONLY="I2 I7" quick with/without SYM
 spec/run_replay.sh                                       # replay campaigns -> replay/
 spec/run_simulation.sh 102272 20260925                   # full-bounds simulation -> simulation_full.*

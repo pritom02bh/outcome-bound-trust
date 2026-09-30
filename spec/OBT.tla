@@ -50,10 +50,12 @@
 EXTENDS Naturals, FiniteSets, TLC
 
 CONSTANTS Sups, Items, Claims, Orders, Pays, Notes, MaxRound, B0, W, MinLead, MUTANT, K,
+          MaxQty,    \* largest order the buyer proposes; 2 unless a config says otherwise (D36b)
           NoRef      \* model value: the order a not-yet-proposed payment refers to
 
 \* Symmetry needs every sentinel outside the permuted pools (ids are model values in the cfg).
 ASSUME K \in Nat \ {0}
+ASSUME MaxQty \in Nat \ {0}
 ASSUME NoRef \notin Claims \cup Orders \cup Pays
 
 Phases == <<"env", "verify", "budget", "remediate", "messages", "propose", "gate", "execute">>
@@ -252,7 +254,7 @@ Propose ==
     /\ phase = "propose"
     /\ \/ od' = od
        \/ /\ \E x \in Orders : od[x].st = "NONE"
-          /\ \E s \in Sups, i \in Items, q \in 1..2, C \in SUBSET Citable :
+          /\ \E s \in Sups, i \in Items, q \in 1..MaxQty, C \in SUBSET Citable :
             LET o == CHOOSE x \in Orders : od[x].st = "NONE" IN
             od' = [od EXCEPT ![o] = [NoOrder EXCEPT !.st = "PROPOSED", !.sup = s, !.item = i,
                                                    !.qty = q, !.cites = C, !.round = now]]

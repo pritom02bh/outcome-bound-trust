@@ -1,4 +1,4 @@
-"""Mutant coverage per K (DECISIONS D36a): every mutant must be caught in at least one config for each K.
+"""Mutant coverage per verified K (DECISIONS D36a, D36b): every mutant caught in at least one config for each K.
 
     python spec/coverage_k.py      # reads results/*summary*.txt, writes results/k_coverage.txt; exit 1 if not
 """
@@ -7,13 +7,10 @@ from pathlib import Path
 
 R = Path(__file__).parent / "results"
 MUTANTS = ("I1", "I2", "I4", "I6", "I7", "ITEM", "XSUP-RECEIPT", "XSUP-BUDGET")
-# (config label, summary file) per K. B at K = 2 runs ITEM only: it is the one mutant caught nowhere else.
+# (config label, summary file) per verified K. K = 2 is absent: no bound passes the strict non-vacuity test (D36b).
 CONFIGS = {
     1: [("quick", "quick_summary.txt"), ("A'", "fallbackA2_summary.txt"), ("B", "fallbackB_summary.txt"),
         ("quick B0=1", "quick_b01_summary.txt"), ("A' B0=1", "fallbackA2_b01_summary.txt")],
-    2: [("quick", "quick_k2_summary.txt"), ("A'", "fallbackA2_k2_summary.txt"),
-        ("B (ITEM only)", "fallbackB_k2_summary_only_ITEM.txt"),
-        ("quick B0=1", "quick_b01_k2_summary.txt"), ("A' B0=1", "fallbackA2_b01_k2_summary.txt")],
 }
 
 

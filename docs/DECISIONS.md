@@ -501,4 +501,17 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   At k = 2, orders that k = 1 would block are reachable and executed, so the k = 2 state space really differs. But the k = 2 budget never blocks anything once trust is earned: with B0 + 2·earned ≥ 3, 1–2 unit orders and two order ids, it only binds at b0.
   - D36a's wording treats "binds while earned > 0" and "k changes a decision" as one condition. Here they differ, so under the strict reading both configs fail at k = 2.
   - The k = 2 mutant runs, ITEM at B with k = 2, and the coverage check (`coverage_k.py`) were not run.
-- **Status: waiting for the user to choose the criterion (or new bounds).** No k = 2 claim was added to DESIGN §7 or `spec/results/README.md`.
+- **User decision: option (b), strict non-vacuity.** First a cheap test:
+  - Add a max-order-quantity constant, `MaxQty`. The default 2 keeps every result; the spec tests pass and the cfg writers, including the simulation script and the trace fixture, set it.
+  - Try MaxQty = 3 at quick and A′ with B0 = 1 and k = 2.
+  - Proceed only if the strict witness appears within 10 minutes per config and the full unmutated runs project under about 2 hours. Otherwise fall back.
+- **Result: neither config has a witness, and both searches were exhaustive** (`spec/results/k_probe/q3_trial/`):
+  - quick, B0 = 1, MaxQty = 3, k = 2: `BudgetNeverBindsWhenEarned` holds over 104,249,158 states (213 s).
+  - A′, B0 = 1, MaxQty = 3, k = 2: it holds over 247,833,128 states (571 s).
+  - Larger orders don't help. With two order ids and at most 3 rounds, pending exposure never exceeds B0 + 2·earned.
+- **Outcome: fallback.**
+  - **k = 1 is exhaustively verified** at quick, A′, B, quick B0 = 1 and A′ B0 = 1. The unmutated spec passes at all five. Every mutant is caught in at least one config (`spec/coverage_k.py` → `spec/results/k_coverage.txt`).
+  - **k > 1 is not model-checked.** It rests on the runtime monitors, with 0 violations in E7 at k ∈ {1, 2, 4}. No partial or vacuous k = 2 claim is made anywhere (DESIGN §6–§7, `spec/results/README.md`).
+  - The k = 2 runs and probes stay committed as evidence for the conclusion, not as claims.
+  - The k = 2 mutant runs at B0 = 1 and ITEM at B with k = 2 were not run, because the criterion failed first. `MaxQty` stays in the spec (default 2).
+  - Fixed along the way: `run_simulation.sh` added `K = 1` with a `\n` in a sed replacement, which BSD sed doesn't turn into a newline. It now uses awk.

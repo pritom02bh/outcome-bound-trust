@@ -17,6 +17,7 @@ JAVA=${JAVA:-java}
 MODE=${1:-full}
 K=${K:-1}                     # budget growth multiplier (DECISIONS D36); K = 1 is DESIGN §6
 B0V=${B0V:-}                  # overrides the mode's B0 (D36a: B0 = 1 makes K observable); tags outputs _b0<B0V>
+MAXQ=${MAXQ:-2}               # largest order quantity (D36b); MAXQ != 2 tags outputs _q<MAXQ>
 # MAYBE_NA="I2 I7": these mutants may be uncaught here. If TLC then completes with no violation, the verdict is
 # N/A(no-viol) instead of a failure; the caller checks each is caught in some other config (D36a).
 MAYBE_NA=${MAYBE_NA:-}
@@ -90,14 +91,14 @@ else
 fi
 [ -z "$B0V" ] || BOUNDS=$(echo "$BOUNDS" | sed "s/B0 = [0-9]*/B0 = $B0V/")
 SYM=${SYM:-1}
-TAG=$MODE; [ -z "$B0V" ] || TAG=${TAG}_b0${B0V}; [ "$K" = 1 ] || TAG=${TAG}_k${K}; [ "$SYM" = 1 ] || TAG=${TAG}_nosym
+TAG=$MODE; [ -z "$B0V" ] || TAG=${TAG}_b0${B0V}; [ "$MAXQ" = 2 ] || TAG=${TAG}_q${MAXQ}; [ "$K" = 1 ] || TAG=${TAG}_k${K}; [ "$SYM" = 1 ] || TAG=${TAG}_nosym
 ONLY=${ONLY:-}
 if [ "$SYM" = 1 ]; then SYMLINE='SYMMETRY Symm'; SYMDESC='Permutations(Claims) \cup Permutations(Orders) \cup Permutations(Pays)'
 else SYMLINE=''; SYMDESC='none'; fi
 # CFG_ONLY=1: print the unmutated model's constants block (for run_nonvacuity.sh) and stop.
 if [ -n "${CFG_ONLY:-}" ]; then
-  printf 'SPECIFICATION Spec\nCONSTANTS\n    %s\n    W = 1\n    K = %s\n    NoRef = NoRef\n    MUTANT = "none"\n%s\n' \
-      "$BOUNDS" "$K" "$SYMLINE"
+  printf 'SPECIFICATION Spec\nCONSTANTS\n    %s\n    W = 1\n    K = %s\n    MaxQty = %s\n    NoRef = NoRef\n    MUTANT = "none"\n%s\n' \
+      "$BOUNDS" "$K" "$MAXQ" "$SYMLINE"
   exit 0
 fi
 RESULTS=${RESULTS:-results}   # tests pass a temp dir so they never overwrite committed evidence
@@ -108,7 +109,7 @@ SUMMARY=$RESULTS/${TAG}_summary${ONLY:+_only_${ONLY// /_}}.txt
   echo "# date: $(date -u +%Y-%m-%dT%H:%M:%SZ)  host: $(uname -sm)  cores: $(sysctl -n hw.ncpu 2>/dev/null || nproc)"
   echo "# tla2tools.jar sha256: $(shasum -a 256 tla2tools.jar | cut -d' ' -f1)"
   echo "# java: $("$JAVA" -version 2>&1 | head -1)"
-  echo "# bounds: $(echo "$BOUNDS" | tr -s ' \n' ' ') W = 1 K = $K"
+  echo "# bounds: $(echo "$BOUNDS" | tr -s ' \n' ' ') W = 1 K = $K MaxQty = $MAXQ"
   echo "# symmetry: $SYMDESC"
   printf '%-12s %-18s %-32s %16s %6s %9s\n' mutant verdict violation distinct_states depth runtime_s
 } > "$SUMMARY"
@@ -134,6 +135,7 @@ CONSTANTS
     $BOUNDS
     W = 1
     K = $K
+    MaxQty = $MAXQ
     NoRef = NoRef
     MUTANT = "$m"
 $SYMLINE

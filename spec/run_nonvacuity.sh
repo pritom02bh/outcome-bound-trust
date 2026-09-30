@@ -8,14 +8,14 @@ set -uo pipefail
 cd "$(dirname "$0")"
 JAVA=$(ls -d ../tools/jdk-*/Contents/Home/bin/java 2>/dev/null | head -1)
 JAVA=${JAVA:-java}
-MODE=${1:?mode}; K=${K:-1}; B0V=${B0V:-}
-TAG=$MODE; [ -z "$B0V" ] || TAG=${TAG}_b0${B0V}; [ "$K" = 1 ] || TAG=${TAG}_k${K}
+MODE=${1:?mode}; K=${K:-1}; B0V=${B0V:-}; MAXQ=${MAXQ:-2}
+TAG=$MODE; [ -z "$B0V" ] || TAG=${TAG}_b0${B0V}; [ "$MAXQ" = 2 ] || TAG=${TAG}_q${MAXQ}; [ "$K" = 1 ] || TAG=${TAG}_k${K}
 RESULTS=${RESULTS:-results}
 mkdir -p "$RESULTS" states
-base=$(CFG_ONLY=1 K=$K B0V=$B0V ./run_mutants.sh "$MODE") || exit 1
+base=$(CFG_ONLY=1 K=$K B0V=$B0V MAXQ=$MAXQ ./run_mutants.sh "$MODE") || exit 1
 OUT=$RESULTS/${TAG}_nonvacuity.txt
 {
-  echo "# K non-vacuity (KProbe.tla): mode=$MODE K=$K B0=${B0V:-mode default}"
+  echo "# K non-vacuity (KProbe.tla): mode=$MODE K=$K B0=${B0V:-mode default} MaxQty=$MAXQ"
   echo "# date: $(date -u +%Y-%m-%dT%H:%M:%SZ)  host: $(uname -sm)"
   echo "# bounds: $(echo "$base" | sed -n '/CONSTANTS/,/MUTANT/p' | grep -v CONSTANTS | tr -s ' \n' ' ')"
   printf '%-28s %-9s %16s %6s %9s\n' probe result distinct_states length runtime_s

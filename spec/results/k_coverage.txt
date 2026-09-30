@@ -1,0 +1,11 @@
+K = 1: quick | A' | B | quick B0=1 | A' B0=1
+  I1            OK  CAUGHT(I1) | CAUGHT(I1) | CAUGHT(I1) | CAUGHT(I1) | CAUGHT(I1)
+  I2            OK  CAUGHT(I2) | N/A | CAUGHT(I2) | CAUGHT(I2) | N/A(no-viol)
+  I4            OK  CAUGHT(I4) | CAUGHT(I4) | CAUGHT(I4) | CAUGHT(I4) | CAUGHT(I4)
+  I6            OK  CAUGHT(I6) | CAUGHT(I6) | CAUGHT(I6) | N/A(no-viol) | N/A(no-viol)
+  I7            OK  CAUGHT(I7) | N/A | CAUGHT(I7) | N/A(no-viol) | N/A(no-viol)
+  ITEM          OK  PASS(no-op) | N/A | CAUGHT(I1) | PASS(no-op) | PASS(no-op)
+  XSUP-RECEIPT  OK  PASS(no-op) | CAUGHT(I7) | PASS(no-op) | PASS(no-op) | CAUGHT(I7)
+  XSUP-BUDGET   OK  PASS(no-op) | CAUGHT(I2) | PASS(no-op) | PASS(no-op) | CAUGHT(I2)
+  none          OK  PASS | PASS | PASS | PASS | PASS
+RESULT: every mutant caught in >= 1 config for each K
