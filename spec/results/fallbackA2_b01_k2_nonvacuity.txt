@@ -1,0 +1,6 @@
+# K non-vacuity (KProbe.tla): mode=fallbackA2 K=2 B0=1
+# date: 2026-09-30T08:04:04Z  host: Darwin arm64
+# bounds:  Sups = {s1, s2} Items = {i1} Claims = {k1, k2, k3} Orders = {o1, o2} Pays = {p1} Notes = {n1} MaxRound = 2 B0 = 1 MinLead = 1 W = 1 K = 2 NoRef = NoRef MUTANT = "none" 
+probe                        result     distinct_states length runtime_s
+BudgetNeverBindsWhenEarned   VACUOUS          114223584      -       234
+KNeverChangesADecision       WITNESS            4118656     19        13

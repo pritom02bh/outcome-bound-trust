@@ -1,0 +1,6 @@
+# K non-vacuity (KProbe.tla): mode=quick K=1 B0=1
+# date: 2026-09-30T07:14:03Z  host: Darwin arm64
+# bounds:  Sups = {s1} Items = {i1} Claims = {k1, k2, k3} Orders = {o1, o2} Pays = {p1} Notes = {n1} MaxRound = 3 B0 = 1 MinLead = 1 W = 1 K = 1 NoRef = NoRef MUTANT = "none" 
+probe                        result     distinct_states length runtime_s
+BudgetNeverBindsWhenEarned   WITNESS             425799     19         2
+KNeverChangesADecision       WITNESS             502922     19         3

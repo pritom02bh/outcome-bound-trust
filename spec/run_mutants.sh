@@ -16,6 +16,10 @@ JAVA=${JAVA:-java}
 [ -f tla2tools.jar ] || curl -sSL -o tla2tools.jar https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
 MODE=${1:-full}
 K=${K:-1}                     # budget growth multiplier (DECISIONS D36); K = 1 is DESIGN §6
+B0V=${B0V:-}                  # overrides the mode's B0 (D36a: B0 = 1 makes K observable); tags outputs _b0<B0V>
+# MAYBE_NA="I2 I7": these mutants may be uncaught here. If TLC then completes with no violation, the verdict is
+# N/A(no-viol) instead of a failure; the caller checks each is caught in some other config (D36a).
+MAYBE_NA=${MAYBE_NA:-}
 if [ "$MODE" = tiny ]; then
   # Symmetry cross-check bounds: small enough to finish without symmetry.
   BOUNDS='Sups = {s1}
@@ -84,11 +88,18 @@ else
     B0 = 1
     MinLead = 2'
 fi
+[ -z "$B0V" ] || BOUNDS=$(echo "$BOUNDS" | sed "s/B0 = [0-9]*/B0 = $B0V/")
 SYM=${SYM:-1}
-TAG=$MODE; [ "$K" = 1 ] || TAG=${MODE}_k${K}; [ "$SYM" = 1 ] || TAG=${TAG}_nosym
+TAG=$MODE; [ -z "$B0V" ] || TAG=${TAG}_b0${B0V}; [ "$K" = 1 ] || TAG=${TAG}_k${K}; [ "$SYM" = 1 ] || TAG=${TAG}_nosym
 ONLY=${ONLY:-}
 if [ "$SYM" = 1 ]; then SYMLINE='SYMMETRY Symm'; SYMDESC='Permutations(Claims) \cup Permutations(Orders) \cup Permutations(Pays)'
 else SYMLINE=''; SYMDESC='none'; fi
+# CFG_ONLY=1: print the unmutated model's constants block (for run_nonvacuity.sh) and stop.
+if [ -n "${CFG_ONLY:-}" ]; then
+  printf 'SPECIFICATION Spec\nCONSTANTS\n    %s\n    W = 1\n    K = %s\n    NoRef = NoRef\n    MUTANT = "none"\n%s\n' \
+      "$BOUNDS" "$K" "$SYMLINE"
+  exit 0
+fi
 RESULTS=${RESULTS:-results}   # tests pass a temp dir so they never overwrite committed evidence
 mkdir -p "$RESULTS" states
 SUMMARY=$RESULTS/${TAG}_summary${ONLY:+_only_${ONLY// /_}}.txt
@@ -146,6 +157,7 @@ CFG
   else
     if grep -Eq "(Invariant|Action property|Temporal properties) $want (is )?violated|property $want is violated|Invariant $want is violated" "$out"; then
       verdict="CAUGHT($want)"
+    elif [[ " $MAYBE_NA " == *" $m "* ]] && grep -q "No error has been found" "$out"; then verdict="N/A(no-viol)"
     else verdict="NOT-CAUGHT(want $want)"; status=1; fi
   fi
   got=$(grep -Eo '(Invariant|Action property) [A-Za-z0-9]+ is violated' "$out" | head -1)

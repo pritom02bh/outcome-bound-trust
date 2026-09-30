@@ -481,3 +481,24 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
 
 - **Recommendation.** Add configs quick-B1 and A′-B1 (B0 = 1, otherwise unchanged). Run them exhaustively at K = 1 and K = 2 with all mutants, and require `KNeverDecides` to be violated there as a non-vacuity check. The run_mutants comment notes that quick used B0 = 2 so I2's witness fits in 3 rounds, so mutant reachability at B0 = 1 must be rechecked; any mutant that can't act becomes N/A with a reason, as at A′.
 - **Status: not started; waiting for the user's choice of bounds.**
+
+## D36b. B0 = 1 configs: at k = 2 the two non-vacuity conditions split (OPEN, user decision)
+- **Approved plan (D36a).** Add quick and A′ with B0 = 1 and run them at k = 1 and k = 2 with all mutants. At each bound the run must show a reachable state where the budget binds while earned trust > 0; otherwise the config fails.
+  - `spec/KProbe.tla` (which EXTENDS OBT) carries two probes that must be violated: `BudgetNeverBindsWhenEarned`, and `KNeverChangesADecision` (k = 1 and k = 2 decide some gate action differently).
+  - `run_nonvacuity.sh` runs them, and `run_b1.sh` is the chain. As a control, both probes come back VACUOUS at the old quick bounds (B0 = 2).
+- **k = 1, done.** Both probes found witnesses at both B0 = 1 configs, and the unmutated spec passes:
+  - quick B0 = 1: 50,119,694 states, depth 30.
+  - A′ B0 = 1: 114,223,584 states, depth 22.
+  - Caught: I1 and I4 at both; I2 at quick; XSUP-RECEIPT and XSUP-BUDGET at A′.
+  - No violation, N/A(no-viol): I6 and I7 at both, and I2 at A′. All of these are caught at the B0 = 2 configs.
+- **k = 2, STOP.**
+
+  | config (B0 = 1, k = 2) | budget binds while earned > 0 | k changes a decision |
+  |---|---|---|
+  | quick | **VACUOUS** (50,129,774 states, exhaustive) | WITNESS (570,131 states, 19 steps) |
+  | A′ | **VACUOUS** (114,223,584 states, exhaustive) | WITNESS (4,118,656 states, 19 steps) |
+
+  At k = 2, orders that k = 1 would block are reachable and executed, so the k = 2 state space really differs. But the k = 2 budget never blocks anything once trust is earned: with B0 + 2·earned ≥ 3, 1–2 unit orders and two order ids, it only binds at b0.
+  - D36a's wording treats "binds while earned > 0" and "k changes a decision" as one condition. Here they differ, so under the strict reading both configs fail at k = 2.
+  - The k = 2 mutant runs, ITEM at B with k = 2, and the coverage check (`coverage_k.py`) were not run.
+- **Status: waiting for the user to choose the criterion (or new bounds).** No k = 2 claim was added to DESIGN §7 or `spec/results/README.md`.

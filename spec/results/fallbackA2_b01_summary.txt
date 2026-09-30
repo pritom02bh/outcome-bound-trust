@@ -1,0 +1,17 @@
+# OBT.tla model check: mode=fallbackA2
+# date: 2026-09-30T07:29:59Z  host: Darwin arm64  cores: 10
+# tla2tools.jar sha256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+# java: openjdk version "21.0.12.1" 2026-08-18 LTS
+# bounds: Sups = {s1, s2} Items = {i1} Claims = {k1, k2, k3} Orders = {o1, o2} Pays = {p1} Notes = {n1} MaxRound = 2 B0 = 1 MinLead = 1  W = 1 K = 1
+# symmetry: Permutations(Claims) \cup Permutations(Orders) \cup Permutations(Pays)
+mutant       verdict            violation                         distinct_states  depth runtime_s
+none         PASS               none                                    114223584     22       365
+I1           CAUGHT(I1)         Action property I1 is violated              31268     14         2
+I2           N/A(no-viol)       none                                    114223584     22       375
+I4           CAUGHT(I4)         Invariant I4 is violated                   684712     18         5
+I6           N/A(no-viol)       none                                    114223584     22       379
+I7           N/A(no-viol)       none                                    114223584     22       383
+ITEM         PASS(no-op)        none                                    114223584     22       385
+XSUP-RECEIPT CAUGHT(I7)         Invariant I7 is violated                   422076     17         3
+XSUP-BUDGET  CAUGHT(I2)         Action property I2 is violated             416340     16         3
+# tlc: TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
