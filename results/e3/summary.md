@@ -17,9 +17,9 @@
 
 ## Loss decomposition and bound (DESIGN §6)
 
-loss_from_lies = damage + reroute_cost_diff + resid, every term relative to the honest run with the same defense and seed. damage: cost vs the same decisions with every relied-on promise kept; the bound Σ L_e applies to it (OBT only). reroute_cost_diff: extra backup premium on quantity rerouted after OVER_BUDGET/OVER_CLAIM blocks, vs the honest run. resid: everything else (other blocks, trajectory differences), reported as is.
+loss_from_lies = damage + reroute_cost_diff + resid, every term relative to the honest run with the same defense and seed. damage: cost vs the same decisions with every relied-on promise kept; the bound Σ L_e applies to it (OBT only). reroute premium diff (reroute_cost_diff): extra backup premium on quantity rerouted after OVER_BUDGET/OVER_CLAIM blocks, vs the honest run. resid: everything else (other blocks, trajectory differences), reported as is.
 
-| Scenario | Defense | loss_from_lies | damage | Σ bound | bound ok | reroute_cost_diff | resid | failure events |
+| Scenario | Defense | loss_from_lies | damage | Σ bound | bound ok | reroute premium diff | resid | failure events |
 |---|---|---|---|---|---|---|---|---|
 | 1_honest | obt | 0.0 | 0.0 | 0.0 | yes | 0.0 | 0.0 | 0.0 |
 | 1_honest | none | 0.0 | - | - | - | 0.0 | - | 0.0 |
@@ -46,11 +46,11 @@ loss_from_lies = damage + reroute_cost_diff + resid, every term relative to the 
 | 12_sybil_reentry | obt | 4,207.0 | 94.5 | 294.0 | yes | -267.0 | 4,379.5 | 21.0 |
 | 12_sybil_reentry | none | 15,354.0 | - | - | - | 0.0 | - | 0.0 |
 
-## Price of safety (honest S_main)
+## Reroute premium (honest S_main)
 
 Absolute backup premium the defense's own reroutes cost in the honest scenario (not differenced).
 
-| Defense | Price of safety ($) |
+| Defense | Reroute premium ($) |
 |---|---|
 | obt | 272.0 |
 | none | 0.0 |

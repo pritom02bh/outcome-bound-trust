@@ -151,7 +151,7 @@ Every term is relative to the honest run with the same defense and seed:
 - `reroute_cost_diff = reroute_cost(R) − reroute_cost(honest)`. Here `reroute_cost` is the backup premium on quantity rerouted after `OVER_BUDGET`/`OVER_CLAIM` blocks.
 - `resid` is the rest: blocks for other reasons (untestable, bad claim, mismatch) and trajectory differences. It is reported as is, and it can be nonzero, even negative.
 
-The honest run's absolute `reroute_cost` is the defense's **price of safety** (§10), not part of the decomposition.
+The honest run's absolute `reroute_cost` is the defense's **reroute premium** (§10), not part of the decomposition.
 
 **Per-event bound.** Take a FAILED DELIVERY claim e, resolved at `t_e = by_round + δ`, with:
 - `U_e` = shortfall (consumed − allocated), which is also what phase 4 re-orders from backup;
@@ -276,21 +276,50 @@ So trust earned with many small true claims can't be spent on one large order. T
 ## 10. Evaluation
 
 **Definitions (FIXES, Evaluation).**
-- `loss_from_lies(d, s, seed) = cost(d, s, seed) − cost(d, honest, seed)`: the same defense and seed with an honest S_main.
-- `utility_cost(d, seed) = cost(d, honest, seed) − cost(none, honest, seed)`, reported with the count of blocked honest S_main orders.
+- `loss_from_lies(d, s, seed) = cost(d, s, seed) − cost(d, honest, seed)`: the same defense and seed with an honest S_main. Reported as the mean over attack scenarios 2–12.
+- `utility_cost(d, seed) = cost(d, honest, seed) − cost(none, honest, seed)`: the cost OBT imposes on honest trade. It is reported in $ per run and as a % of the honest run's total cost without a defense (same seed), with the count of blocked honest S_main orders.
+- **Reroute premium:** the dollar backup premium on quantity a defense reroutes to S_backup after its own blocks (`reroute_cost`).
+  - The honest run's absolute reroute premium is reported per defense. Its summary key is `price_of_safety`, a legacy field name.
+  - In the loss split below, the reroute premium is differenced against the honest run (`reroute_cost_diff`).
 
-**Runs.**
-- **E1** (`eval/e1.py`, scripted buyer): OBT over b0 × W × δ, and the reputation baseline over cap × θ, on all 12 scenarios with 3 seeds. It produces a loss-vs-utility Pareto plot; the default config is the front point with the smallest utility cost + attack loss.
-- **E2:** gpt-oss:20b, 12 scenarios × 5 defenses × 3 seeds.
-- **E3:** qwen3:8b, `none` and `obt`, 1 seed.
-- **E4:** extractor eval, both local models.
-- **E5** (`eval/e5_paid.py`): paid runs, prepare-only. It projects token use and cost and aborts above $12 or without configured prices.
-
-- Loss from lies per scenario × defense, decomposed as `damage + reroute_cost_diff + resid` (§6). Every term is relative to the honest run with the same defense and seed; damage is also checked against the per-event bound Σ L_e (OBT). `resid` is reported, never folded into another term.
-- Utility cost: blocked honest actions and extra cost in scenarios 1 and 9. **Price of safety:** the absolute backup premium the defense's own reroutes cost in the honest scenario, per defense.
+**Metrics.**
+- Loss from lies per scenario × defense, decomposed as `damage + reroute_cost_diff + resid` (§6), i.e. damage + reroute premium diff + resid.
+  - Every term is relative to the honest run with the same defense and seed.
+  - Damage is also checked against the per-event bound Σ L_e (OBT runs).
+  - `resid` is reported, never folded into another term.
+- Utility cost ($ and % of the honest run's total cost), with blocked honest actions, in scenarios 1 (honest) and 9 (noisy-honest).
 - Overhead: added latency and tokens per round.
-- Extractor accuracy: 200 labeled messages, precision/recall on template + slots. The 30-item hard-phrasing subset is reported separately, LLM alone and with the code guard (§9).
-- Budget: ~45 full runs + 200 single extractor calls. Local gpt-oss-20b and Qwen3 8B for all dev. OpenAI: all runs on GPT-5.6 Luna, scenarios 1–10 once on Terra. Hard cap $13.
+- Extractor accuracy: the frozen test set (199 labeled messages), precision/recall on template + slots. The 30-item hard-phrasing subset is reported separately, LLM alone and with the code guard (§9).
+
+**Research questions and the runs that answer them.** Headline numbers, with their sources, are in `paper/NUMBERS.md`, grouped the same way.
+- **RQ1, security** (loss from lies against `none`):
+  - **E1** (`eval/e1.py`, scripted buyer): OBT over b0 × W × δ and the reputation baseline, all 12 scenarios × 3 seeds. It produces the Pareto front and the default (b0 5%, W 0, δ 0).
+  - **E2:** the gpt-oss:20b LLM buyer against every defense, 12 scenarios × 3–5 seeds.
+- **RQ2, utility cost** (the cost imposed on honest trade):
+  - E1 and E2 with an honest (scenario 1) and noisy-honest (scenario 9) supplier.
+  - The reputation baselines chosen by the D22/D33 rules (E1 grid, D33 grid).
+- **RQ3, tightness under adaptive attack:**
+  - **E6:** a 10,000-evaluation attacker search against OBT.
+  - The largest per-run damage/bound in every OBT eval (E2, E2c, E3, E3b, E5, E7).
+- **RQ4, earning trust:**
+  - **E2c:** the D32 order planner (`obt+planner`) and the D33 reputation config.
+  - **E2b:** the trust-aware view.
+  - Trust over time: B and S_main share per round.
+  - The **horizon** check (T = 50 vs 100).
+  - **E7:** the budget growth multiplier k ∈ {1, 2, 4} (D36).
+- **RQ5, generalization across buyer models:**
+  - **E3** (qwen3:8b, `obt` and `none`) and **E3b** (qwen3:8b, `obt+planner` and `rep+planner`), seed 1.
+  - **E5** (`eval/e5_paid.py`, D37/D37a): paid GPT-5.6 Luna and Terra buyers, `obt+planner` and `none`, 12 scenarios, seed 1, with the frozen gpt-oss extractor. Every buyer call was sampled fresh (v2), with a hard stop at $16 total.
+- **RQ6, extraction reliability:**
+  - **E4:** both local models on the test set and the hard subset.
+  - The E5 models' own extraction on the same sets.
+  - The **Enron** real-text check (D34, D38): 100 labeled real sentences, per stratum.
+- **Section 6, verification (not an RQ):**
+  - TLA+ / TLC exhaustive checks with guard mutants (§7, `spec/results/README.md`).
+  - k = 1 is verified at five bounds; k > 1 is not model-checked (D36b).
+  - Runtime monitors ran on every run.
+
+- Budget: local gpt-oss:20b and qwen3:8b for all development and every local eval. OpenAI was used only in E5, under the persistent cost ledger (D37).
 
 ### Reproducibility (F12, D26)
 - **Pins.** Python packages are pinned exactly in `requirements.lock`. The machine, both ollama model digests and the TLC version are in `docs/ENV.md`. Frozen inputs (extractor prompt, message bank, dataset) are pinned by sha256 in `obt/config.py` and checked by tests.

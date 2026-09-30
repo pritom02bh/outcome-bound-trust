@@ -414,8 +414,8 @@ def _e5(runs: Path, out: Path) -> str | None:
          "- **v1** (superseded: cross-run reply reuse): byte-identical prompts in another run reused an earlier paid "
          "reply (134/1,200 Luna and 70/600 Terra buyer calls). Terra's utility there was against Luna's `none`.",
          "- **ref**: the same configs with the local gpt-oss buyer on seed 1 (E2c / E2).", "",
-         "## Loss from lies (mean of scenarios 2-12) = damage + reroute + resid", "",
-         "| version | run | attack runs | loss from lies | damage | reroute | resid |", "|---|---|---|---|---|---|---|"]
+         "## Loss from lies (mean of scenarios 2-12) = damage + reroute premium + resid", "",
+         "| version | run | attack runs | loss from lies | damage | reroute premium | resid |", "|---|---|---|---|---|---|---|"]
     for v, r in rows:
         s = r["split"]
         L.append(f"| {v} | {r['label']} | {s['n']} | {f(s['loss'])} | {f(s['damage'])} | {f(s['reroute'])} | "
@@ -777,9 +777,9 @@ def _paper_data(runs: Path, out: Path) -> str | None:
     if e3_rows:
         tables["second_model"] = {
             "caption": "Second buyer model (qwen3:8b; gpt-oss extractor; seed 1): loss from lies split into damage "
-                       "(broken promises), reroute and resid (everything else, e.g. the buyer's own over-stocking), "
+                       "(broken promises), reroute premium and resid (everything else, e.g. the buyer's own over-stocking), "
                        "mean over attack runs, $ per run. Damage is n/a for a defense without claims.",
-            "columns": ["run", "defense", "attack runs", "loss from lies", "damage", "reroute", "resid"],
+            "columns": ["run", "defense", "attack runs", "loss from lies", "damage", "reroute premium", "resid"],
             "rows": e3_rows}
     e7f = runs / "e7" / "summary.json"
     if e7f.exists():
@@ -822,9 +822,9 @@ def _paper_data(runs: Path, out: Path) -> str | None:
                                 "-" if r["max_ratio"] is None else f"{r['max_ratio']:.3f}"])
         tables["e5"] = {
             "caption": "Paid buyer models (E5 v2; reasoning effort low; frozen gpt-oss extractor; OBT default; seed 1; "
-                       "every buyer call sampled fresh): loss from lies (mean of scenarios 2-12) = damage + reroute + "
+                       "every buyer call sampled fresh): loss from lies (mean of scenarios 2-12) = damage + reroute premium + "
                        "resid, utility cost against the same model's none run, $ per run.",
-            "columns": ["buyer", "defense", "loss from lies", "damage", "reroute", "resid", "utility cost",
+            "columns": ["buyer", "defense", "loss from lies", "damage", "reroute premium", "resid", "utility cost",
                         "utility (% of cost)", "S_main share", "max damage/bound"],
             "rows": e5_rows}
     # Enron real-text check (D34, D38): per stratum, never pooled.

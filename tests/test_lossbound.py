@@ -111,7 +111,7 @@ def test_loss_decomposes_on_a_differenced_basis(runs, n):
 
 
 def test_honest_run_decomposes_to_zero(runs):
-    # Same run on both sides: every differenced term is 0; its own reroute cost is the price of safety.
+    # Same run on both sides: every differenced term is 0; its own reroute cost is the reroute premium.
     honest = runs[1][1]
     parts = lossbound.decompose(loss_from_lies(honest, honest), honest.metrics["loss_bound"],
                                 honest.metrics["loss_bound"])
@@ -130,7 +130,7 @@ def test_summary_reports_price_of_safety(tmp_path, rule_llm):
         assert rep["price_of_safety"][r["defense"]] == pytest.approx(r["metrics"]["loss_bound"]["reroute_cost"])
     b = rep["loss_bound"]["2|obt"]
     assert b["damage"] + b["reroute_cost_diff"] + b["resid"] == pytest.approx(rep["loss_from_lies"]["2|obt"], abs=0.01)
-    assert "price of safety" in (tmp_path / "summary.md").read_text().lower()
+    assert "reroute premium" in (tmp_path / "summary.md").read_text().lower()
 
 
 def test_reroute_cost_hand_count_price_bait(runs):

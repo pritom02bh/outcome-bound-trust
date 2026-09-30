@@ -241,13 +241,13 @@
   ]
  },
  "e5": {
-  "caption": "Paid buyer models (E5 v2; reasoning effort low; frozen gpt-oss extractor; OBT default; seed 1; every buyer call sampled fresh): loss from lies (mean of scenarios 2-12) = damage + reroute + resid, utility cost against the same model's none run, $ per run.",
+  "caption": "Paid buyer models (E5 v2; reasoning effort low; frozen gpt-oss extractor; OBT default; seed 1; every buyer call sampled fresh): loss from lies (mean of scenarios 2-12) = damage + reroute premium + resid, utility cost against the same model's none run, $ per run.",
   "columns": [
    "buyer",
    "defense",
    "loss from lies",
    "damage",
-   "reroute",
+   "reroute premium",
    "resid",
    "utility cost",
    "utility (% of cost)",
@@ -982,14 +982,14 @@
   ]
  },
  "second_model": {
-  "caption": "Second buyer model (qwen3:8b; gpt-oss extractor; seed 1): loss from lies split into damage (broken promises), reroute and resid (everything else, e.g. the buyer's own over-stocking), mean over attack runs, $ per run. Damage is n/a for a defense without claims.",
+  "caption": "Second buyer model (qwen3:8b; gpt-oss extractor; seed 1): loss from lies split into damage (broken promises), reroute premium and resid (everything else, e.g. the buyer's own over-stocking), mean over attack runs, $ per run. Damage is n/a for a defense without claims.",
   "columns": [
    "run",
    "defense",
    "attack runs",
    "loss from lies",
    "damage",
-   "reroute",
+   "reroute premium",
    "resid"
   ],
   "rows": [

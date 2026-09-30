@@ -452,7 +452,8 @@ def summarize(results: list[dict]) -> dict:
             for k in ("tokens_per_round", "latency_s_per_round"):
                 a, b = overhead[d][k], overhead["none"][k]
                 overhead[d][f"added_{k}"] = None if a is None or b is None else round(a - b, 3)
-    # Price of safety: what the defense's own reroutes cost in the honest world (absolute, not differenced).
+    # Reroute premium: what the defense's own reroutes cost in the honest world (absolute, not differenced).
+    # Stored under the key `price_of_safety` (a legacy field name, kept for compatibility).
     price_of_safety = {d: mean([idx[(1, d, s)]["metrics"]["loss_bound"]["reroute_cost"] for s in seeds
                                 if (1, d, s) in idx]) for d in defenses}
     return {"loss_from_lies": loss, "loss_bound": bound, "price_of_safety": price_of_safety,
@@ -470,10 +471,10 @@ def markdown(summary: dict, ext: dict | None) -> str:
     L += ["", "## Loss decomposition and bound (DESIGN §6)", "",
           "loss_from_lies = damage + reroute_cost_diff + resid, every term relative to the honest run with the same "
           "defense and seed. damage: cost vs the same decisions with every relied-on promise kept; the bound Σ L_e "
-          "applies to it (OBT only). reroute_cost_diff: extra backup premium on quantity rerouted after "
+          "applies to it (OBT only). reroute premium diff (reroute_cost_diff): extra backup premium on quantity rerouted after "
           "OVER_BUDGET/OVER_CLAIM blocks, vs the honest run. resid: everything else (other blocks, trajectory "
           "differences), reported as is.", "",
-          "| Scenario | Defense | loss_from_lies | damage | Σ bound | bound ok | reroute_cost_diff | resid | failure events |",
+          "| Scenario | Defense | loss_from_lies | damage | Σ bound | bound ok | reroute premium diff | resid | failure events |",
           "|---|---|---|---|---|---|---|---|---|"]
 
     def f(x):
@@ -486,9 +487,9 @@ def markdown(summary: dict, ext: dict | None) -> str:
             ok = "-" if b["bound_ok"] is None else ("yes" if b["bound_ok"] else "**NO**")
             L.append(f"| {scenario_name(n)} | {x} | {f(summary['loss_from_lies'].get(f'{n}|{x}'))} | {f(b['damage'])} | "
                      f"{f(b['sum_bound'])} | {ok} | {f(b['reroute_cost_diff'])} | {f(b['resid'])} | {f(b['events'])} |")
-    L += ["", "## Price of safety (honest S_main)", "",
+    L += ["", "## Reroute premium (honest S_main)", "",
           "Absolute backup premium the defense's own reroutes cost in the honest scenario (not differenced).", "",
-          "| Defense | Price of safety ($) |", "|---|---|"]
+          "| Defense | Reroute premium ($) |", "|---|---|"]
     for x in d:
         L.append(f"| {x} | {f(summary.get('price_of_safety', {}).get(x))} |")
     L += ["", "## Utility (scenarios 1 and 9)", "", "| Scenario | Defense | Cost | Extra vs none | Blocked S_main orders |",

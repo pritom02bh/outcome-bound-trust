@@ -6,9 +6,9 @@ DECISIONS D37, D37a. The buyer is the paid model with `reasoning_effort=low`, an
 - **v1** (superseded: cross-run reply reuse): byte-identical prompts in another run reused an earlier paid reply (134/1,200 Luna and 70/600 Terra buyer calls). Terra's utility there was against Luna's `none`.
 - **ref**: the same configs with the local gpt-oss buyer on seed 1 (E2c / E2).
 
-## Loss from lies (mean of scenarios 2-12) = damage + reroute + resid
+## Loss from lies (mean of scenarios 2-12) = damage + reroute premium + resid
 
-| version | run | attack runs | loss from lies | damage | reroute | resid |
+| version | run | attack runs | loss from lies | damage | reroute premium | resid |
 |---|---|---|---|---|---|---|
 | v2 | Luna obt+planner | 11 | 160.0 | 59.4 | 0.0 | 100.6 |
 | v1 | Luna obt+planner | 11 | 160.0 | 59.4 | 0.0 | 100.6 |

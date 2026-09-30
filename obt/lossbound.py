@@ -212,7 +212,7 @@ def decompose(loss_from_lies: float | None, lb: dict, honest_lb: dict | None) ->
     (same defense, same seed). damage is already differenced by construction (0 for the honest run).
     reroute_cost_diff = reroute_cost(R) - reroute_cost(honest). resid is what's left: blocks for other
     reasons and trajectory differences; it is reported, not hidden. The honest run's absolute reroute_cost
-    is the defense's price of safety, reported separately."""
+    is the defense's reroute premium, reported separately."""
     diff = None if honest_lb is None else round(lb["reroute_cost"] - honest_lb["reroute_cost"], 6)
     if loss_from_lies is None or lb["damage"] is None or diff is None:
         return {"damage": lb["damage"], "reroute_cost_diff": diff, "resid": None}

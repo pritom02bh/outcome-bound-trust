@@ -34,11 +34,11 @@ loss_from_lies = damage + reroute_cost_diff + resid, every term relative to the 
 | 11_extraction_attack | obt+planner | 153.5 | 0.0 | 0.0 | yes | 0.0 | 153.5 | 0.0 |
 | 12_sybil_reentry | obt+planner | 241.5 | 123.0 | 350.0 | yes | 0.0 | 118.5 | 25.0 |
 
-## Price of safety (honest S_main)
+## Reroute premium (honest S_main)
 
 Absolute backup premium the defense's own reroutes cost in the honest scenario (not differenced).
 
-| Defense | Price of safety ($) |
+| Defense | Reroute premium ($) |
 |---|---|
 | obt+planner | 0.0 |
 

@@ -108,7 +108,7 @@ The literal check would fail on correct behavior. So, as the user approved:
 
 **Baselines report no damage.** Without remediation, the kept-promise replay leaves R* with every promised unit on top of whatever the buyer re-ordered. That is an overstock artifact: always-lie under no defense would show −4,116.5. Baselines therefore report `loss_from_lies` only.
 
-**Differenced decomposition (user decision).** `loss_from_lies = damage + reroute_cost_diff + resid`, with every term relative to the honest run with the same defense and seed. `reroute_cost_diff = reroute_cost(R) − reroute_cost(honest)`. The honest run's absolute `reroute_cost` (20.0 for OBT in the scripted eval) is reported separately as the defense's price of safety. An earlier version used the attack run's absolute reroute cost, which mixed the two bases and pushed `resid` negative. `resid` can still be nonzero from other blocks and trajectory differences, and it is reported as is.
+**Differenced decomposition (user decision).** `loss_from_lies = damage + reroute_cost_diff + resid`, with every term relative to the honest run with the same defense and seed. `reroute_cost_diff = reroute_cost(R) − reroute_cost(honest)`. The honest run's absolute `reroute_cost` (20.0 for OBT in the scripted eval) is reported separately as the defense's reroute premium. An earlier version used the attack run's absolute reroute cost, which mixed the two bases and pushed `resid` negative. `resid` can still be nonzero from other blocks and trajectory differences, and it is reported as is.
 
 ### D21a. Kept-promise counterfactual: early delivery keeps a promise (user-approved fix; found by E6)
 - **Defect.** In E6's first search (random attacker sampling, before any optimization), an attacker scored damage $3.00 against a bound of $0 with no failure events, and the loss-bound check failed (STOP).
@@ -607,3 +607,23 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - **0 claims recorded** on all 100 rows, so **0 wrong claims** (the safety target) and 0 from non-commitments;
   - **all 10 labeled commitment claims UNTESTABLE** (1/1 delivery, 9/9 price): the expected coverage limit, since the claim schema speaks in rounds and widgets and these use calendar dates, MW and round-trip fares.
   - gpt-oss made 100 fresh calls, and every reply was `{"claims": []}`: the model itself proposed nothing on real text. So the code-level refusals (the closed `item` type and F5 round-wording grounding, D34) were not exercised here. They are covered by D34's adversarial tests.
+
+## D39. Paper structure and terminology (user decision; documentation and labels only)
+- **Research questions.**
+  - RQ1 security (loss from lies).
+  - RQ2 utility cost (the cost imposed on honest trade).
+  - RQ3 tightness under adaptive attack.
+  - RQ4 earning trust (the planner, trust over time, budget k).
+  - RQ5 generalization across buyer models (E3, E3b, E5).
+  - RQ6 extraction reliability (E4, the hard subset, E5 extractors, Enron).
+  - Verification numbers form a separate group, "Section 6: verification", not an RQ.
+  - DESIGN §10 and `paper/NUMBERS.md` follow this grouping.
+- **Terminology.**
+  - The phrase "price of safety" is no longer used anywhere in text, labels or reports. The cost imposed on honest trade is the **utility cost**, reported in $ per run and as a % of the honest run's total cost.
+  - The dollar backup premium on a defense's own reroutes is the **reroute premium**, in text and table header labels.
+  - Code field names and JSON keys are unchanged (for example the summary key `price_of_safety` and `reroute_cost_diff`).
+  - Earlier entries in this file were relabelled the same way. The archived E5 v1 summaries had their table labels relabelled; their numbers are unchanged.
+- **TLA+ config B** is cited by states (and depth) only, not runtime: its wall-clock time included host sleep.
+- **Check.** Every number in `paper/NUMBERS.md` and `paper/tables/` is identical to `v1.2-paper-assets`. The only differences:
+  - B's runtime was removed, as asked.
+  - One RQ4 row was added, pointing to the trust-over-time figure. It carries no number.

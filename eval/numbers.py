@@ -14,13 +14,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# The paper's research questions. The repo defines none; these follow DESIGN §10 (loss, bound, utility,
-# extractor, invariants) and can be renamed without touching any number.
+# The paper's research questions (DESIGN §10), plus the verification group, which is not an RQ (Section 6).
 RQS = [("RQ1", "Security: does OBT cut the loss from lies?"),
-       ("RQ2", "Bound: does damage stay within the per-event bound, and how tight is it?"),
-       ("RQ3", "Price of safety: what does OBT cost an honest supplier relationship?"),
-       ("RQ4", "Extraction: does the claim extractor record only what was promised?"),
-       ("RQ5", "Verification: are the invariants model-checked, and at which bounds?")]
+       ("RQ2", "Utility cost: what does OBT cost honest trade?"),
+       ("RQ3", "Tightness under adaptive attack: how close does damage come to the per-event bound?"),
+       ("RQ4", "Earning trust: the order planner, trust over time, and the budget growth multiplier k"),
+       ("RQ5", "Generalization across buyer models (E3, E3b, E5)"),
+       ("RQ6", "Extraction reliability (E4, hard subset, E5 extractors, Enron)"),
+       ("S6", "Section 6: verification (not an RQ)")]
 
 
 # Every exported table NUMBERS.md cites; paper.build writes it only when all are present.
@@ -66,7 +67,10 @@ def entries(results: Path = ROOT / "results", spec_results: Path = ROOT / "spec"
     main = lambda d: T.row("main", defense=d)                            # noqa: E731
     src = lambda d: "E2c" if d in ("obt+planner", "rep-n18", "rep+planner") else "E2"   # noqa: E731
     e5 = lambda m, d: T.row("e5", buyer=m, defense=d)                     # noqa: E731
-    # ---- RQ1: loss from lies
+    pareto = json.loads((results / "figdata" / "pareto.json").read_text())
+    dflt = T.row("e1_obt_front", default="yes")
+
+    # ---- RQ1 security: loss from lies (gpt-oss buyer; scripted E1)
     for d in ("obt", "obt+planner", "rep-strict", "none"):
         r = main(d)
         add("RQ1", f"{src(d)} loss from lies, `{d}` (gpt-oss buyer; mean [95% CI])", r["loss from lies"], "$ per run",
@@ -76,85 +80,92 @@ def entries(results: Path = ROOT / "results", spec_results: Path = ROOT / "spec"
         v = _mean(main(d)["loss from lies"])
         add("RQ1", f"{src(d)} loss reduction vs E2 `none`, `{d}` (derived)", f"{100 * (1 - v / none):.1f}", "%",
             "as above", f"1 − main[{d}] / main[none], loss from lies means ({v:,.1f} / {none:,.1f})")
-    p, r = _mean(main("obt+planner")["loss from lies"]), _mean(main("rep-strict")["loss from lies"])
-    add("RQ1", "`obt+planner` vs `rep-strict`: loss from lies (derived)", f"{p:,.1f} vs {r:,.1f} "
-        f"({100 * (1 - p / r):.1f}% lower)", "$ per run", "5 seeds each",
-        f"{J} → main[obt+planner|rep-strict].loss from lies")
-    for m in ("GPT-5.6 Luna", "GPT-5.6 Terra"):
-        o, n = e5(m, "obt+planner"), e5(m, "none")
-        add("RQ1", f"E5 v2 loss from lies, {m}: `obt+planner` vs own `none`", f"{o['loss from lies']} vs "
-            f"{n['loss from lies']}", "$ per run", "seed 1", f"{J} → e5[buyer={m}].loss from lies")
-        add("RQ1", f"E5 v2 loss reduction vs `none`, {m} (derived)",
-            f"{100 * (1 - _mean(o['loss from lies']) / _mean(n['loss from lies'])):.1f}", "%", "seed 1",
-            f"1 − e5[{m}, obt+planner] / e5[{m}, none], loss from lies")
-    for run, d in (("E3", "obt"), ("E3", "none"), ("E3b", "obt+planner"), ("E3b", "rep+planner")):
-        r = T.row("second_model", run=run, defense=d)
-        add("RQ1", f"{run} loss from lies, `{d}` (qwen3:8b buyer; damage in brackets)",
-            f"{r['loss from lies']} (damage {r['damage']})", "$ per run", "seed 1",
-            f"{J} → second_model[run={run}, defense={d}]")
-    pareto = json.loads((results / "figdata" / "pareto.json").read_text())
-    dflt = T.row("e1_obt_front", default="yes")
     add("RQ1", f"E1 default OBT ({dflt['config']}) loss from lies vs `none` (scripted buyer)",
         f"{dflt['loss from lies']} vs {pareto['none']['attack_loss']:,.1f}", "$ per run", "seeds 1-3",
         f"{J} → e1_obt_front[default=yes]; results/figdata/pareto.json → none.attack_loss")
-    # ---- RQ2: bound tightness
-    for r in T.t["bound_tightness"]["rows"]:
-        d = dict(zip(T.t["bound_tightness"]["columns"], r))
+
+    # ---- RQ2 utility cost: $ per run and as % of the honest run's total cost without a defense
+    for d in ("obt", "obt+planner", "rep-strict"):
+        r = main(d)
+        add("RQ2", f"{src(d)} utility cost, $ (mean [95% CI]) and % of cost, `{d}`",
+            f"{r['utility cost']} ({r['utility (% of cost)']}%)", "$ per run (%)", f"{r['seeds']} seeds",
+            f"{J} → main[defense={d}].utility cost, utility (% of cost)")
+    add("RQ2", f"E1 default OBT ({dflt['config']}) utility cost (scripted buyer)", dflt["utility cost"],
+        "$ per run", "seeds 1-3", f"{J} → e1_obt_front[default=yes].utility cost")
+
+    # ---- RQ3 tightness: the largest per-run damage / Σ bound, adaptive attacker first
+    rows = [dict(zip(T.t["bound_tightness"]["columns"], r)) for r in T.t["bound_tightness"]["rows"]]
+    for d in sorted(rows, key=lambda d: not d["eval"].startswith("E6")):
         extra = "" if d["failure events"] == "-" else f"; {d['failure events']} failure events, damage " \
                                                        f"{d['damage']} vs bound {d['sum of bounds']}"
-        add("RQ2", f"Max damage / Σ bound, {d['eval']} `{d['defense']}`{extra}", d["max damage/bound"], "ratio",
+        add("RQ3", f"Max damage / Σ bound, {d['eval']} `{d['defense']}`{extra}", d["max damage/bound"], "ratio",
             {"E5": "seed 1", "E3": "seed 1", "E6": "seeds 1-3 (worst)", "E7": "seeds 1-3",
              "E2": f"{main(d['defense'])['seeds']} seeds"}.get(d["eval"][:2], "-"),
             f"{J} → bound_tightness[eval={d['eval']}].max damage/bound")
-    # ---- RQ3: price of safety (utility cost as % of the honest run's total cost without a defense)
-    for d in ("obt", "obt+planner", "rep-strict"):
-        r = main(d)
-        add("RQ3", f"{src(d)} price of safety, `{d}`: utility cost (mean [95% CI]) and % of cost",
-            f"{r['utility cost']} ({r['utility (% of cost)']}%)", "$ per run (%)", f"{r['seeds']} seeds",
-            f"{J} → main[defense={d}].utility cost, utility (% of cost)")
-    for m in ("GPT-5.6 Luna", "GPT-5.6 Terra"):
-        r = e5(m, "obt+planner")
-        add("RQ3", f"E5 v2 price of safety, {m} `obt+planner` (vs own `none`)",
-            f"{r['utility cost']} ({r['utility (% of cost)']}%)", "$ per run (%)", "seed 1",
-            f"{J} → e5[buyer={m}, defense=obt+planner].utility cost")
+
+    # ---- RQ4 earning trust: planner, trust over time, budget growth k
+    p, r = _mean(main("obt+planner")["loss from lies"]), _mean(main("rep-strict")["loss from lies"])
+    add("RQ4", "`obt+planner` vs `rep-strict`: loss from lies (derived)", f"{p:,.1f} vs {r:,.1f} "
+        f"({100 * (1 - p / r):.1f}% lower)", "$ per run", "5 seeds each",
+        f"{J} → main[obt+planner|rep-strict].loss from lies")
+    add("RQ4", "Trust over time: OBT budget B and S_main share per round, honest supplier (E2, E2c, E1)",
+        "figure", "-", "as the evals", "paper/figures/trust_over_time.pdf; results/figdata/trust.json")
     h = T.row("horizon", defense="obt")
-    add("RQ3", "Horizon: OBT utility cost % at T = 50 → T = 100 (scripted buyer)",
+    add("RQ4", "Horizon: OBT utility cost (% of cost) at T = 50 → T = 100 (scripted buyer)",
         f"{h['utility % (T=50)']} → {h['utility % (T=100)']}", "% of cost", "seeds 1-3",
         f"{J} → horizon[defense=obt]")
     k1, k2 = T.row("budget_k", k=1, rounds=50), T.row("budget_k", k=2, rounds=50)
-    add("RQ3", "E7: budget growth k = 1 → k = 2, utility cost % and loss from lies (T = 50)",
+    add("RQ4", "E7: budget growth k = 1 → k = 2, utility cost (% of cost) and loss from lies (T = 50)",
         f"{k1['utility (% of cost)']} → {k2['utility (% of cost)']}; loss {k1['loss from lies']} → "
         f"{k2['loss from lies']}", "% of cost; $ per run", "seeds 1-3", f"{J} → budget_k[k=1|2, rounds=50]")
-    add("RQ3", f"E1 default OBT ({dflt['config']}) utility cost (scripted buyer)", dflt["utility cost"],
-        "$ per run", "seeds 1-3", f"{J} → e1_obt_front[default=yes].utility cost")
-    # ---- RQ4: extraction
+
+    # ---- RQ5 generalization across buyer models
+    for run, d in (("E3", "obt"), ("E3", "none"), ("E3b", "obt+planner"), ("E3b", "rep+planner")):
+        r = T.row("second_model", run=run, defense=d)
+        add("RQ5", f"{run} loss from lies, `{d}` (qwen3:8b buyer; damage in brackets)",
+            f"{r['loss from lies']} (damage {r['damage']})", "$ per run", "seed 1",
+            f"{J} → second_model[run={run}, defense={d}]")
+    for m in ("GPT-5.6 Luna", "GPT-5.6 Terra"):
+        o, n = e5(m, "obt+planner"), e5(m, "none")
+        add("RQ5", f"E5 v2 loss from lies, {m}: `obt+planner` vs own `none`", f"{o['loss from lies']} vs "
+            f"{n['loss from lies']}", "$ per run", "seed 1", f"{J} → e5[buyer={m}].loss from lies")
+        add("RQ5", f"E5 v2 loss reduction vs `none`, {m} (derived)",
+            f"{100 * (1 - _mean(o['loss from lies']) / _mean(n['loss from lies'])):.1f}", "%", "seed 1",
+            f"1 − e5[{m}, obt+planner] / e5[{m}, none], loss from lies")
+    for m in ("GPT-5.6 Luna", "GPT-5.6 Terra"):
+        r = e5(m, "obt+planner")
+        add("RQ5", f"E5 v2 utility cost, $ and % of cost, {m} `obt+planner` (vs own `none`)",
+            f"{r['utility cost']} ({r['utility (% of cost)']}%)", "$ per run (%)", "seed 1",
+            f"{J} → e5[buyer={m}, defense=obt+planner].utility cost")
+
+    # ---- RQ6 extraction reliability
     for m in ("gpt-oss:20b", "qwen3:8b", "gpt-5.6-luna", "gpt-5.6-terra"):
         r = T.row("extractor", extractor=m)
-        add("RQ4", f"Extractor `{m}`, test set (199): precision / recall / exact",
+        add("RQ6", f"Extractor `{m}`, test set (199): precision / recall / exact",
             f"{r['precision']} / {r['recall']} / {r['exact']}", "fraction", "frozen prompt",
             f"{J} → extractor[extractor={m}]")
-        add("RQ4", f"Extractor `{m}`, hard subset (30): shipping/ready dates taken as deadlines, LLM alone → "
+        add("RQ6", f"Extractor `{m}`, hard subset (30): shipping/ready dates taken as deadlines, LLM alone → "
             f"with code guard", f"{r['hard: LLM alone']} → {r['hard: with guard']}", "items", "frozen prompt",
             f"{J} → extractor[extractor={m}].hard: LLM alone, hard: with guard")
     for st in ("delivery", "price"):
         r = T.row("enron", extractor="gpt-oss:20b", stratum=st)
-        add("RQ4", f"Enron real text, {st} stratum (gpt-oss): wrong claims recorded; commitments UNTESTABLE",
+        add("RQ6", f"Enron real text, {st} stratum (gpt-oss): wrong claims recorded; commitments UNTESTABLE",
             f"{r['wrong recorded']}; {r['claims UNTESTABLE']}", "claims", f"{r['rows']} rows",
             f"{J} → enron[extractor=gpt-oss:20b, stratum={st}]")
-    # ---- RQ5: verification
-    # Runtimes are wall-clock; B's includes 2,316 s of host sleep (spec/results/README.md, Tier 1).
-    sleep = {"fallbackB": " wall, incl. 2,316 s host sleep"}
+
+    # ---- Section 6 verification (not an RQ). States and depth only: runtimes are wall-clock and host-dependent.
     for name, label in (("quick", "quick"), ("fallbackA2", "A′"), ("fallbackB", "B"),
                         ("quick_b01", "quick, B0 = 1"), ("fallbackA2_b01", "A′, B0 = 1")):
         x = _tlc(spec_results, name)
-        add("RQ5", f"TLA+ k = 1, {label}: unmutated spec {x['verdict']} ({x['bounds']})",
-            f"{x['states']:,} states, depth {x['depth']}, {x['runtime_s']:,} s{sleep.get(name, '')}",
-            "distinct states", "exhaustive", f"spec/results/{name}_summary.txt → none")
+        runtime = "" if name == "fallbackB" else f", {x['runtime_s']:,} s"
+        add("S6", f"TLA+ k = 1, {label}: unmutated spec {x['verdict']} ({x['bounds']})",
+            f"{x['states']:,} states, depth {x['depth']}{runtime}", "distinct states", "exhaustive",
+            f"spec/results/{name}_summary.txt → none")
     cov = (spec_results / "k_coverage.txt").read_text()
-    add("RQ5", "TLA+ k = 1 mutant coverage: every guard mutant caught in ≥ 1 config",
+    add("S6", "TLA+ k = 1 mutant coverage: every guard mutant caught in ≥ 1 config",
         "8/8" if "RESULT: every mutant caught" in cov else "NOT all", "mutants", "5 configs",
         "spec/results/k_coverage.txt → RESULT")
-    add("RQ5", "TLA+ k > 1", "not model-checked (no checked bound makes the k = 2 budget bind)", "-", "-",
+    add("S6", "TLA+ k > 1", "not model-checked (no checked bound makes the k = 2 budget bind)", "-", "-",
         "spec/results/README.md → Budget growth multiplier K; DECISIONS D36b")
     return out
 
@@ -162,18 +173,19 @@ def entries(results: Path = ROOT / "results", spec_results: Path = ROOT / "spec"
 def render(out: dict) -> str:
     L = ["# NUMBERS: every headline number the paper cites", "",
          "Generated by `python -m eval.numbers` from `results/` (and the TLC summaries in `spec/results/`) only: "
-         "no simulation, no run records, no model calls. Tag `v1.2-paper-assets`. Values are as printed in the "
+         "no simulation, no run records, no model calls. Tag `v1.3-paper-assets`. Values are as printed in the "
          "exported tables; *derived* rows name the values they were computed from.", "",
          "Definitions (DESIGN §10): **loss from lies** = mean over attack scenarios 2-12 of cost − cost of the "
          "honest run (same defense, seed). **Utility cost** = cost(defense) − cost(`none`), honest scenario, same "
-         "seed; the **price of safety** here is that utility cost as a % of the honest run's total cost without "
-         "a defense (DESIGN §10 also names the absolute backup premium of a defense's own reroutes). **Damage** = "
-         "cost against the same decisions with every relied-on promise kept; the bound is Σ L_e (DESIGN §6).", "",
-         "The research questions are grouped as below; the repo defines no RQs, so these follow DESIGN §10 and "
-         "can be renamed.", ""]
+         "seed, reported in $ per run and as a % of the honest run's total cost without a defense. "
+         "**Reroute premium** = the dollar backup premium on quantity a defense reroutes to the backup supplier "
+         "after its own blocks (per run; in the loss split it is differenced against the honest run). "
+         "**Damage** = cost against the same decisions with every relied-on promise kept; the bound is Σ L_e "
+         "(DESIGN §6).", "",
+         "Grouped by the paper's research questions (DESIGN §10); verification is Section 6, not an RQ.", ""]
     for rq, title in RQS:
-        L += [f"## {rq}. {title}", "", "| claim | value | unit | seeds | source (file → key) |",
-              "|---|---|---|---|---|"]
+        head = title if rq == "S6" else f"{rq}. {title}"
+        L += [f"## {head}", "", "| claim | value | unit | seeds | source (file → key) |", "|---|---|---|---|---|"]
         L += [f"| {c} | {v} | {u} | {s} | {src} |" for c, v, u, s, src in out[rq]]
         L.append("")
     return "\n".join(L)
