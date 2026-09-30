@@ -1,0 +1,5 @@
+scenario|defense,cost,extra_cost_vs_none,blocked_main_orders
+1|none,5721.5,0.0,0.0
+1|obt+planner,6025.0,303.5,0.0
+9|none,5710.5,0.0,0.0
+9|obt+planner,6093.5,383.0,0.0

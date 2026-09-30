@@ -17,7 +17,8 @@ from collections import defaultdict
 from pathlib import Path
 
 from eval.run import markdown, summarize
-from eval.stats import e2b_report, e2b_trust_svg, report, trust_over_time_svg, trust_panels_svg
+from eval.stats import (e2b_report, e2b_trust_svg, loss_split, main_share, report, trust_over_time_svg,
+                        trust_panels_svg)
 from obt.attacks.suppliers import scenario_name
 
 # e1 grid points are summarized together as one grid (_e1), not as separate evals.
@@ -364,6 +365,118 @@ def _e2c(runs: Path, out: Path) -> str | None:
     return "e2c/: planner defenses and the new reputation config vs E2 (ci.md, trust_over_time.svg)"
 
 
+def _e5_row(label: str, rows: list[dict], d: str, none_rows: list[dict]) -> dict:
+    """One E5 table row on seed 1: loss split, damage vs bound, utility cost against `none_rows`' honest run."""
+    by = {r["scenario"]: r for r in rows if r["defense"] == d and r["seed"] == 1}
+    none = {r["scenario"]: r for r in none_rows if r["defense"] == "none" and r["seed"] == 1}
+    ls = loss_split([r for r in rows if r["seed"] == 1], d)
+    ev = [r["metrics"]["loss_bound"] for r in by.values() if r["metrics"]["loss_bound"]["events"]]
+    ratios = [lb["damage"] / lb["sum_bound"] for lb in ev if lb["sum_bound"]]
+    util = {n: by[n]["total_cost"] - none[n]["total_cost"] for n in (1, 9) if n in by and n in none}
+    share = main_share(by[1]) if 1 in by else None
+    return {"label": label, "runs": len(by), "split": ls, "events": sum(len(lb["events"]) for lb in ev),
+            "damage": sum(lb["damage"] for lb in ev), "bound": sum(lb["sum_bound"] for lb in ev),
+            "max_ratio": max(ratios) if ratios else None,
+            "bound_ok": all(r["metrics"]["loss_bound"]["ok"] is not False for r in by.values()),
+            "violations": sum(r["metrics"]["invariant_violations"]["count"] for r in by.values()),
+            "util": util, "util_pct": {n: 100 * u / none[n]["total_cost"] for n, u in util.items()},
+            "share": share}
+
+
+def _e5(runs: Path, out: Path) -> str | None:
+    """E5 (D37): paid buyers, frozen local gpt-oss extractor, seed 1; E2c's format, gpt-oss seed-1 rows for
+    reference, the extractor eval of the paid models, and the spend from the ledger."""
+    root = runs / "e5"
+    read = lambda f: _read_rows(f) if f.exists() else []            # noqa: E731
+    luna, terra = read(root / "luna" / "results.jsonl"), read(root / "terra" / "results.jsonl")
+    if not luna and not terra:
+        return None
+    e2c, e2 = read(runs / "e2c" / "results.jsonl"), read(runs / "e2" / "results.jsonl")
+    rows = [_e5_row("Luna obt+planner", luna, "obt+planner", luna), _e5_row("Luna none", luna, "none", luna),
+            _e5_row("Terra obt+planner (utility vs Luna none)", terra, "obt+planner", luna),
+            _e5_row("gpt-oss obt+planner (E2c, s1)", e2c, "obt+planner", e2),
+            _e5_row("gpt-oss none (E2, s1)", e2, "none", e2)]
+    f = lambda x, p=1: "n/a" if x is None else f"{x:,.{p}f}"          # noqa: E731
+    L = ["# E5: paid buyers (GPT-5.6 Luna, Terra), seed 1", "",
+         "Plan B (DECISIONS D37). The buyer is the paid model with `reasoning_effort=low`, and the extractor is the "
+         "frozen local gpt-oss:20b (D24). OBT default (b0 5%, W 0, δ 0), k = 1, 50 rounds, A2A. One seed, so no CIs. "
+         "The gpt-oss rows are the same configs on seed 1 from E2c / E2, for reference. Terra has no `none` run: "
+         "its utility cost is against Luna's `none` run, a cross-model reference.", "",
+         "## Loss from lies (mean of scenarios 2-12) = damage + reroute + resid", "",
+         "| run | attack runs | loss from lies | damage | reroute | resid |", "|---|---|---|---|---|---|"]
+    for r in rows:
+        s = r["split"]
+        L.append(f"| {r['label']} | {s['n']} | {f(s['loss'])} | {f(s['damage'])} | {f(s['reroute'])} | "
+                 f"{f(s['resid'])} |")
+    L += ["", "## Damage vs bound (OBT runs; DESIGN §6)", "",
+          "| run | failure events | Σ damage | Σ bound | max damage/bound | bound held | invariant violations |",
+          "|---|---|---|---|---|---|---|"]
+    for r in rows:
+        if "obt" in r["label"]:
+            L.append(f"| {r['label']} | {r['events']} | {f(r['damage'])} | {f(r['bound'])} | "
+                     f"{f(r['max_ratio'], 3)} | {'yes' if r['bound_ok'] else 'NO'} | {r['violations']} |")
+    L += ["", "## Utility (primary: cost − cost(none), same seed)", "",
+          "| run | utility cost, honest | % of none's honest cost | utility cost, noisy-honest | S_main unit share, honest |",
+          "|---|---|---|---|---|"]
+    for r in rows:
+        L.append(f"| {r['label']} | {f(r['util'].get(1))} | {f(r['util_pct'].get(1), 2)}% | {f(r['util'].get(9))} | "
+                 f"{f(r['share'], 3)} |")
+    L += ["", "## Extractor eval: the paid models' own extraction (frozen prompt)", "",
+          "| extractor | split | n | precision | recall | exact | honest→UNTESTABLE | injected recorded |",
+          "|---|---|---|---|---|---|---|---|"]
+    hard = []
+    for name in ("luna", "terra"):
+        ef = root / name / "extractor.json"
+        if not ef.exists():
+            continue
+        ext = json.loads(ef.read_text())["extractor"]
+        for k in sorted(ext):
+            if k.endswith(":no_guard"):
+                continue
+            e = ext[k]
+            if k.startswith("rule") and name == "terra":
+                continue                                    # the rule baseline is the same for both
+            L.append(f"| {k} | {e.get('split')} | {e.get('n_messages')} | {e.get('precision')} | {e.get('recall')} | "
+                     f"{e.get('exact_match')} | {e.get('honest_untestable_rate')} | "
+                     f"{e.get('injection', {}).get('injected_values_recorded')} |")
+        for k in sorted(ext):
+            if k.startswith("llm:") and k.endswith(":test_hard"):
+                on, off = ext[k], ext.get(k + ":no_guard")
+                if off:
+                    hard.append(f"| {k[4:-10]} | {off['hard']['delivery_recorded']}/{off['hard']['n']} | "
+                                f"{on['hard']['delivery_recorded']}/{on['hard']['n']} |")
+    e4 = runs / "e4" / "e4.json"
+    if e4.exists():
+        d = json.loads(e4.read_text()).get("gpt-oss:20b", {})
+        if d.get("test_hard") and d.get("test_hard_no_guard"):
+            hard.append(f"| gpt-oss:20b (E4, reference) | {d['test_hard_no_guard']['hard']['delivery_recorded']}/"
+                        f"{d['test_hard_no_guard']['hard']['n']} | {d['test_hard']['hard']['delivery_recorded']}/"
+                        f"{d['test_hard']['hard']['n']} |")
+    if hard:
+        L += ["", "## Hard subset: shipping/ready/scheduled dates wrongly recorded as delivery deadlines (lower is "
+              "better)", "", "| extractor | LLM alone (no guard) | with the code guard |", "|---|---|---|"] + hard
+    led = [json.loads(x) for x in (runs / "cost_ledger.jsonl").read_text().splitlines()] \
+        if (runs / "cost_ledger.jsonl").exists() else []
+    if led:
+        L += ["", "## Spend (runs/cost_ledger.jsonl; hard stop $16)", "",
+              "| model | part | calls | input tokens | output tokens | of which reasoning | $ |", "|---|---|---|---|---|---|---|"]
+        parts: dict = defaultdict(lambda: [0, 0, 0, 0, 0.0])
+        for x in led:
+            p = parts[(x["model"], "extractor eval" if x["run"] == "extractor_eval" else "eval runs (buyer)")]
+            p[0] += 1
+            p[1] += x["prompt_tokens"]
+            p[2] += x["completion_tokens"]
+            p[3] += x.get("reasoning_tokens", 0)
+            p[4] += x["usd"]
+        for (m, part), p in sorted(parts.items()):
+            L.append(f"| {m} | {part} | {p[0]:,} | {p[1]:,} | {p[2]:,} | {p[3]:,} | {p[4]:.4f} |")
+        L.append(f"| **total** | | {len(led):,} | | | | **{sum(x['usd'] for x in led):.4f}** |")
+    d = out / "e5"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "report.md").write_text("\n".join(L) + "\n")
+    return "e5/report.md: paid buyers (Luna, Terra) vs gpt-oss, extractor eval of the paid models, spend"
+
+
 def build(runs: Path, out: Path) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     built, index, pareto = {}, ["# Results (rebuilt from runs/ only)", ""], []
@@ -426,6 +539,9 @@ def build(runs: Path, out: Path) -> dict:
     e2c = _e2c(runs, out)
     if e2c:
         index.append("- " + e2c)
+    e5 = _e5(runs, out)
+    if e5:
+        index.append("- " + e5)
     paper = _paper_data(runs, out)
     if paper:
         index.append("- " + paper)

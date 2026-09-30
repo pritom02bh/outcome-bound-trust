@@ -535,3 +535,16 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
     - every extractor item is cached by text + model, so the pilot's 20 items count toward the full eval.
 - **Key handling.** `eval/e5_paid.py` reads `OPENAI_API_KEY` from `.env` into its own process only. `.env` is gitignored, and no log, ledger or output file contains the key (a test checks this with a fake client).
 - **Utility cost for Terra.** Plan B runs `none` only on Luna, so Terra's utility cost uses Luna's `none` run as its reference. That is a cross-model comparison and is labelled as such in the report.
+- **Pilot** (Terra obt+planner, scenario 1, plus the first 20 extractor test items): $0.2747. It counts toward Plan B, and neither part was repeated.
+  - The run: 50 buyer calls, 84,791 input and 5,744 output tokens (1,795 of them reasoning), $0.2385.
+  - The 20 items: 10,736 input and 1,227 output tokens (0 reasoning), $0.0362.
+  - Re-projected from the pilot's real tokens (25% margin), the rest came to $4.32, so **$4.59 in total**, at most $14. The rest ran.
+- **Outcome: 0 invariant violations and 0 loss-bound violations** in all 36 runs. Final ledger spend **$3.2659** of the $16 cap:
+  - Luna: buyer $0.5037, extractor eval $0.0400.
+  - Terra: buyer $2.3296, extractor eval $0.3926.
+  - The report is `results/e5/report.md`. The run data (`runs/e5/`, `runs/cost_ledger.json[l]`) stays local; runs/ is gitignored.
+- **Disclosed: replies reused for identical prompts.** The paid-reply cache that makes E5 resumable also answers a buyer prompt that is byte-identical to one already paid for with the same reply.
+  - That happened for 134 of Luna's 1,200 buyer calls and 70 of Terra's 600. They are mostly the early rounds of scenarios whose supplier behaves honestly at first: farm-then-lie's first 24 rounds are identical to the honest run.
+  - Within a trajectory this is what a deterministic buyer would do. It does remove fresh sampling noise between scenarios where their prompts coincide. The gpt-oss runs sampled every call (temperature 0, fixed seed).
+  - The 229 extractor items include 6 repeated message texts, so each model paid for 223.
+- **Luna and Terra obt+planner land close together.** Same 73 failure events, damage $653.5 and bound $1,748, while their total costs differ slightly (scenario 1: $6,025.0 vs $6,027.0). With the D32 planner, code sizes and cites every S_main order and the LLM only states the total quantity it wants, so both buyers give the supplier the same openings.

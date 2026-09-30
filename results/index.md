@@ -5,6 +5,8 @@
 - **e2c**: 180 runs, config `e3ae87b55a9b`, commit `3535c74acf`: ci.md, loss_bound.csv, loss_from_lies.csv, provenance.json, summary.md, utility.csv
 - **e3**: 24 runs, config `b0f8ce39929e`, commit `a7e7463cfa`: ci.md, loss_bound.csv, loss_from_lies.csv, loss_vs_utility.svg, provenance.json, summary.md, trust_over_time.svg, utility.csv
 - **e3b**: 24 runs, config `1bbc9574eaa1`, commit `b23cb6909b`: ci.md, loss_bound.csv, loss_from_lies.csv, provenance.json, summary.md, utility.csv
+- **e5__luna**: 24 runs, config `8e3d90ba70e0`, commit `91acfd3dff`: ci.md, extractor.md, loss_bound.csv, loss_from_lies.csv, loss_vs_utility.svg, provenance.json, summary.md, utility.csv
+- **e5__terra**: 12 runs, config `5385ac4f4973`, commit `91acfd3dff`: ci.md, extractor.md, loss_bound.csv, loss_from_lies.csv, provenance.json, summary.md, utility.csv
 - **horizon__t100__none**: 36 runs, config `67333cab20ad`, commit `b23cb6909b`: ci.md, loss_bound.csv, loss_from_lies.csv, loss_vs_utility.svg, provenance.json, summary.md, utility.csv
 - **horizon__t100__obt**: 36 runs, config `7b65a44d3e31`, commit `b23cb6909b`: ci.md, loss_bound.csv, loss_from_lies.csv, provenance.json, summary.md, utility.csv
 - **horizon__t100__rep-n18**: 36 runs, config `a97c4089b4aa`, commit `b23cb6909b`: ci.md, loss_bound.csv, loss_from_lies.csv, provenance.json, summary.md, utility.csv
@@ -14,5 +16,6 @@
 - e6.md: adaptive attacker search, max damage/bound ratio and the attackers
 - e2b/: trust-aware buyer view vs E2 (e2b.md) and trust over time with E2 and E1 overlays
 - e2c/: planner defenses and the new reputation config vs E2 (ci.md, trust_over_time.svg)
+- e5/report.md: paid buyers (Luna, Terra) vs gpt-oss, extractor eval of the paid models, spend
 - figdata/ and tables.json: data for eval/paper.py (figures and LaTeX tables)
 - bank.md: semantic reader checks and extractor dev tuning
