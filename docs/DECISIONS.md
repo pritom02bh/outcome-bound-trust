@@ -569,3 +569,15 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
 - **Projection before running** (`python -m eval.e5_paid v2-plan`): v1's real paid tokens per buyer call × 50 calls per run × 1.25. Terra `none` was scaled from Terra obt+planner by Luna's none/obt+planner ratio.
   - Luna obt+planner $0.35, Luna none $0.36, Terra obt+planner $3.30, Terra none $3.23: rest $7.24.
   - Total **$10.51** including spend so far, at most $14. So v2 ran.
+- **v2 outcome: 48 runs, 0 invariant violations, 0 loss-bound violations.** Every buyer call was sampled fresh: 1,200 per model, 0 served from the cache.
+  - v2 spend $5.9178 (Luna $0.5580, Terra $5.3598). Ledger total with v1: **$9.1837** of the $16 cap, under the $10.51 projection.
+  - The key is in no file and no commit (checked).
+  - Report: `results/e5/report.md`, v2 next to v1.
+- **Under the planner, fresh sampling changes almost nothing.**
+  - `obt+planner` total costs are identical to v1 on 12/12 scenarios for both Luna and Terra, and Luna and Terra agree on 11/12.
+  - On scenario 1, v1 and v2 differ in 2 of 68 orders (one unit moved between S_main and backup in rounds 39–40, at equal cost).
+  - The D32 planner sizes and cites every S_main order in code, and the LLM only states a total quantity, which both models give almost identically. So the OBT rows didn't change between v1 and v2.
+- **The `none` runs, where the LLM makes every decision, changed on 12/12 scenarios.**
+  - Luna's loss from lies went from $908.9 to $812.8.
+  - Luna's honest cost, and with it every Luna utility cost, moved: obt+planner is now $322.0, 5.65%, against 5.30%.
+  - Terra's own `none` loses $942.2 from lies. Its utility cost against its own baseline is $312.0 (5.46%), against 5.34% measured on Luna's `none` in v1.

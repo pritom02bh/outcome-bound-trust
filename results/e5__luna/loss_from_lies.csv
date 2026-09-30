@@ -1,0 +1,13 @@
+scenario,none,obt+planner
+1_honest,0.0,0.0
+2_always_lie,1417.0,238.0
+3_farm_then_lie,200.75,105.75
+4_slow_drift,1676.0,208.0
+5_price_bait,1392.5,130.5
+6_vague,816.0,156.0
+7_far_deadlines,663.5,156.0
+8_claim_splitting,998.0,151.0
+9_noisy_honest,-14.0,68.5
+10_farm_fail_refarm,215.75,147.0
+11_extraction_attack,590.25,155.5
+12_sybil_reentry,984.5,243.5
