@@ -598,15 +598,36 @@ def _paper_data(runs: Path, out: Path) -> str | None:
             "rows": [[m, d["test"]["precision"], d["test"]["recall"], d["test"]["exact_match"],
                       f"{d['test_hard_no_guard']['hard']['delivery_recorded']}/30",
                       f"{d['test_hard']['hard']['delivery_recorded']}/30"] for m, d in sorted(e4.items())]}
+    from eval.stats import loss_split
     e3_rows = []
-    for label, rs in (("E3 qwen3:8b", read(runs / "e3")), ("E3b qwen3:8b", read(runs / "e3b"))):
+    money = lambda x: "n/a" if x is None else f"{x:,.1f}"  # noqa: E731
+    for label, rs in (("E3", read(runs / "e3")), ("E3b", read(runs / "e3b"))):
         for d in sorted({r["defense"] for r in rs}):
-            al = list(attack_loss_by_seed(rs, d).values())
-            e3_rows.append([label, d, f"{mean(al):,.1f}" if al else "-"])
+            sp = loss_split(rs, d)
+            if sp["n"]:
+                e3_rows.append([label, d, sp["n"], money(sp["loss"]), money(sp["damage"]), money(sp["reroute"]),
+                                money(sp["resid"])])
     if e3_rows:
-        tables["second_model"] = {"caption": "Second buyer model (qwen3:8b; gpt-oss extractor), loss from lies, "
-                                             "mean of scenarios 2-12, seed 1.",
-                                  "columns": ["run", "defense", "loss from lies"], "rows": e3_rows}
+        tables["second_model"] = {
+            "caption": "Second buyer model (qwen3:8b; gpt-oss extractor; seed 1): loss from lies split into damage "
+                       "(broken promises), reroute and resid (everything else, e.g. the buyer's own over-stocking), "
+                       "mean over attack runs, $ per run. Damage is n/a for a defense without claims.",
+            "columns": ["run", "defense", "attack runs", "loss from lies", "damage", "reroute", "resid"],
+            "rows": e3_rows}
+    e7f = runs / "e7" / "summary.json"
+    if e7f.exists():
+        e7 = json.loads(e7f.read_text())
+        chk = e7.get("k1_matches_e1", {})
+        tables["budget_k"] = {
+            "caption": "Budget growth multiplier k, B = b0 + k x max honored exposure (E7, scripted buyer, OBT default, "
+                       "12 scenarios x 3 seeds). Damage ratios use the per-event bound and the k-scaled a-priori bound. "
+                       f"k = 1 at 50 rounds matches E1 in {chk.get('identical', '-')}/{chk.get('compared', '-')} runs "
+                       "(all 36 with E1's extractor).",
+            "columns": ["k", "rounds", "utility (% of cost)", "loss from lies", "S_main share",
+                        "max damage/bound", "max damage/a-priori"],
+            "rows": [[k, T, f"{p['utility_pct']:.2f}", f"{p['attack_loss']:.1f}", f"{p['main_share']:.3f}",
+                      f"{p['max_ratio']:.3f}", f"{p['max_ratio_apriori']:.3f}"]
+                     for k, v in e7["points"].items() for T, p in v.items()]}
     hf = runs / "horizon" / "summary.json"
     if hf.exists():
         h = json.loads(hf.read_text())

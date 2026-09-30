@@ -4,3 +4,7 @@ scenario,obt+planner
 3_farm_then_lie,-13.0
 4_slow_drift,107.0
 5_price_bait,3097.5
+6_vague,11897.5
+7_far_deadlines,697.0
+8_claim_splitting,742.0
+9_noisy_honest,-41.0

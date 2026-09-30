@@ -1,4 +1,72 @@
 {
+ "budget_k": {
+  "caption": "Budget growth multiplier k, B = b0 + k x max honored exposure (E7, scripted buyer, OBT default, 12 scenarios x 3 seeds). Damage ratios use the per-event bound and the k-scaled a-priori bound. k = 1 at 50 rounds matches E1 in 33/36 runs (all 36 with E1's extractor).",
+  "columns": [
+   "k",
+   "rounds",
+   "utility (% of cost)",
+   "loss from lies",
+   "S_main share",
+   "max damage/bound",
+   "max damage/a-priori"
+  ],
+  "rows": [
+   [
+    "1",
+    "50",
+    "5.89",
+    "136.9",
+    "0.291",
+    "0.647",
+    "0.515"
+   ],
+   [
+    "1",
+    "100",
+    "5.01",
+    "327.8",
+    "0.383",
+    "0.643",
+    "0.138"
+   ],
+   [
+    "2",
+    "50",
+    "4.54",
+    "195.1",
+    "0.444",
+    "0.653",
+    "0.132"
+   ],
+   [
+    "2",
+    "100",
+    "4.27",
+    "342.1",
+    "0.467",
+    "0.653",
+    "0.075"
+   ],
+   [
+    "4",
+    "50",
+    "4.37",
+    "194.3",
+    "0.464",
+    "0.653",
+    "0.132"
+   ],
+   [
+    "4",
+    "100",
+    "4.19",
+    "342.3",
+    "0.476",
+    "0.653",
+    "0.075"
+   ]
+  ]
+ },
  "damage_vs_bound": {
   "caption": "OBT damage against the per-event bound (E2, LLM buyer).",
   "columns": [
@@ -683,27 +751,43 @@
   ]
  },
  "second_model": {
-  "caption": "Second buyer model (qwen3:8b; gpt-oss extractor), loss from lies, mean of scenarios 2-12, seed 1.",
+  "caption": "Second buyer model (qwen3:8b; gpt-oss extractor; seed 1): loss from lies split into damage (broken promises), reroute and resid (everything else, e.g. the buyer's own over-stocking), mean over attack runs, $ per run. Damage is n/a for a defense without claims.",
   "columns": [
    "run",
    "defense",
-   "loss from lies"
+   "attack runs",
+   "loss from lies",
+   "damage",
+   "reroute",
+   "resid"
   ],
   "rows": [
    [
-    "E3 qwen3:8b",
+    "E3",
     "none",
+    11,
+    "6,934.0",
+    "n/a",
+    "0.0",
     "6,934.0"
    ],
    [
-    "E3 qwen3:8b",
+    "E3",
     "obt",
-    "3,189.1"
+    11,
+    "3,189.1",
+    "41.5",
+    "-235.6",
+    "3,383.2"
    ],
    [
-    "E3b qwen3:8b",
+    "E3b",
     "obt+planner",
-    "3,032.9"
+    8,
+    "2,070.3",
+    "51.6",
+    "0.0",
+    "2,018.8"
    ]
   ]
  }

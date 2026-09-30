@@ -18,15 +18,16 @@ class BudgetConfig:
     b0: Decimal = Decimal("5.00")
     window: int = 10
     backup: str = BACKUP
+    k: int = 1                  # growth multiplier: B = b0 + k x max honored exposure (DECISIONS D36)
 
     def __post_init__(self) -> None:
         # Money enters here from float config (frac x demand x price), through the one rounding rule (D19).
         object.__setattr__(self, "b0", to_money(self.b0))
 
     @classmethod
-    def from_game(cls, cfg: GameConfig, frac: float = 0.05, window: int = 10) -> "BudgetConfig":
+    def from_game(cls, cfg: GameConfig, frac: float = 0.05, window: int = 10, k: int = 1) -> "BudgetConfig":
         # DESIGN §6 default: b0 = 5% of expected per-round spend at the main price.
-        return cls(b0=frac * cfg.demand_mean * cfg.main_price, window=window)
+        return cls(b0=frac * cfg.demand_mean * cfg.main_price, window=window, k=k)
 
 
 class TrustBudget:
@@ -52,7 +53,8 @@ class TrustBudget:
         earned = [k.realized_exposure for k in self.ledger.claims_of(c)
                   if k.status == "PASSED" and k.template == "DELIVERY"
                   and (floor is None or k.resolved_round >= floor)]
-        return self.cfg.b0 + max(earned, default=ZERO)
+        # Only the earned part is multiplied; B still rises only when a verifier step passes a claim (I2).
+        return self.cfg.b0 + self.cfg.k * max(earned, default=ZERO)
 
     def pending(self, c: str) -> Decimal:
         total = ZERO

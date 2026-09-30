@@ -117,7 +117,7 @@ All money in this section is exact Decimal cents, compared exactly, as in the sp
 Definitions per counterparty `c`:
 
 - `b0` = cold-start budget (default: 5% of per-round spend, tune in config)
-- `B(c) = b0 + max(realized_exposure of c's PASSED DELIVERY claims)`. On any FAILED claim of `c` (DELIVERY or PRICE) the max is cleared and `B(c) = b0` for `W` rounds; passes during that window never count (D3). LAPSED claims never count.
+- `B(c) = b0 + k·max(realized_exposure of c's PASSED DELIVERY claims)`, with growth multiplier `k = 1` by default (`budget_k`, D36). On any FAILED claim of `c` (DELIVERY or PRICE) the max is cleared and `B(c) = b0` for `W` rounds; passes during that window never count (D3). LAPSED claims never count.
 - `realized_exposure(claim) = consumed_qty × claimed unit price`, computed by the gate when it allows an order; never from an action's value alone.
 - `P(c)` = total value of EXECUTED ORDERs to `c` that cite at least one PENDING claim of `c` (each counted once). Payments are not added: they pay for orders already counted.
 
@@ -138,7 +138,7 @@ Definitions per counterparty `c`:
 
 An allowed ORDER consumes capacity from its cited DELIVERY claims (earliest deadline first) and records exposure. A blocked ORDER's quantity is ordered from backup by code in the same round.
 
-**Headline guarantee.** A counterparty's loss-inducing exposure at any moment is at most `B(c) = b0 + (largest delivered exposure it already honored)`. To steal X, it must first deliver goods worth about X − b0 against a claim. Farming trust with many small true claims earns nothing beyond small actions, and a small claim can't back a large order (capacity).
+**Headline guarantee.** A counterparty's loss-inducing exposure at any moment is at most `B(c) = b0 + k·(largest delivered exposure it already honored)`. To steal X, it must first deliver goods worth about (X − b0)/k against a claim (k = 1 by default). Farming trust with many small true claims earns nothing beyond small actions, and a small claim can't back a large order (capacity).
 
 ### Loss bound per failure event (FIXES F7, DECISIONS D21)
 
@@ -178,6 +178,12 @@ Then:
 `L_e ≤ B(c)·(1 + (p_b·(δ+ℓ_b+1) + Δu_max + h·T) / u_min)`
 
 The damage from one broken promise is linear in the trust budget the counterparty had earned. The late-surplus term makes the constant grow with the horizon T. The results check every measured `L_e` against this a-priori value, using `B(c)` at the time of the last consuming order.
+
+**Growth multiplier k (D36).** With `B(c) = b0 + k·max honored exposure`:
+- **The per-event bound `L_e` doesn't change.** It is built from the event's own shortfall `U_e`, prices and lead times, and the derivation above never uses B. A larger k only admits larger orders, and the realized `U_e` of a failure carries that into `L_e`. So the STOP check `damage ≤ Σ_e L_e` needs no change and holds for any k.
+- **What scales with k is the budget corollary.** I1 still gives `V_e ≤ B(c)` and `U_e ≤ B(c)/u_e`, but now `B(c) ≤ b0 + k·(largest honored exposure)`. So a counterparty that honored exposure X can make a single broken promise cost up to `(b0 + k·X)·(1 + (p_b·(δ+ℓ_b+1) + Δu_max + h·T)/u_min)`: k times as much trust exposed per honored dollar.
+- **The results report both ratios:** damage against `Σ_e L_e` (the check), and damage against the k-scaled a-priori value (B at the order, which includes k).
+- **The TLA+ model** (`spec/OBT.tla`) fixes k = 1. For k > 1, I1–I4 rest on the same code paths and on the runtime monitors (the verifier-only rise of B, I2, is unchanged: only the earned term is scaled), but they are not model-checked.
 
 ## 7. Invariants
 

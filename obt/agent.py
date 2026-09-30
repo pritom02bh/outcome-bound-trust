@@ -108,7 +108,7 @@ class ScriptedClaimBuyer:
         if obt:
             tr = view.track[view.main_id]
             # Budget expected once what's pending resolves, assuming it's honored.
-            projected = max(tr.budget, tr.b0 + api.pending())
+            projected = max(tr.budget, tr.b0 + tr.k * api.pending())
             api.request(min(2 * usual, int(projected // to_money(cfg.main_price))))
         else:
             api.request(usual)

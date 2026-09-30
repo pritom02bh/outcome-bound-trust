@@ -338,3 +338,26 @@ def trust_panels_svg(panels: list[tuple[str, list[tuple[str, list[dict], str, st
     fig.savefig(buf, format="svg", metadata={"Date": None, "Creator": None})
     plt.close(fig)
     return buf.getvalue()
+
+
+def loss_split(rows: list[dict], d: str) -> dict:
+    """Mean over attack runs (scenarios 2-12) of loss from lies = damage + reroute + resid, each differenced
+    against the honest run on the same seed (DESIGN §6). damage is None for defenses without claims."""
+    c = {(r["scenario"], r["seed"]): r for r in rows if r["defense"] == d}
+    parts = []
+    for (n, s), r in c.items():
+        h = c.get((1, s))
+        if n == 1 or h is None:
+            continue
+        loss = r["total_cost"] - h["total_cost"]
+        lb, hb = r["metrics"]["loss_bound"], h["metrics"]["loss_bound"]
+        reroute = lb["reroute_cost"] - hb["reroute_cost"]
+        damage = lb["damage"]
+        parts.append((loss, damage, reroute, loss - (damage or 0.0) - reroute))
+    if not parts:
+        return {"loss": None, "damage": None, "reroute": None, "resid": None, "n": 0}
+    dm = [p[1] for p in parts]
+    return {"loss": round(mean(p[0] for p in parts), 4),
+            "damage": None if any(x is None for x in dm) else round(mean(dm), 4),
+            "reroute": round(mean(p[2] for p in parts), 4), "resid": round(mean(p[3] for p in parts), 4),
+            "n": len(parts)}

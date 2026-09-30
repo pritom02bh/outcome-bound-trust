@@ -62,6 +62,7 @@ class TrackRecord:
     pending_exposure: Decimal
     headroom: Decimal
     last_failure: int | None
+    k: int = 1                      # budget growth multiplier (D36)
 
 
 @dataclass
@@ -125,7 +126,7 @@ def build_view(*, game: BeerGame, ledger: Ledger, actions: ActionLog, notes: Not
         track[cp] = TrackRecord(cp, budget.cfg.b0, count("PASSED"), count("FAILED"), count("PENDING"), count("UNTESTABLE"),
                                 count("LAPSED"),
                                 budget.B(cp, t), budget.pending(cp), budget.headroom(cp, t),
-                                budget.last_failure(cp))
+                                budget.last_failure(cp), budget.cfg.k)
     blocked = [(a.counterparty, a.qty, a.value, a.reason or "") for a in actions
                if a.status == "BLOCKED" and a.round >= t - 1]
     failures = [(e.claim_id, e.round, e.actions) for e in deps.events if e.round >= t - history]
@@ -159,11 +160,11 @@ def render(v: MemoryView, variant: str | None = None) -> str:
         tr = v.track[v.main_id]
         price = to_money(v.terms[MAIN]["nominal_price"])
         k = int(tr.budget // price)                      # the lot that fits the whole B once nothing is pending
-        largest = max(tr.budget - tr.b0, to_money(0))
+        largest = max((tr.budget - tr.b0) / tr.k, to_money(0))
         return text + "\n" + TRUST_AWARE_OBT.format(
             b0=_money(tr.b0), largest=_money(largest), B=_money(tr.budget),
             units=f"{k} unit{'' if k == 1 else 's'}", price=_money(price),
-            value=_money(k * price), B_next=_money(tr.b0 + max(largest, k * price)), P=_money(tr.pending_exposure),
+            value=_money(k * price), B_next=_money(tr.b0 + tr.k * max(largest, k * price)), P=_money(tr.pending_exposure),
             headroom=_money(tr.headroom))
     if v.rep_detail is not None:
         s, f, theta, cap, n0 = v.rep_detail
@@ -199,7 +200,7 @@ def _render(v: MemoryView) -> str:
                  f"pending exposure P={_money(tr.pending_exposure)}, headroom {_money(tr.headroom)}; "
                  f"last failure: {'none' if tr.last_failure is None else f'round {tr.last_failure}'}.")
         price = to_money(m["nominal_price"])
-        projected = max(tr.budget, tr.b0 + tr.pending_exposure)
+        projected = max(tr.budget, tr.b0 + tr.k * tr.pending_exposure)
         L.append(f"BUDGET MATH (computed by code): largest S_main lot that fits your headroom now: "
                  f"{int(tr.headroom // price)} units at {_money(price)}. If your pending S_main orders are "
                  f"honored, B becomes about {_money(projected)}, which fits a lot of about "

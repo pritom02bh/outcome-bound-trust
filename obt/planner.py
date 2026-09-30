@@ -41,7 +41,7 @@ def plan_obt(view, desired: int, api, cfg: GameConfig) -> int:
     _backup(api, desired - qty)
     nominal = to_money(view.terms[MAIN]["nominal_price"])
     # Ask for a lot that fits the budget expected once what's pending is honored.
-    projected = max(tr.budget, tr.b0 + api.pending())
+    projected = max(tr.budget, tr.b0 + tr.k * api.pending())
     api.request(max(1, int(projected // nominal)))
     return qty
 

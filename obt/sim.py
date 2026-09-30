@@ -34,6 +34,7 @@ DEFENSES = ("obt", "none", "provenance", "reputation", "llm_selfcheck")
 class SimConfig:
     game: GameConfig = field(default_factory=GameConfig)
     b0_frac: float = 0.05
+    budget_k: int = 1       # D36: B = b0 + k x max honored exposure (1 = DESIGN §6)
     window: int = 10
     allocate_receipts: bool = True
     defense: str = "obt"
@@ -46,7 +47,7 @@ class SimConfig:
     rep_n0: int = 3
 
     def budget_cfg(self) -> BudgetConfig:
-        return BudgetConfig.from_game(self.game, self.b0_frac, self.window)
+        return BudgetConfig.from_game(self.game, self.b0_frac, self.window, self.budget_k)
 
     def rep_cfg(self) -> RepConfig:
         return RepConfig(theta=self.rep_theta, cap=self.rep_cap, n0=self.rep_n0, grace=self.grace)

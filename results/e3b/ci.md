@@ -4,7 +4,7 @@ Mean over seeds with a 95% CI (percentile bootstrap over seeds, 10,000 resamples
 
 | defense | seeds | mean [95% CI] | per seed |
 |---|---|---|---|
-| obt+planner | 1 | 816.8 [816.8, 816.8] | s1: 816.8 |
+| obt+planner | 1 | 2,070.3 [2,070.3, 2,070.3] | s1: 2,070.3 |
 
 ## Utility cost per defense (primary utility metric: cost − cost(none), honest S_main, same seed)
 
@@ -24,7 +24,7 @@ Noisy-honest is an honest supplier with random delays: any cost above no defense
 
 | defense | utility cost [95% CI] | S_main unit share | S_main orders blocked |
 |---|---|---|---|
-| obt+planner | - | - | - |
+| obt+planner | - | 0.151 | 0.0 |
 
 ## Loss from lies per scenario (mean [95% CI] over each defense's seeds, as above)
 
@@ -35,6 +35,10 @@ Noisy-honest is an honest supplier with random delays: any cost above no defense
 | 3_farm_then_lie | -13.0 [-13.0, -13.0] |
 | 4_slow_drift | 107.0 [107.0, 107.0] |
 | 5_price_bait | 3,097.5 [3,097.5, 3,097.5] |
+| 6_vague | 11,897.5 [11,897.5, 11,897.5] |
+| 7_far_deadlines | 697.0 [697.0, 697.0] |
+| 8_claim_splitting | 742.0 [742.0, 742.0] |
+| 9_noisy_honest | -41.0 [-41.0, -41.0] |
 
 ## OBT damage vs bound (every OBT run with at least one failure event)
 

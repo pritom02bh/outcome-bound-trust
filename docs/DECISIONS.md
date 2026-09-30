@@ -437,3 +437,28 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
 - **Horizon check** (`eval/horizon.py`). Scripted buyer at 100 rounds (all 12 scenarios, seeds 1–3) for `none` (the utility reference), the OBT default and the chosen reputation config, compared with the same configs' 50-round runs from E1 and the D33 grid.
   - Reported: utility cost as a % of the honest run's total cost without a defense, and loss from lies. If OBT's cost is mostly cold start, the percentage should fall as the horizon doubles.
 - **E3b.** qwen3:8b buyer with the gpt-oss extractor, `obt+planner` and `rep+planner`, all 12 scenarios, seed 1 (24 runs), on the fixed harness.
+
+## D36. Budget growth multiplier k, and E7 (user request)
+*(The user asked for this as D35; D35 was already taken by the overnight chain.)*
+- **Rule.** `B(c) = b0 + k·max honored exposure` (`SimConfig.budget_k`, default 1 = DESIGN §6). Only the earned term is multiplied, so B still rises only when a verifier step passes a claim (I2).
+  - The multiplier also reaches every code-side projection of B: the scripted buyer's lot request, the D32 planner, and the view's BUDGET MATH and TRUST GROWTH numbers.
+  - The frozen TRUST GROWTH text describes k = 1. E2b ran only at k = 1.
+- **Loss bound (DESIGN §6).** The per-event bound `L_e` has no k in it: it's built from each failure's own shortfall, prices and lead times, so the STOP check `damage ≤ Σ L_e` is correct for every k. What scales with k is the budget corollary: B(c) at the order is at most `b0 + k·X`, and E7 reports damage against that k-scaled a-priori bound as well.
+  - The TLA+ model fixes k = 1. For k > 1, I1–I4 rest on the same code paths and the runtime monitors, not on model checking.
+- **Compatibility.** k = 1 is dropped from the config hash, so every earlier run keeps its hash. k = 1 reproduces E1's OBT default exactly: 36/36 runs with E1's extractor served from the cache (no model calls).
+- **E7** (`eval/e7.py`, `runs/e7/`). OBT at the E1 default with k ∈ {1, 2, 4} at 50 and 100 rounds, plus `none` at each horizon as the utility reference; 12 scenarios × 3 seeds, scripted buyer.
+  - It runs in process with the rule extractor, like E6 (D29). This is exact on the run bank except scenario 11, where the rule extractor reads injected text slightly differently from gpt-oss: 33/36 k = 1 runs match E1, and the other 3 differ by $0.50 each. Since the same extractor is used for every k, comparisons across k are unaffected.
+  - 0 invariant violations, and the bound held in every run.
+
+  | k | rounds | utility, % of cost | loss from lies | S_main share | max damage / Σ L_e | max damage / a-priori |
+  |---|---|---|---|---|---|---|
+  | 1 | 50 | 5.89% | $136.9 | 0.291 | 0.647 | 0.515 |
+  | 1 | 100 | 5.01% | $327.8 | 0.383 | 0.643 | 0.138 |
+  | 2 | 50 | 4.54% | $195.1 | 0.444 | 0.653 | 0.132 |
+  | 2 | 100 | 4.27% | $342.1 | 0.467 | 0.653 | 0.075 |
+  | 4 | 50 | 4.37% | $194.3 | 0.464 | 0.653 | 0.132 |
+  | 4 | 100 | 4.19% | $342.3 | 0.476 | 0.653 | 0.075 |
+
+  - **Reading.** k = 2 cuts OBT's utility cost by about a quarter at 50 rounds (5.89% → 4.54%) and raises loss from lies ($137 → $195). The max damage per bound stays about 0.65.
+  - **k = 4 adds almost nothing over k = 2.** The scripted buyer never requests a lot larger than 2 × mean demand (40 units), so a budget beyond that can't be used. That's a limit of the buyer, not of k.
+- **E3 table.** The second-model table (E3 and E3b) now always splits loss from lies into damage + reroute + resid (`eval.stats.loss_split`). For E3's `obt`, $3,189 of loss is $41.5 damage, –$235.6 reroute and $3,383 resid: the qwen buyer's own over-stocking. Damage is n/a for `none`, which has no claims.

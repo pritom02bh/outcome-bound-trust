@@ -153,6 +153,8 @@ def config_hash(ec: EvalConfig, defense: str = "obt") -> str:
     stale run); for every plain defense it is the eval's shared config hash."""
     sim = dataclasses.asdict(sim_config(ec, defense))
     sim.pop("defense")                      # part of the run key, not of the config
+    if sim.get("budget_k") == 1:            # D36: the default multiplier keeps every earlier run's hash
+        sim.pop("budget_k")
     if variant_opts(defense):               # buyer-side variant options are part of that variant's identity
         sim["variant_opts"] = variant_opts(defense)
     blob = {"eval": {k: getattr(ec, k) for k in _RUN_FIELDS}, "sim": sim}
