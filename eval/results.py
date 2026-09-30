@@ -22,7 +22,7 @@ from eval.stats import (e2b_report, e2b_trust_svg, loss_split, main_share, repor
 from obt.attacks.suppliers import scenario_name
 
 # e1 grid points are summarized together as one grid (_e1), not as separate evals.
-SKIP = ("_invalid", "_archive", "cache", "message_bank", "tuning", "e1", "e4", "e6", "rep_grid")
+SKIP = ("_invalid", "_archive", "_v1_shared_cache", "cache", "message_bank", "tuning", "e1", "e4", "e6", "rep_grid")
 
 
 def _read_rows(f: Path) -> list[dict]:

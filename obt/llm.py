@@ -112,18 +112,25 @@ class LLM:
         self.meter = meter or CostMeter()
         self.run_tag = run_tag
         self._extra: dict = {}          # usage details of the last paid call, for the log
+        # Run-scoped cache (DECISIONS D37a): when set, the reply cache key also holds this scope (run id + config)
+        # and the call's index within it, so the cache only resumes an interrupted run and never hands one run's
+        # (or scenario's) answer to another. Every call of a fresh run is sampled fresh.
+        self.cache_scope: str | None = None
+        self._index = 0
         self.calls = 0
         self.tokens = 0
         self.latency = 0.0
         self.by_purpose: dict[str, dict[str, float]] = {}
 
-    def _key(self, system: str, user: str, schema: dict | None) -> str:
-        blob = json.dumps([self.backend, self.model, self.temperature, self.seed, self.think,
-                           system, user, schema], sort_keys=True)
-        return hashlib.sha256(blob.encode()).hexdigest()
+    def _key(self, system: str, user: str, schema: dict | None, index: int | None = None) -> str:
+        parts = [self.backend, self.model, self.temperature, self.seed, self.think, system, user, schema]
+        if self.cache_scope is not None:
+            parts += [self.cache_scope, index]
+        return hashlib.sha256(json.dumps(parts, sort_keys=True).encode()).hexdigest()
 
     def chat(self, system: str, user: str, schema: dict | None = None, purpose: str = "") -> LLMReply:
-        key = self._key(system, user, schema)
+        index, self._index = self._index, self._index + 1      # counts every call, cache hits included
+        key = self._key(system, user, schema, index)
         cache_file = self.cache_dir / f"{key}.json" if self.cache_dir else None
         if cache_file is not None and cache_file.exists():
             d = json.loads(cache_file.read_text())

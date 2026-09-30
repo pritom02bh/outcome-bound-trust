@@ -548,3 +548,24 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - Within a trajectory this is what a deterministic buyer would do. It does remove fresh sampling noise between scenarios where their prompts coincide. The gpt-oss runs sampled every call (temperature 0, fixed seed).
   - The 229 extractor items include 6 repeated message texts, so each model paid for 223.
 - **Luna and Terra obt+planner land close together.** Same 73 failure events, damage $653.5 and bound $1,748, while their total costs differ slightly (scenario 1: $6,025.0 vs $6,027.0). With the D32 planner, code sizes and cites every S_main order and the LLM only states the total quantity it wants, so both buyers give the supplier the same openings.
+
+## D37a. E5 v2: no cross-run reply reuse (user decision)
+- **Why.** v1's paid-reply cache was keyed by prompt only. So a buyer prompt byte-identical to one already paid for in another run or scenario got that earlier answer instead of a fresh sample: 134 of Luna's 1,200 buyer calls and 70 of Terra's 600, mostly early rounds that coincide across scenarios.
+  - That makes those runs share one sample where the gpt-oss runs (E2/E2c) drew a fresh one. It also correlates scenarios that should be independent draws.
+- **Fix.**
+  - `LLM.cache_scope`: when set, the reply-cache key also holds the scope and the call's index within it. The index counts every call, cache hits included.
+  - `run_one` sets the scope for the buyer LLM to the run id (scenario | defense | seed | model) plus the run's config hash.
+  - So the cache can only resume an interrupted run, replaying that run's own earlier calls in order, and never answers another run's or scenario's prompt. Every buyer call of a fresh run is sampled fresh.
+  - Unscoped LLMs keep their old keys (tested).
+  - The frozen gpt-oss extractor still uses the shared extraction cache keyed by message text, exactly as in E2c (D24).
+- **v1 archived, not deleted.**
+  - Run data: `runs/e5/_v1_shared_cache/` (LABEL.txt).
+  - Reports: `results/e5_v1/` (README).
+  - Both are labelled "superseded: cross-run reply reuse". `eval/results.py` skips the archive when building the per-eval tables; `results/e5/report.md` shows v1 next to v2.
+- **v2 scope.**
+  - All 36 buyer runs again, plus Terra `none` on all 12 scenarios (seed 1), so Terra's utility cost uses its own baseline: 48 runs.
+  - v1's extractor eval is kept and not re-paid: it is per item, with no cross-run reuse.
+  - The hard stop is still $16 in total, including v1's $3.27.
+- **Projection before running** (`python -m eval.e5_paid v2-plan`): v1's real paid tokens per buyer call × 50 calls per run × 1.25. Terra `none` was scaled from Terra obt+planner by Luna's none/obt+planner ratio.
+  - Luna obt+planner $0.35, Luna none $0.36, Terra obt+planner $3.30, Terra none $3.23: rest $7.24.
+  - Total **$10.51** including spend so far, at most $14. So v2 ran.

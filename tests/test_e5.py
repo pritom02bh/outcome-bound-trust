@@ -15,8 +15,8 @@ PLAN = e5_paid.plan()
 
 def test_plan_is_plan_b():
     runs = {(p["model"], p["defense"], p["scenario"]) for p in PLAN if p["kind"] == "run"}
-    assert runs == {(e5_paid.LUNA, d, n) for d in ("obt+planner", "none") for n in range(1, 13)} | {
-        (e5_paid.TERRA, "obt+planner", n) for n in range(1, 13)}
+    assert runs == {(m, d, n) for m in (e5_paid.LUNA, e5_paid.TERRA) for d in ("obt+planner", "none")
+                    for n in range(1, 13)}                                # v2: Terra has its own none (D37a)
     assert all(p["seed"] == 1 for p in PLAN if p["kind"] == "run")
     assert [p["items"] for p in PLAN if p["kind"] == "extractor_eval"] == [229, 229]
 
@@ -114,3 +114,54 @@ def test_load_key_never_prints(tmp_path, monkeypatch, capsys):
     import os
     assert os.environ["OPENAI_API_KEY"] == "sk-test-SECRET"
     assert "SECRET" not in capsys.readouterr().out
+
+
+def _paid_llm(monkeypatch, tmp_path, scope):
+    monkeypatch.setenv("OBT_ALLOW_PAID", "1")
+    monkeypatch.setitem(sys.modules, "openai", types.SimpleNamespace(OpenAI=_FakeOpenAI))
+    m = llm.LLM("openai", e5_paid.LUNA, meter=llm.CostMeter(tmp_path / "ledger.json", cap=16.0),
+                log_path=tmp_path / "calls.jsonl", cache_dir=tmp_path / "cache", run_tag=scope)
+    m.cache_scope = scope
+    return m
+
+
+def test_run_scoped_cache_never_reuses_across_runs_but_resumes_a_run(monkeypatch, tmp_path):
+    # D37a: v1 answered byte-identical prompts in another run from the cache. Now the key holds the run scope and
+    # the call index: another run (or scenario) pays for its own sample; a resumed run replays its calls for free.
+    _FakeOpenAI.seen.clear()
+    a = _paid_llm(monkeypatch, tmp_path, "3_farm_then_lie|obt+planner|s1|m|h")
+    a.chat("sys", "same prompt")
+    a.chat("sys", "same prompt")                     # same run, next call index: a fresh sample
+    b = _paid_llm(monkeypatch, tmp_path, "1_honest|obt+planner|s1|m|h")
+    b.chat("sys", "same prompt")                     # another run: never the other run's answer
+    assert len(_FakeOpenAI.seen) == 3
+    resumed = _paid_llm(monkeypatch, tmp_path, "3_farm_then_lie|obt+planner|s1|m|h")
+    assert resumed.chat("sys", "same prompt").cached and resumed.chat("sys", "same prompt").cached
+    assert len(_FakeOpenAI.seen) == 3                # resuming the interrupted run paid nothing
+
+
+def test_unscoped_llms_keep_their_old_cache_keys(tmp_path):
+    m = llm.LLM("fake", "m", fake=lambda s, u: "x")
+    old = __import__("hashlib").sha256(json.dumps(["fake", "m", 0.0, 0, "low", "s", "u", None],
+                                                  sort_keys=True).encode()).hexdigest()
+    assert m._key("s", "u", None, 0) == old
+
+
+def test_v2_projection_counts_every_call_and_what_is_spent(tmp_path, monkeypatch):
+    v1 = tmp_path / "e5" / "_v1_shared_cache"
+    for d, model in (("luna", e5_paid.LUNA), ("terra", e5_paid.TERRA)):
+        (v1 / d).mkdir(parents=True)
+        rows = []
+        for dfn in ("obt+planner", "none") if d == "luna" else ("obt+planner",):
+            for i in range(50):
+                rows.append({"backend": "openai", "purpose": "buyer", "run": f"1_honest|{dfn}|s1|{model}",
+                             "prompt_tokens": 0 if i < 10 else 1000, "completion_tokens": 0 if i < 10 else 100,
+                             "cached": i < 10})
+        (v1 / d / "llm_calls.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    (tmp_path / "cost_ledger.json").write_text(json.dumps({"spent_usd": 3.0}))
+    p = e5_paid.project_v2(tmp_path, margin=1.0)
+    assert p["per_call"][f"{e5_paid.TERRA} obt+planner"] == (1000.0, 100.0, 50)   # cached calls: counted, not sampled
+    luna = p["parts"][f"{e5_paid.LUNA} obt+planner"]
+    assert luna["runs"] == 12 and luna["usd"] == pytest.approx(12 * (50_000 * 0.2 + 5_000 * 1.2) / 1e6)
+    assert p["parts"][f"{e5_paid.TERRA} none"]["runs"] == 12
+    assert p["total_usd"] == pytest.approx(3.0 + p["rest_usd"])

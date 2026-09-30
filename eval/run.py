@@ -248,6 +248,9 @@ def run_one(ec: EvalConfig, n: int, defense: str, seed: int, meter: CostMeter, f
     # Extractor roles (DECISIONS D24): every eval run that reads claims extracts with the LLM extractor
     # (prompt tuned on dev, then frozen). The rule extractor is only a baseline on the extractor test set.
     llm = make_llm(ec, tag, meter, fake)
+    # D37a: the reply cache is scoped to this run (id + config) and call index: it can resume this run, never
+    # answer another run's or scenario's prompt.
+    llm.cache_scope = f"{tag}|{config_hash(ec, defense)}"
     # E3 (D28): the extractor may be a different model from the buyer; by default it is the same LLM object.
     ext_llm = (make_llm(ec, tag, meter, fake, model=ec.extractor_model, backend=extractor_backend(ec))
                if ec.extractor_model else llm)
