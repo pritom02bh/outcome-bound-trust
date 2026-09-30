@@ -581,3 +581,29 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - Luna's loss from lies went from $908.9 to $812.8.
   - Luna's honest cost, and with it every Luna utility cost, moved: obt+planner is now $322.0, 5.65%, against 5.30%.
   - Terra's own `none` loses $942.2 from lies. Its utility cost against its own baseline is $312.0 (5.46%), against 5.34% measured on Luna's `none` in v1.
+
+## D38. Enron labels and the real-text result (user decision)
+- **Provenance.** The labels in `data/enron_candidates.csv` were drafted with LLM assistance and **verified row by row by the author**. Row numbers are 1-based data rows in the file's order (header not counted). The author confirmed the numbering before the labels were applied (row 9 starts "Our very popular Free Stopover in Las Ve", row 60 "Preschedule: We will reduce our presched"). The message and stratum columns are unchanged, byte for byte.
+- **Labeling rules as used.**
+  - **`is_commitment = yes`** only for a sender's promise of a specific price or delivery, held until a stated date: a quoted price with a validity end (marketing offers, a hotel cut-off), or a quantity with a deadline (power scheduling).
+    - Calendar dates are kept as written (ISO dates) in `deadline` / `valid_until`.
+    - A discount ("up to $300 off") is recorded as written, since it is not a unit price.
+    - Conflicting end dates are kept as both ("2002-03-20 / 2001-12-15").
+    - Units other than widgets are noted ("7 MW").
+  - **`is_commitment = no`** for everything else:
+    - records of deals already struck (tickets, contract terms, deal numbers);
+    - assumptions ("we will make assumptions as follows");
+    - prices not held to a date (a refund deadline is not a price validity);
+    - payment promises and cash-balance notes;
+    - plans or expectations ("the plan is to …", "we expect …");
+    - marketing prices without an end date.
+  - **`notes = "borderline; <reason>"`** on non-commitments a reader could argue for, with one of those reasons: rows 3, 17, 21, 23, 26, 29, 42, 48, 52, 54, 65, 66, 67, 68, 71, 76, 86, 88, 91, 98, 100. Row 60 (a commitment) is also borderline: power scheduling, with a garbled date range in its first clause.
+    - The user supplied the reason categories. The assignment of one reason to each row was drafted by the assistant from the row text and is shown in the notes for the author to check.
+- **Labels.** 10 commitments:
+  - 9 price rows: 9, 15, 16, 24, 55, 58, 83, 84, 87;
+  - 1 delivery row: 60;
+  - 90 non-commitments, 22 of them with a borderline note.
+- **Result** (`eval/enron_eval.py` → `runs/enron/eval.json`, `results/enron.md`; per stratum). For both the frozen gpt-oss:20b extractor and the rule extractor:
+  - **0 claims recorded** on all 100 rows, so **0 wrong claims** (the safety target) and 0 from non-commitments;
+  - **all 10 labeled commitment claims UNTESTABLE** (1/1 delivery, 9/9 price): the expected coverage limit, since the claim schema speaks in rounds and widgets and these use calendar dates, MW and round-trip fares.
+  - gpt-oss made 100 fresh calls, and every reply was `{"claims": []}`: the model itself proposed nothing on real text. So the code-level refusals (the closed `item` type and F5 round-wording grounding, D34) were not exercised here. They are covered by D34's adversarial tests.

@@ -1,4 +1,4 @@
-# Results index (tag `v1.0-results`)
+# Results index (tags `v1.0-results`, `v1.1-results`: + Enron)
 
 One row per experiment. **Runs @** is the commit the runs were produced on (from each run's provenance); **report @** is the commit that last changed the report. Loss from lies = mean over attack scenarios 2–12 of cost − cost of the honest run (same defense, seed). Utility cost = cost(defense) − cost(`none`) on the honest scenario, same seed. All runs: 0 invariant violations, and the loss bound (damage ≤ Σ L_e) held in every OBT run. Decisions: `docs/DECISIONS.md`. The generated per-eval listing is `results/evals.md` (rebuilt by `make results`).
 
@@ -19,4 +19,4 @@ One row per experiment. **Runs @** is the commit the runs were produced on (from
 | Horizon check | scripted buyer, T = 100 vs T = 50, 12 scenarios × 3 seeds | `b23cb69` | `results/horizon__t100__*/`; `results/tables.json` `horizon` (`f5a9121`) | OBT utility cost **5.89% → 5.01%** as the horizon doubles (partly cold start) |
 | TLA+ model check | `spec/OBT.tla`, TLC exhaustive + 8 guard mutants | `e8b9618` | `spec/results/README.md` (`e8b9618`) | k = 1 exhaustively verified at **5 bounds**, every mutant caught; k > 1 not model-checked (D36b) |
 | Paper assets | figures (PDF) and booktabs tables from `results/` only | `f5a9121` | `paper/` (`f5a9121`) | 4 figures, 10 tables, text ≥ 7 pt |
-| Enron (pending) | stratified 50 + 50 real messages, `is_commitment` column | `fe49b3e` | `data/enron_candidates.csv` | Not evaluated: waiting for labels |
+| Enron real-text check | frozen gpt-oss + rule extractors on 100 labeled real sentences (50 delivery-like, 50 price-only; labels D38) | `v1.1-results` | `results/enron.md` | **0 wrong claims** recorded in both strata; all 10 labeled commitments UNTESTABLE (schema limit: calendar dates, non-widget units) |

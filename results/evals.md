@@ -17,5 +17,6 @@
 - e2b/: trust-aware buyer view vs E2 (e2b.md) and trust over time with E2 and E1 overlays
 - e2c/: planner defenses and the new reputation config vs E2 (ci.md, trust_over_time.svg)
 - e5/report.md: paid buyers (Luna, Terra), v2 next to v1 (superseded), gpt-oss reference, extractor eval, spend
+- enron.md: frozen extractors on labeled real Enron sentences, per stratum
 - figdata/ and tables.json: data for eval/paper.py (figures and LaTeX tables)
 - bank.md: semantic reader checks and extractor dev tuning

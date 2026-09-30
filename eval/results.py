@@ -493,6 +493,27 @@ def _e5(runs: Path, out: Path) -> str | None:
     (d / "report.md").write_text("\n".join(L) + "\n")
     return "e5/report.md: paid buyers (Luna, Terra), v2 next to v1 (superseded), gpt-oss reference, extractor eval, spend"
 
+def _enron(runs: Path, out: Path) -> str | None:
+    """Enron real-text check (D34, D38): the frozen extractors on 100 labeled real sentences, per stratum."""
+    f = runs / "enron" / "eval.json"
+    if not f.exists():
+        return None
+    d = json.loads(f.read_text())
+    L = ["## Enron real-text check (D34, D38): frozen extractors on 100 labeled real sentences", "",
+         "Labels: `data/enron_candidates.csv` (drafted with LLM assistance, verified row by row by the author). "
+         "Per stratum, never pooled. Target for wrong claims recorded: 0.", "",
+         "| extractor | stratum | rows | commitments | labeled claims | claims UNTESTABLE | recorded | "
+         "wrong recorded | recorded from non-commitments |", "|---|---|---|---|---|---|---|---|---|"]
+    for name in sorted(d):
+        for st in sorted(d[name]):
+            x = d[name][st]
+            L.append(f"| {name} | {st} | {x['rows']} | {x['commitments']} | {x['commitment_claims']} | "
+                     f"{x['commitment_claims_untestable']} | {x['recorded_claims']} | {x['wrong_claims_recorded']} | "
+                     f"{x['recorded_from_non_commitments']} |")
+    (out / "enron.md").write_text("\n".join(L) + "\n")
+    return "enron.md: frozen extractors on labeled real Enron sentences, per stratum"
+
+
 def build(runs: Path, out: Path) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     built, index, pareto = {}, ["# Results (rebuilt from runs/ only)", ""], []
@@ -558,6 +579,9 @@ def build(runs: Path, out: Path) -> dict:
     e5 = _e5(runs, out)
     if e5:
         index.append("- " + e5)
+    enron = _enron(runs, out)
+    if enron:
+        index.append("- " + enron)
     paper = _paper_data(runs, out)
     if paper:
         index.append("- " + paper)
