@@ -1,0 +1,525 @@
+{
+ "ci": {
+  "10_farm_fail_refarm|llm_selfcheck": [
+   9.5,
+   354.0
+  ],
+  "10_farm_fail_refarm|none": [
+   160.25,
+   253.0
+  ],
+  "10_farm_fail_refarm|obt": [
+   4.8,
+   7.7
+  ],
+  "10_farm_fail_refarm|obt+planner": [
+   89.4,
+   112.4
+  ],
+  "10_farm_fail_refarm|provenance": [
+   218.25,
+   261.5
+  ],
+  "10_farm_fail_refarm|rep+planner": [
+   115.9,
+   328.6
+  ],
+  "10_farm_fail_refarm|rep-default": [
+   -26.2,
+   227.4
+  ],
+  "10_farm_fail_refarm|rep-n18": [
+   199.85,
+   457.25
+  ],
+  "10_farm_fail_refarm|rep-strict": [
+   0.0,
+   0.0
+  ],
+  "11_extraction_attack|llm_selfcheck": [
+   199.0,
+   322.5
+  ],
+  "11_extraction_attack|none": [
+   330.25,
+   1373.5
+  ],
+  "11_extraction_attack|obt": [
+   29.0,
+   43.7
+  ],
+  "11_extraction_attack|obt+planner": [
+   94.5,
+   105.3
+  ],
+  "11_extraction_attack|provenance": [
+   383.25,
+   1111.0
+  ],
+  "11_extraction_attack|rep+planner": [
+   483.5,
+   616.3
+  ],
+  "11_extraction_attack|rep-default": [
+   324.9,
+   532.1
+  ],
+  "11_extraction_attack|rep-n18": [
+   573.85,
+   972.05
+  ],
+  "11_extraction_attack|rep-strict": [
+   69.1,
+   273.55
+  ],
+  "12_sybil_reentry|llm_selfcheck": [
+   1596.5,
+   3005.5
+  ],
+  "12_sybil_reentry|none": [
+   6233.5,
+   9425.0
+  ],
+  "12_sybil_reentry|obt": [
+   116.4,
+   134.6
+  ],
+  "12_sybil_reentry|obt+planner": [
+   181.1,
+   198.9
+  ],
+  "12_sybil_reentry|provenance": [
+   3140.5,
+   5074.5
+  ],
+  "12_sybil_reentry|rep+planner": [
+   1283.6,
+   1638.4
+  ],
+  "12_sybil_reentry|rep-default": [
+   907.7,
+   1287.9
+  ],
+  "12_sybil_reentry|rep-n18": [
+   846.6,
+   1087.8
+  ],
+  "12_sybil_reentry|rep-strict": [
+   641.2,
+   1023.8
+  ],
+  "2_always_lie|llm_selfcheck": [
+   1223.5,
+   2332.5
+  ],
+  "2_always_lie|none": [
+   6865.5,
+   7268.0
+  ],
+  "2_always_lie|obt": [
+   112.0,
+   130.6
+  ],
+  "2_always_lie|obt+planner": [
+   176.3,
+   193.2
+  ],
+  "2_always_lie|provenance": [
+   4101.0,
+   7270.0
+  ],
+  "2_always_lie|rep+planner": [
+   910.8,
+   1093.4
+  ],
+  "2_always_lie|rep-default": [
+   435.1,
+   699.7
+  ],
+  "2_always_lie|rep-n18": [
+   571.9,
+   722.6
+  ],
+  "2_always_lie|rep-strict": [
+   205.5,
+   371.6
+  ],
+  "3_farm_then_lie|llm_selfcheck": [
+   -4.0,
+   205.5
+  ],
+  "3_farm_then_lie|none": [
+   32.0,
+   100.75
+  ],
+  "3_farm_then_lie|obt": [
+   -8.25,
+   4.95
+  ],
+  "3_farm_then_lie|obt+planner": [
+   68.4,
+   109.35
+  ],
+  "3_farm_then_lie|provenance": [
+   57.25,
+   128.75
+  ],
+  "3_farm_then_lie|rep+planner": [
+   41.0,
+   238.7
+  ],
+  "3_farm_then_lie|rep-default": [
+   -0.85,
+   214.65
+  ],
+  "3_farm_then_lie|rep-n18": [
+   48.3,
+   216.65
+  ],
+  "3_farm_then_lie|rep-strict": [
+   0.0,
+   0.0
+  ],
+  "4_slow_drift|llm_selfcheck": [
+   316.0,
+   609.5
+  ],
+  "4_slow_drift|none": [
+   1391.0,
+   2118.0
+  ],
+  "4_slow_drift|obt": [
+   79.7,
+   102.9
+  ],
+  "4_slow_drift|obt+planner": [
+   144.4,
+   167.6
+  ],
+  "4_slow_drift|provenance": [
+   990.5,
+   1272.0
+  ],
+  "4_slow_drift|rep+planner": [
+   373.3,
+   574.8
+  ],
+  "4_slow_drift|rep-default": [
+   167.4,
+   315.8
+  ],
+  "4_slow_drift|rep-n18": [
+   299.4,
+   518.6
+  ],
+  "4_slow_drift|rep-strict": [
+   0.0,
+   0.0
+  ],
+  "5_price_bait|llm_selfcheck": [
+   580.5,
+   747.0
+  ],
+  "5_price_bait|none": [
+   754.5,
+   860.0
+  ],
+  "5_price_bait|obt": [
+   -23.9,
+   -14.4
+  ],
+  "5_price_bait|obt+planner": [
+   67.4,
+   72.5
+  ],
+  "5_price_bait|provenance": [
+   609.5,
+   743.0
+  ],
+  "5_price_bait|rep+planner": [
+   688.0,
+   815.8
+  ],
+  "5_price_bait|rep-default": [
+   747.4,
+   971.5
+  ],
+  "5_price_bait|rep-n18": [
+   797.3,
+   939.3
+  ],
+  "5_price_bait|rep-strict": [
+   87.5,
+   129.8
+  ],
+  "6_vague|llm_selfcheck": [
+   217.0,
+   342.5
+  ],
+  "6_vague|none": [
+   468.5,
+   777.0
+  ],
+  "6_vague|obt": [
+   29.5,
+   44.2
+  ],
+  "6_vague|obt+planner": [
+   94.6,
+   105.0
+  ],
+  "6_vague|provenance": [
+   506.0,
+   823.5
+  ],
+  "6_vague|rep+planner": [
+   374.6,
+   461.2
+  ],
+  "6_vague|rep-default": [
+   289.4,
+   426.6
+  ],
+  "6_vague|rep-n18": [
+   390.3,
+   474.3
+  ],
+  "6_vague|rep-strict": [
+   49.5,
+   129.7
+  ],
+  "7_far_deadlines|llm_selfcheck": [
+   1025.25,
+   2264.75
+  ],
+  "7_far_deadlines|none": [
+   5529.0,
+   5776.0
+  ],
+  "7_far_deadlines|obt": [
+   29.5,
+   44.2
+  ],
+  "7_far_deadlines|obt+planner": [
+   94.8,
+   105.2
+  ],
+  "7_far_deadlines|provenance": [
+   4124.25,
+   4725.0
+  ],
+  "7_far_deadlines|rep+planner": [
+   913.25,
+   1047.25
+  ],
+  "7_far_deadlines|rep-default": [
+   575.5,
+   751.6
+  ],
+  "7_far_deadlines|rep-n18": [
+   585.6,
+   806.95
+  ],
+  "7_far_deadlines|rep-strict": [
+   330.55,
+   483.1
+  ],
+  "8_claim_splitting|llm_selfcheck": [
+   221.0,
+   552.5
+  ],
+  "8_claim_splitting|none": [
+   414.5,
+   893.5
+  ],
+  "8_claim_splitting|obt": [
+   20.0,
+   67.2
+  ],
+  "8_claim_splitting|obt+planner": [
+   82.2,
+   97.2
+  ],
+  "8_claim_splitting|provenance": [
+   341.5,
+   628.5
+  ],
+  "8_claim_splitting|rep+planner": [
+   729.1,
+   1416.6
+  ],
+  "8_claim_splitting|rep-default": [
+   532.6,
+   790.7
+  ],
+  "8_claim_splitting|rep-n18": [
+   503.6,
+   803.2
+  ],
+  "8_claim_splitting|rep-strict": [
+   -9.0,
+   18.1
+  ],
+  "9_noisy_honest|llm_selfcheck": [
+   -10.0,
+   77.0
+  ],
+  "9_noisy_honest|none": [
+   -46.4,
+   -19.9
+  ],
+  "9_noisy_honest|obt": [
+   -15.0,
+   8.2
+  ],
+  "9_noisy_honest|obt+planner": [
+   39.3,
+   59.7
+  ],
+  "9_noisy_honest|provenance": [
+   -4.0,
+   22.0
+  ],
+  "9_noisy_honest|rep+planner": [
+   16.8,
+   153.8
+  ],
+  "9_noisy_honest|rep-default": [
+   180.3,
+   347.4
+  ],
+  "9_noisy_honest|rep-n18": [
+   83.8,
+   293.3
+  ],
+  "9_noisy_honest|rep-strict": [
+   -10.5,
+   10.2
+  ]
+ },
+ "defenses": [
+  "obt",
+  "obt+planner",
+  "rep-n18",
+  "rep+planner",
+  "rep-strict",
+  "rep-default",
+  "llm_selfcheck",
+  "provenance",
+  "none"
+ ],
+ "mean": {
+  "10_farm_fail_refarm|llm_selfcheck": 172.67,
+  "10_farm_fail_refarm|none": 193.42,
+  "10_farm_fail_refarm|obt": 6.35,
+  "10_farm_fail_refarm|obt+planner": 98.1,
+  "10_farm_fail_refarm|provenance": 236.08,
+  "10_farm_fail_refarm|rep+planner": 222.25,
+  "10_farm_fail_refarm|rep-default": 100.6,
+  "10_farm_fail_refarm|rep-n18": 304.3,
+  "10_farm_fail_refarm|rep-strict": 0.0,
+  "11_extraction_attack|llm_selfcheck": 260.17,
+  "11_extraction_attack|none": 706.83,
+  "11_extraction_attack|obt": 36.0,
+  "11_extraction_attack|obt+planner": 100.2,
+  "11_extraction_attack|provenance": 726.33,
+  "11_extraction_attack|rep+planner": 558.5,
+  "11_extraction_attack|rep-default": 428.5,
+  "11_extraction_attack|rep-n18": 786.2,
+  "11_extraction_attack|rep-strict": 153.45,
+  "12_sybil_reentry|llm_selfcheck": 2484.33,
+  "12_sybil_reentry|none": 7700.5,
+  "12_sybil_reentry|obt": 125.7,
+  "12_sybil_reentry|obt+planner": 190.1,
+  "12_sybil_reentry|provenance": 4149.5,
+  "12_sybil_reentry|rep+planner": 1460.7,
+  "12_sybil_reentry|rep-default": 1097.8,
+  "12_sybil_reentry|rep-n18": 968.5,
+  "12_sybil_reentry|rep-strict": 823.0,
+  "2_always_lie|llm_selfcheck": 1944.5,
+  "2_always_lie|none": 7107.33,
+  "2_always_lie|obt": 121.3,
+  "2_always_lie|obt+planner": 184.8,
+  "2_always_lie|provenance": 5562.33,
+  "2_always_lie|rep+planner": 1002.1,
+  "2_always_lie|rep-default": 579.9,
+  "2_always_lie|rep-n18": 647.8,
+  "2_always_lie|rep-strict": 305.1,
+  "3_farm_then_lie|llm_selfcheck": 96.0,
+  "3_farm_then_lie|none": 57.67,
+  "3_farm_then_lie|obt": -0.5,
+  "3_farm_then_lie|obt+planner": 86.55,
+  "3_farm_then_lie|provenance": 99.0,
+  "3_farm_then_lie|rep+planner": 135.3,
+  "3_farm_then_lie|rep-default": 97.95,
+  "3_farm_then_lie|rep-n18": 109.35,
+  "3_farm_then_lie|rep-strict": 0.0,
+  "4_slow_drift|llm_selfcheck": 456.83,
+  "4_slow_drift|none": 1778.83,
+  "4_slow_drift|obt": 91.3,
+  "4_slow_drift|obt+planner": 156.0,
+  "4_slow_drift|provenance": 1103.33,
+  "4_slow_drift|rep+planner": 489.5,
+  "4_slow_drift|rep-default": 230.3,
+  "4_slow_drift|rep-n18": 409.0,
+  "4_slow_drift|rep-strict": 0.0,
+  "5_price_bait|llm_selfcheck": 650.0,
+  "5_price_bait|none": 808.67,
+  "5_price_bait|obt": -19.5,
+  "5_price_bait|obt+planner": 70.1,
+  "5_price_bait|provenance": 691.0,
+  "5_price_bait|rep+planner": 750.7,
+  "5_price_bait|rep-default": 860.3,
+  "5_price_bait|rep-n18": 868.3,
+  "5_price_bait|rep-strict": 109.4,
+  "6_vague|llm_selfcheck": 272.83,
+  "6_vague|none": 611.67,
+  "6_vague|obt": 36.5,
+  "6_vague|obt+planner": 100.1,
+  "6_vague|provenance": 647.5,
+  "6_vague|rep+planner": 406.4,
+  "6_vague|rep-default": 353.1,
+  "6_vague|rep-n18": 432.3,
+  "6_vague|rep-strict": 78.3,
+  "7_far_deadlines|llm_selfcheck": 1452.58,
+  "7_far_deadlines|none": 5627.75,
+  "7_far_deadlines|obt": 36.6,
+  "7_far_deadlines|obt+planner": 100.3,
+  "7_far_deadlines|provenance": 4480.92,
+  "7_far_deadlines|rep+planner": 982.6,
+  "7_far_deadlines|rep-default": 663.55,
+  "7_far_deadlines|rep-n18": 712.65,
+  "7_far_deadlines|rep-strict": 388.75,
+  "8_claim_splitting|llm_selfcheck": 337.5,
+  "8_claim_splitting|none": 632.67,
+  "8_claim_splitting|obt": 43.6,
+  "8_claim_splitting|obt+planner": 89.4,
+  "8_claim_splitting|provenance": 446.83,
+  "8_claim_splitting|rep+planner": 1075.5,
+  "8_claim_splitting|rep-default": 656.1,
+  "8_claim_splitting|rep-n18": 648.8,
+  "8_claim_splitting|rep-strict": 1.4,
+  "9_noisy_honest|llm_selfcheck": 21.33,
+  "9_noisy_honest|none": -34.7,
+  "9_noisy_honest|obt": -2.8,
+  "9_noisy_honest|obt+planner": 49.5,
+  "9_noisy_honest|provenance": 5.83,
+  "9_noisy_honest|rep+planner": 83.9,
+  "9_noisy_honest|rep-default": 248.6,
+  "9_noisy_honest|rep-n18": 182.7,
+  "9_noisy_honest|rep-strict": -0.1
+ },
+ "scenarios": [
+  "2_always_lie",
+  "3_farm_then_lie",
+  "4_slow_drift",
+  "5_price_bait",
+  "6_vague",
+  "7_far_deadlines",
+  "8_claim_splitting",
+  "9_noisy_honest",
+  "10_farm_fail_refarm",
+  "11_extraction_attack",
+  "12_sybil_reentry"
+ ]
+}

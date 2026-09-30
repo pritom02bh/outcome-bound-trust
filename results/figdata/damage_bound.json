@@ -1,0 +1,330 @@
+{
+ "E2 obt": [
+  {
+   "damage": 118.5,
+   "events": 24,
+   "sum_bound": 336.0
+  },
+  {
+   "damage": 4.5,
+   "events": 1,
+   "sum_bound": 14.0
+  },
+  {
+   "damage": 93.5,
+   "events": 19,
+   "sum_bound": 266.0
+  },
+  {
+   "damage": 60.0,
+   "events": 3,
+   "sum_bound": 125.0
+  },
+  {
+   "damage": 18.0,
+   "events": 2,
+   "sum_bound": 56.0
+  },
+  {
+   "damage": 123.0,
+   "events": 25,
+   "sum_bound": 350.0
+  },
+  {
+   "damage": 128.5,
+   "events": 24,
+   "sum_bound": 336.0
+  },
+  {
+   "damage": 4.5,
+   "events": 1,
+   "sum_bound": 14.0
+  },
+  {
+   "damage": 85.0,
+   "events": 20,
+   "sum_bound": 280.0
+  },
+  {
+   "damage": 36.0,
+   "events": 2,
+   "sum_bound": 55.0
+  },
+  {
+   "damage": 9.0,
+   "events": 2,
+   "sum_bound": 28.0
+  },
+  {
+   "damage": 140.5,
+   "events": 25,
+   "sum_bound": 350.0
+  },
+  {
+   "damage": 125.5,
+   "events": 24,
+   "sum_bound": 336.0
+  },
+  {
+   "damage": 9.0,
+   "events": 1,
+   "sum_bound": 28.0
+  },
+  {
+   "damage": 105.0,
+   "events": 20,
+   "sum_bound": 280.0
+  },
+  {
+   "damage": 70.0,
+   "events": 14,
+   "sum_bound": 210.0
+  },
+  {
+   "damage": 85.5,
+   "events": 5,
+   "sum_bound": 182.5
+  },
+  {
+   "damage": 18.0,
+   "events": 2,
+   "sum_bound": 56.0
+  },
+  {
+   "damage": 130.0,
+   "events": 25,
+   "sum_bound": 350.0
+  },
+  {
+   "damage": 116.0,
+   "events": 24,
+   "sum_bound": 336.0
+  },
+  {
+   "damage": 4.5,
+   "events": 1,
+   "sum_bound": 14.0
+  },
+  {
+   "damage": 97.5,
+   "events": 20,
+   "sum_bound": 280.0
+  },
+  {
+   "damage": 70.0,
+   "events": 14,
+   "sum_bound": 210.0
+  },
+  {
+   "damage": 91.5,
+   "events": 5,
+   "sum_bound": 168.5
+  },
+  {
+   "damage": 13.5,
+   "events": 2,
+   "sum_bound": 42.0
+  },
+  {
+   "damage": 120.5,
+   "events": 25,
+   "sum_bound": 350.0
+  },
+  {
+   "damage": 133.5,
+   "events": 24,
+   "sum_bound": 336.0
+  },
+  {
+   "damage": 7.0,
+   "events": 1,
+   "sum_bound": 14.0
+  },
+  {
+   "damage": 100.0,
+   "events": 20,
+   "sum_bound": 280.0
+  },
+  {
+   "damage": 49.0,
+   "events": 4,
+   "sum_bound": 118.5
+  },
+  {
+   "damage": 9.0,
+   "events": 2,
+   "sum_bound": 28.0
+  },
+  {
+   "damage": 138.0,
+   "events": 25,
+   "sum_bound": 350.0
+  }
+ ],
+ "E2c obt+planner": [
+  {
+   "damage": 118.5,
+   "events": 24,
+   "sum_bound": 336.0
+  },
+  {
+   "damage": 36.0,
+   "events": 1,
+   "sum_bound": 112.0
+  },
+  {
+   "damage": 93.5,
+   "events": 19,
+   "sum_bound": 266.0
+  },
+  {
+   "damage": 106.0,
+   "events": 2,
+   "sum_bound": 183.0
+  },
+  {
+   "damage": 54.0,
+   "events": 2,
+   "sum_bound": 168.0
+  },
+  {
+   "damage": 123.0,
+   "events": 25,
+   "sum_bound": 350.0
+  },
+  {
+   "damage": 128.5,
+   "events": 24,
+   "sum_bound": 336.0
+  },
+  {
+   "damage": 36.0,
+   "events": 1,
+   "sum_bound": 112.0
+  },
+  {
+   "damage": 86.0,
+   "events": 19,
+   "sum_bound": 266.0
+  },
+  {
+   "damage": 88.0,
+   "events": 1,
+   "sum_bound": 126.0
+  },
+  {
+   "damage": 61.5,
+   "events": 2,
+   "sum_bound": 168.0
+  },
+  {
+   "damage": 140.5,
+   "events": 25,
+   "sum_bound": 350.0
+  },
+  {
+   "damage": 125.5,
+   "events": 24,
+   "sum_bound": 336.0
+  },
+  {
+   "damage": 68.5,
+   "events": 1,
+   "sum_bound": 112.0
+  },
+  {
+   "damage": 100.5,
+   "events": 19,
+   "sum_bound": 266.0
+  },
+  {
+   "damage": 71.0,
+   "events": 4,
+   "sum_bound": 321.5
+  },
+  {
+   "damage": 66.5,
+   "events": 2,
+   "sum_bound": 168.0
+  },
+  {
+   "damage": 130.5,
+   "events": 25,
+   "sum_bound": 350.0
+  },
+  {
+   "damage": 116.0,
+   "events": 24,
+   "sum_bound": 336.0
+  },
+  {
+   "damage": 63.0,
+   "events": 1,
+   "sum_bound": 126.0
+  },
+  {
+   "damage": 93.5,
+   "events": 19,
+   "sum_bound": 266.0
+  },
+  {
+   "damage": 120.5,
+   "events": 4,
+   "sum_bound": 268.0
+  },
+  {
+   "damage": 54.0,
+   "events": 2,
+   "sum_bound": 168.0
+  },
+  {
+   "damage": 120.5,
+   "events": 25,
+   "sum_bound": 350.0
+  },
+  {
+   "damage": 133.5,
+   "events": 24,
+   "sum_bound": 336.0
+  },
+  {
+   "damage": 53.5,
+   "events": 1,
+   "sum_bound": 112.0
+  },
+  {
+   "damage": 108.5,
+   "events": 19,
+   "sum_bound": 266.0
+  },
+  {
+   "damage": 82.5,
+   "events": 3,
+   "sum_bound": 270.5
+  },
+  {
+   "damage": 54.0,
+   "events": 2,
+   "sum_bound": 168.0
+  },
+  {
+   "damage": 138.0,
+   "events": 25,
+   "sum_bound": 350.0
+  }
+ ],
+ "E6 max damage": [
+  {
+   "damage": 195.0,
+   "events": null,
+   "sum_bound": 395.0
+  }
+ ],
+ "E6 max ratio": [
+  {
+   "damage": 12.0,
+   "events": null,
+   "sum_bound": 14.0
+  }
+ ]
+}

@@ -35,11 +35,14 @@ def _cost(rows: list[dict]) -> dict:
 def attack_loss_by_seed(rows: list[dict], d: str) -> dict[int, float]:
     """seed -> mean over scenarios 2..12 of loss_from_lies (cost − cost of the honest run, same defense, seed)."""
     c = _cost(rows)
+    attacks = {n for (n, dd, _) in c if dd == d and n != 1}
     out = {}
     for s in sorted({r["seed"] for r in rows if r["defense"] == d}):
-        v = [c[(n, d, s)] - c[(1, d, s)] for n in range(2, 13) if (n, d, s) in c and (1, d, s) in c]
-        if v:
-            out[s] = mean(v)
+        # Only seeds on which the defense ran every attack scenario it ran anywhere: a seed run only for utility
+        # (honest and noisy-honest) must not be averaged as if it were a full seed.
+        if (1, d, s) not in c or any((n, d, s) not in c for n in attacks):
+            continue
+        out[s] = mean(c[(n, d, s)] - c[(1, d, s)] for n in sorted(attacks))
     return out
 
 

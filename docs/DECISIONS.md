@@ -275,7 +275,10 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - The servers now keep idle connections for an hour (`timeout_keep_alive=3600`, tested).
   - Retries were not added: retrying an `order` blindly could place it twice.
   - The crashed run wasn't recorded, and E2c resumed from the 67 finished runs, which were all clean.
-  - **E2c spans two commits.** Runs 1–67 were recorded on `3535c74` and runs 68–180 on `5103d2a` (the fix); each run's `meta.git_commit` says which. The fix changes only connection handling, not any decision logic: between the two commits the only change under `obt/` is this keep-alive line, and nothing under `spec/` changed.
+  - **E2c spans three commits** (each run's `meta.git_commit` says which).
+    - `3535c74` and `5103d2a` (the keep-alive fix) recorded the reputation variants and the first, invalid `obt+planner` runs.
+    - `b23cb69` recorded the 60 `obt+planner` re-runs after the D32a extractor fix. That fix does change `obt+planner`'s behavior, which is its purpose, and changes nothing for the reputation variants.
+  - **The keep-alive fix** (`3535c74` → `5103d2a`) touched only connection handling, not decisions. The fix changes only connection handling, not any decision logic: between the two commits the only change under `obt/` is this keep-alive line, and nothing under `spec/` changed.
   - **Check** (`runs/e2c/commit_check.json`): `obt` and `rep-n18` with E2c's settings (b0 5%, W 0, δ 0), scenarios 1–12, seed 1, scripted buyer, rule extractor, over A2A, each run from its own git worktree of the two commits. **24/24 runs identical** in ledger, actions, total cost, cost breakdown and trace.
   - The planner variants wrap the LLM buyer, so they can't run with the scripted buyer. They share this decision code.
   - The E2c report (`results/e2c/ci.md`) carries the same note.

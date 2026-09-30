@@ -108,3 +108,13 @@ def test_generic_trust_panels_figure():
               ("S_main unit share", [("E2 obt", rows, "obt", "share"), ("E2c", rows, "obt+planner", "share")])]
     a = stats.trust_panels_svg(panels, "title")
     assert a == stats.trust_panels_svg(panels, "title") and a.startswith(b"<?xml")
+
+
+def test_attack_loss_uses_only_seeds_with_every_attack_scenario():
+    # none ran seeds 4-5 on the honest and noisy-honest scenarios only (for utility cost); those seeds must not
+    # enter its loss-from-lies average, which covers scenarios 2-12.
+    rows = [row(n, "none", s, 100 + 10 * n) for n in (1, 2, 3) for s in (1, 2, 3)]
+    rows += [row(n, "none", s, 100) for n in (1, 2) for s in (4, 5)]          # seeds 4-5: scenarios 1, 2 only
+    rows += [row(3, "none", 9, 100)]                                            # no honest run for seed 9
+    v = stats.attack_loss_by_seed(rows, "none")
+    assert sorted(v) == [1, 2, 3] and v[1] == 15.0

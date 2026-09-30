@@ -1,0 +1,13 @@
+scenario,obt
+1_honest,0.0
+2_always_lie,499.83
+3_farm_then_lie,60.58
+4_slow_drift,468.67
+5_price_bait,331.17
+6_vague,385.17
+7_far_deadlines,385.17
+8_claim_splitting,376.83
+9_noisy_honest,161.67
+10_farm_fail_refarm,51.83
+11_extraction_attack,384.67
+12_sybil_reentry,499.83

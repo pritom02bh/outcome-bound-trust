@@ -1,0 +1,6 @@
+scenario,obt+planner
+1_honest,0.0
+2_always_lie,75.5
+3_farm_then_lie,-13.0
+4_slow_drift,107.0
+5_price_bait,3097.5

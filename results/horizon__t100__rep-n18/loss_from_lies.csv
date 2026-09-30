@@ -1,0 +1,13 @@
+scenario,reputation
+1_honest,0.0
+2_always_lie,1367.33
+3_farm_then_lie,55.67
+4_slow_drift,861.0
+5_price_bait,2725.5
+6_vague,1093.83
+7_far_deadlines,1356.17
+8_claim_splitting,1377.0
+9_noisy_honest,560.5
+10_farm_fail_refarm,132.08
+11_extraction_attack,1127.25
+12_sybil_reentry,2217.5

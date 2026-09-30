@@ -1,0 +1,6 @@
+scenario|defense,damage,sum_bound,reroute_cost_diff,resid,events,bound_ok
+1|obt+planner,0.0,0.0,0.0,0.0,0.0,True
+2|obt+planner,118.5,336.0,0.0,-43.0,24.0,True
+3|obt+planner,63.0,196.0,0.0,-76.0,1.0,True
+4|obt+planner,96.0,266.0,0.0,11.0,19.0,True
+5|obt+planner,0.0,0.0,0.0,3097.5,0.0,True

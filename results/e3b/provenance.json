@@ -1,0 +1,13 @@
+[
+ {
+  "config_hash": "1bbc9574eaa1f653a2b2282008c5a75da85c7fa62683f10a242579c81596c63c",
+  "extractor_dataset_sha256": "20ceb2459af9cac98b28558818e42da3fee444184fde090749ba6dd02a24e242",
+  "extractor_prompt_sha256": "ac1afafb1d267420db808b221dc59618475ddd687bebcc5c3ce34bf0885ad061",
+  "git_commit": "b23cb6909bcfd7d6d4305dd78e7985738daede37",
+  "git_dirty": true,
+  "message_bank_sha256": "09ab70e4b611ba4305a5f55be5a4d42756264b705ea5ee4c9f5b91e1f5245e7c",
+  "model": "qwen3:8b",
+  "model_digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+  "transport": "a2a"
+ }
+]
