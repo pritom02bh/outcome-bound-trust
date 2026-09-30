@@ -1,0 +1,20 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Bound tightness: the largest per-run ratio of damage to the sum of per-event bounds, per eval (runs with failure events). A ratio above 1 would break the bound.}
+\label{tab:bound_tightness}
+\begin{tabular}{lrrrrrrr}
+\toprule
+eval & defense & runs & failure events & damage & sum of bounds & max damage/bound & held \\
+\midrule
+E2 (gpt-oss) & obt & 32 & 406 & 2,314.0 & 6,179.5 & 0.655 & yes \\
+E2c (gpt-oss) & obt+planner & 30 & 369 & 2,771.5 & 7,343.0 & 0.698 & yes \\
+E3 (qwen3) & obt & 6 & 48 & 457.0 & 1,271.5 & 0.468 & yes \\
+E3b (qwen3) & obt+planner & 6 & 69 & 601.5 & 1,576.0 & 0.549 & yes \\
+E5 v2 (Luna) & obt+planner & 6 & 73 & 653.5 & 1,748.0 & 0.526 & yes \\
+E5 v2 (Terra) & obt+planner & 6 & 73 & 653.5 & 1,748.0 & 0.526 & yes \\
+E6 (adaptive search) & obt & 10,000 attackers & - & 12.0 & 14.0 & 0.857 & yes \\
+E7 (k = 1, 2, 4) & obt & - & - & - & - & 0.653 & yes \\
+\bottomrule
+\end{tabular}
+\end{table}

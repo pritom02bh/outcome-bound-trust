@@ -1,0 +1,5 @@
+buyer,defense,loss from lies,damage,reroute premium,resid,utility cost,utility (% of cost),S_main share,max damage/bound
+GPT-5.6 Luna,obt+planner,160.0,59.4,0.0,100.6,322.0,5.65,0.304,0.526
+GPT-5.6 Luna,none,812.8,n/a,0.0,812.8,0.0,0.00,0.952,-
+GPT-5.6 Terra,obt+planner,158.0,59.4,0.0,98.6,312.0,5.46,0.298,0.526
+GPT-5.6 Terra,none,942.2,n/a,0.0,942.2,0.0,0.00,0.940,-

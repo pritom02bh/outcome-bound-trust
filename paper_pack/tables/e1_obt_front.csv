@@ -1,0 +1,9 @@
+config,utility cost,loss from lies,default
+obt_b0.1_W0_d0,291.7,201.9,
+obt_b0.05_W0_d0,344.2,136.8,yes
+obt_b0.1_W0_d1,377.3,116.0,
+obt_b0.1_W0_d2,419.7,76.1,
+obt_b0.05_W10_d1,423.7,58.6,
+obt_b0.05_W5_d1,423.7,58.6,
+obt_b0.05_W10_d2,452.7,35.7,
+obt_b0.05_W5_d2,452.7,35.7,

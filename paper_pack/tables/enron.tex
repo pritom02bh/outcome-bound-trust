@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Frozen extractors on 100 labeled real Enron sentences (50 delivery-like, 50 price-only). Wrong claims recorded is the safety metric (target 0); commitments the schema cannot express (calendar dates, non-widget units) come out UNTESTABLE.}
+\label{tab:enron}
+\begin{tabular}{lrrrrrrr}
+\toprule
+extractor & stratum & rows & commitments & claims UNTESTABLE & recorded & wrong recorded & from non-commitments \\
+\midrule
+gpt-oss:20b & delivery & 50 & 1 & 1/1 & 0 & 0 & 0 \\
+gpt-oss:20b & price & 50 & 9 & 9/9 & 0 & 0 & 0 \\
+rule & delivery & 50 & 1 & 1/1 & 0 & 0 & 0 \\
+rule & price & 50 & 9 & 9/9 & 0 & 0 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,5 @@
+run,defense,attack runs,loss from lies,damage,reroute premium,resid
+E3,none,11,"6,934.0",n/a,0.0,"6,934.0"
+E3,obt,11,"3,189.1",41.5,-235.6,"3,383.2"
+E3b,obt+planner,11,"1,705.3",54.7,0.0,"1,650.6"
+E3b,rep+planner,11,"1,636.4",n/a,0.0,"1,636.4"

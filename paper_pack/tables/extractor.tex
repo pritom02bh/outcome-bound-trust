@@ -1,0 +1,17 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Extractor on the 199-item test set and the 30-item hard subset (shipping/ready/scheduled dates recorded as delivery deadlines, without and with the code guard).}
+\label{tab:extractor}
+\begin{tabular}{lrrrrr}
+\toprule
+extractor & precision & recall & exact & hard: LLM alone & hard: with guard \\
+\midrule
+gpt-oss:20b & 1.0 & 1.0 & 1.0 & 21/30 & 0/30 \\
+qwen3:8b & 1.0 & 0.9356 & 0.9698 & 21/30 & 0/30 \\
+rule & 1.0 & 1.0 & 1.0 & 21/30 & 0/30 \\
+gpt-5.6-luna & 1.0 & 0.9898 & 0.9849 & 21/30 & 0/30 \\
+gpt-5.6-terra & 1.0 & 1.0 & 1.0 & 18/30 & 0/30 \\
+\bottomrule
+\end{tabular}
+\end{table}

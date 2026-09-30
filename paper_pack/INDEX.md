@@ -1,0 +1,22 @@
+# Results index (tags `v1.0-results`, `v1.1-results`: + Enron)
+
+One row per experiment. **Runs @** is the commit the runs were produced on (from each run's provenance); **report @** is the commit that last changed the report. Loss from lies = mean over attack scenarios 2–12 of cost − cost of the honest run (same defense, seed). Utility cost = cost(defense) − cost(`none`) on the honest scenario, same seed. All runs: 0 invariant violations, and the loss bound (damage ≤ Σ L_e) held in every OBT run. Decisions: `docs/DECISIONS.md`. The generated per-eval listing is `results/evals.md` (rebuilt by `make results`).
+
+| experiment | what | runs @ | report (@) | headline |
+|---|---|---|---|---|
+| **E1** ablation grid | scripted buyer, OBT b0 × W × δ and reputation grid, 12 scenarios × 3 seeds | `2668c22` | `results/e1/e1.md` (`4886e3a`) | Default OBT (b0 5%, W 0, δ 0): attack loss **$136.8** vs $5,514.1 with no defense, at utility cost $344.2 |
+| **E2** main result | gpt-oss:20b LLM buyer, all defenses, 12 scenarios, 3–5 seeds | `2d1cfa0` | `results/e2/ci.md` (`8aebb90`) | OBT loss from lies **$43.1** [37.0, 50.5] vs `none` $2,290.6 [2,127.5, 2,469.5]; utility cost 5.43% |
+| **E2b** trust-aware view | gpt-oss buyer with the trust-aware view (D30), 5 scenarios × 3 seeds | `88b8efd` | `results/e2b/e2b.md` (`ee550bc`) | No material change: OBT utility $291.2 vs $298.3 with the standard view |
+| **E2c** planner + new reputation | `obt+planner` (D32), `rep-n18`, `rep+planner`, 12 scenarios × 5 seeds | `3535c74`, `5103d2a`, `b23cb69` | `results/e2c/ci.md` (`8aebb90`) | `obt+planner` loss **$111.4** [104.6, 118.2] at utility 4.36% (OBT 5.43%); `rep-n18` loss $551.8 |
+| D33 reputation grid | scripted buyer, n0 × θ × cap; never-trading configs excluded | `546c76b` | `results/e2c/ci.md` §Reputation grid (`8aebb90`) | Chosen reputation config: n0 18, θ 0.9, cap $200 |
+| **E3** second model | qwen3:8b buyer, `obt` vs `none`, 12 scenarios | `a7e7463` | `results/e3/ci.md` (`ee550bc`); split in `results/tables.json` `second_model` | OBT loss **$3,189** (damage $41.5) vs `none` $6,934; the rest is the buyer's own over-stocking |
+| **E3b** second model + planner | qwen3:8b buyer, `obt+planner`, `rep+planner`, 12 scenarios | `b23cb69` | `results/e3b/ci.md` (`f5a9121`) | `obt+planner` loss **$1,705** (damage $54.7); `rep+planner` $1,636 |
+| **E4** extractor accuracy | frozen prompt, test set (199) + hard subset (30), both local models | `7ade3d3` | `results/e4.md` (`ee550bc`) | gpt-oss precision/recall **1.0/1.0**; qwen3 recall 0.936; hard subset 21/30 → **0/30** errors with the code guard |
+| **E5** paid buyers (v2) | GPT-5.6 Luna and Terra buyers, frozen gpt-oss extractor, `obt+planner` + `none`, 12 scenarios, seed 1 | `c706ade` | `results/e5/report.md` (`f0daeb6`) | Loss from lies **$160** vs $813 (Luna), **$158** vs $942 (Terra); utility 5.65% / 5.46%; damage/bound ≤ 0.526; spend $9.18 of $16 |
+| E5 v1 (superseded) | as E5, with cross-run reply reuse (D37a) | `91acfd3` | `results/e5_v1/` (`c706ade`) | Superseded by v2; OBT rows identical, `none` rows moved |
+| **E6** adaptive attacker | 10,000-evaluation search over attacker parameters against OBT | `b4c13bb` | `results/e6.md` (`ee550bc`) | Max damage / Σ bound **0.857** (< 1: the bound holds) |
+| **E7** budget growth k | scripted buyer, k ∈ {1, 2, 4} × T ∈ {50, 100}, 12 scenarios × 3 seeds | `5d935e8` | `docs/DECISIONS.md` D36; `results/tables.json` `budget_k` (`f5a9121`) | k = 2 cuts utility cost **5.89% → 4.54%** (T 50) and raises loss $137 → $195; k = 4 adds almost nothing |
+| Horizon check | scripted buyer, T = 100 vs T = 50, 12 scenarios × 3 seeds | `b23cb69` | `results/horizon__t100__*/`; `results/tables.json` `horizon` (`f5a9121`) | OBT utility cost **5.89% → 5.01%** as the horizon doubles (partly cold start) |
+| TLA+ model check | `spec/OBT.tla`, TLC exhaustive + 8 guard mutants | `e8b9618` | `spec/results/README.md` (`e8b9618`) | k = 1 exhaustively verified at **5 bounds**, every mutant caught; k > 1 not model-checked (D36b) |
+| Paper assets | figures (PDF) and booktabs tables from `results/` only | `f5a9121` | `paper/` (`f5a9121`) | 4 figures, 10 tables, text ≥ 7 pt |
+| Enron real-text check | frozen gpt-oss + rule extractors on 100 labeled real sentences (50 delivery-like, 50 price-only; labels D38) | `v1.1-results` | `results/enron.md` | **0 wrong claims** recorded in both strata; all 10 labeled commitments UNTESTABLE (schema limit: calendar dates, non-widget units) |

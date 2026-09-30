@@ -1,0 +1,51 @@
+# DECISIONS: one line per entry
+
+Summary of `docs/DECISIONS.md` (the full file has the reasoning).
+
+- **D1**: Exposure accrues only to PENDING claims
+- **D2**: Actions citing only PASSED claims are outside P(c) — CLOSED by F2
+- **D3**: Cool-down window and I2
+- **D4**: Offer staging (claims are ledgered when relied on) — SUPERSEDED by D11
+- **D5**: Order quantity and value are derived by code — REPLACED by D13
+- **D6**: PRICE window
+- **D7**: Slot values are closed types
+- **D8**: b0 default
+- **D9**: DELIVERY receipts can be double-counted — FORMALIZED by F3
+- **D10**: B(c) is a max, so overlapping orders pin trust near b0 (utility finding)
+- **D11**: A DELIVERY claim is a capacity offer; unused claims LAPSE (F2, user decision)
+- **D12**: Orders can't cite a delivery date the supplier can't physically meet (F2, user decision)
+- **D13**: Order price comes from the cited PRICE claim (F2, user decision)
+- **D14**: Invoices are paid only through gated PAYMENT actions (F2, user decision + one interpretation)
+- **D15**: Horizon cap H (F2)
+- **D16**: Code remediation is part of OBT only (F4)
+- **D17**: Grounding means "the only value the text offers for that slot" (F5)
+- **D18**: Strict item binding (F6, user decision)
+- **D19**: Money in the security path is exact Decimal cents (F6, user decision)
+- **D20**: Exhaustive two-supplier config A′ and a stronger I7 (F6, user decision)
+- **D21**: The loss bound applies to damage under a kept-promise counterfactual (F7)
+- **D21a**: Kept-promise counterfactual: early delivery keeps a promise (user-approved fix; found by E6)
+- **D22**: Reputation baseline: cold start, cap, and how it is compared (F9, user decision)
+- **D23**: Message bank and extractor dataset (F10, user decisions)
+- **D23a**: Spot-check v1 failed (30/40); F10 redone as bank v3 (user decisions)
+- **D23b**: Held-out reader test, hard-phrasing subset, and the deadline guard in code (user decisions)
+- **D23c**: Spot-check v2 passed (40/40); bracketed placeholders removed
+- **D24**: Extractor roles (F10, user decision)
+- **D25**: Real A2A transport (F11)
+- **D26**: Reproducibility (F12)
+- **D27**: E1 outcome and the E2 setup (user decisions)
+- **D28**: E3 isolates the buyer model (user decision)
+- **D29**: E6: adaptive attacker search against OBT (user request)
+- **D30**: E2b: a trust-aware buyer view (supplementary; user request)
+- **D31**: E2 extra seeds, and Enron candidates for a real-text extractor test (user requests)
+- **D32**: OBT order planner: "obt+planner" and "rep+planner" (user decision)
+- **D33**: Reputation lock-out fix: probation grid (user request and decision)
+- **D34**: Enron real-text check: stratified sample and per-stratum metrics (user decision)
+- **D32a**: E2c harness bug: obt+planner ran without extraction (found in the paper-table export)
+- **D35**: Overnight chain: paper assets, horizon check, E3b (user request)
+- **D36**: Budget growth multiplier k, and E7 (user request)
+- **D36a**: Model-checking k = 2: the checked bounds can't see k (OPEN, user decision)
+- **D36b**: B0 = 1 configs: at k = 2 the two non-vacuity conditions split (OPEN, user decision)
+- **D37**: E5 paid runs: setup (user decisions)
+- **D37a**: E5 v2: no cross-run reply reuse (user decision)
+- **D38**: Enron labels and the real-text result (user decision)
+- **D39**: Paper structure and terminology (user decision; documentation and labels only)
