@@ -79,9 +79,9 @@ def test_extractor_model_can_differ_from_the_buyer_model(tmp_path, rule_llm, mon
     seen = []
     real = er.make_llm
 
-    def spy(ec, tag, meter, fake=None, model=None):
+    def spy(ec, tag, meter, fake=None, model=None, backend=None):
         seen.append((tag.split("|")[-1] if model is None else model, model))
-        return real(ec, tag, meter, fake, model)
+        return real(ec, tag, meter, fake, model, backend)
     monkeypatch.setattr(er, "make_llm", spy)
     ec = EvalConfig(backend="fake", model="buyer-m", extractor_model="extract-m", buyer="scripted", scenarios=(1,),
                     seeds=(1,), rounds=4, defenses=("obt",), extractor_eval=False)

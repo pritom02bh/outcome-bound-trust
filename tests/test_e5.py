@@ -1,59 +1,116 @@
-"""E5: paid runs are prepared, never executed. Projection from measured local usage; abort over $12."""
+"""E5 (D37): Plan B, the paid-call path (reasoning effort, prices, ledger), and the D24 extractor split.
+No test makes a paid or network call: the OpenAI client is replaced by a fake."""
+import json
+import sys
+import types
+
 import pytest
 
 from eval import e5_paid
+from eval import run as er
 from obt import llm
-
 
 PLAN = e5_paid.plan()
 
 
-def test_plan_matches_fixes():
-    luna = [p for p in PLAN if p["model"] == e5_paid.LUNA]
-    terra = [p for p in PLAN if p["model"] == e5_paid.TERRA]
-    assert {(p["scenario"], p["defense"]) for p in luna if p["kind"] == "run"} == {
-        (n, d) for n in range(1, 13) for d in ("none", "obt")}
-    assert {(p["scenario"], p["defense"]) for p in terra if p["kind"] == "run"} == {
-        (n, "obt") for n in (1, 3, 5, 8, 9, 11)}
+def test_plan_is_plan_b():
+    runs = {(p["model"], p["defense"], p["scenario"]) for p in PLAN if p["kind"] == "run"}
+    assert runs == {(e5_paid.LUNA, d, n) for d in ("obt+planner", "none") for n in range(1, 13)} | {
+        (e5_paid.TERRA, "obt+planner", n) for n in range(1, 13)}
     assert all(p["seed"] == 1 for p in PLAN if p["kind"] == "run")
-    assert sum(p["kind"] == "extractor_eval" for p in PLAN) == 2
+    assert [p["items"] for p in PLAN if p["kind"] == "extractor_eval"] == [229, 229]
 
 
-USAGE = {("buyer", "none"): (1500, 60), ("buyer", "obt"): (1600, 60), ("extract", "obt"): (430, 45),
-         ("selfcheck", "none"): (0, 0)}
+def test_eval_config_pays_only_for_the_buyer():
+    ec = e5_paid.eval_config(e5_paid.TERRA)
+    assert (ec.backend, ec.model, ec.extractor_model, ec.extractor_backend) == (
+        "openai", e5_paid.TERRA, "gpt-oss:20b", "ollama")                      # D24: frozen local extractor
+    assert ec.extractor_eval_model == e5_paid.TERRA                            # paid extraction: eval only
+    assert ec.cache and ec.cap_usd == 16.0 and ec.sim == {"b0_frac": 0.05, "window": 0, "grace": 0}
+    assert er.extractor_backend(ec) == "ollama"
+    assert er.config_hash(ec) != er.config_hash(e5_paid.eval_config(e5_paid.TERRA).__class__(
+        **{**ec.__dict__, "extractor_backend": None}))                          # the backend is part of a run
 
 
-def test_projection_uses_measured_usage_and_a_margin(monkeypatch):
-    monkeypatch.setattr(llm, "PAID_PRICES", {e5_paid.LUNA: (1.0, 4.0), e5_paid.TERRA: (2.0, 8.0)})
-    proj = e5_paid.project(PLAN, per_round=USAGE, rounds=50, extractor_items=229)
-    luna_obt = next(p for p in proj["items"] if p["model"] == e5_paid.LUNA and p["defense"] == "obt")
-    tin = (1600 + 430) * 50 * e5_paid.MARGIN
-    tout = (60 + 45) * 50 * e5_paid.MARGIN
-    assert luna_obt["usd"] == pytest.approx((tin * 1.0 + tout * 4.0) / 1e6)
-    assert proj["total_usd"] == pytest.approx(sum(p["usd"] for p in proj["items"]))
+def test_prices_are_the_verified_ones():
+    assert llm.PAID_PRICES == {"gpt-5.6-luna": (0.20, 1.20), "gpt-5.6-terra": (2.00, 12.00)}
 
 
-def test_aborts_without_prices(monkeypatch):
-    monkeypatch.setattr(llm, "PAID_PRICES", {})
-    with pytest.raises(e5_paid.Abort, match="price"):
-        e5_paid.check(e5_paid.project(PLAN, per_round=USAGE, rounds=50, extractor_items=229))
+BUYER = {(d, n): (100_000.0, 5_000.0) for d in ("obt+planner", "none") for n in range(1, 13)}
 
 
-def test_aborts_over_twelve_dollars(monkeypatch):
-    monkeypatch.setattr(llm, "PAID_PRICES", {e5_paid.LUNA: (100.0, 400.0), e5_paid.TERRA: (100.0, 400.0)})
-    proj = e5_paid.project(PLAN, per_round=USAGE, rounds=50, extractor_items=229)
-    assert proj["total_usd"] > 12
-    with pytest.raises(e5_paid.Abort, match="12"):
-        e5_paid.check(proj)
+def test_projection_prices_the_buyer_and_the_extractor_eval():
+    proj = e5_paid.project(PLAN, BUYER, (500.0, 50.0), scale=(2.0, 3.0), margin=1.25)
+    terra = next(p for p in proj["items"] if p["model"] == e5_paid.TERRA and p["kind"] == "run")
+    assert terra["usd"] == pytest.approx((100_000 * 2 * 1.25 * 2.0 + 5_000 * 3 * 1.25 * 12.0) / 1e6)
+    ext = next(p for p in proj["items"] if p["model"] == e5_paid.LUNA and p["kind"] == "extractor_eval")
+    assert ext["usd"] == pytest.approx((500 * 229 * 1.25 * 0.2 + 50 * 229 * 1.25 * 1.2) / 1e6)
+    with pytest.raises(e5_paid.Abort, match="14"):
+        e5_paid.check({**proj, "total_usd": 14.01})
 
 
-def test_under_budget_prints_commands_and_never_runs_them(monkeypatch, capsys):
-    monkeypatch.setattr(llm, "PAID_PRICES", {e5_paid.LUNA: (0.1, 0.4), e5_paid.TERRA: (0.2, 0.8)})
+def test_dry_run_makes_no_call(monkeypatch, capsys):
     monkeypatch.delenv("OBT_ALLOW_PAID", raising=False)
-    monkeypatch.setattr(e5_paid, "measured_usage", lambda: (USAGE, "test"))
-    import subprocess
-    monkeypatch.setattr(subprocess, "run", lambda *a, **k: pytest.fail("E5 must not execute anything"))
+    monkeypatch.setattr(e5_paid, "measured_buyer", lambda *a: BUYER)
+    monkeypatch.setattr(e5_paid, "measured_extract_item", lambda *a: (500.0, 50.0))
+    monkeypatch.setitem(sys.modules, "openai", None)                  # importing openai would fail
     e5_paid.main([])
     out = capsys.readouterr().out
-    assert "OBT_ALLOW_PAID=1" in out and "--backend openai" in out and "projected" in out
-    assert "not run" in out.lower()
+    assert "projected total" in out and "Not run" in out
+
+
+class _FakeOpenAI:
+    seen: list = []
+
+    def __init__(self, *a, **k):
+        self.chat = types.SimpleNamespace(completions=types.SimpleNamespace(create=self._create))
+
+    def _create(self, **kw):
+        _FakeOpenAI.seen.append(kw)
+        usage = types.SimpleNamespace(
+            prompt_tokens=1000, completion_tokens=300,
+            completion_tokens_details=types.SimpleNamespace(reasoning_tokens=200),
+            prompt_tokens_details=types.SimpleNamespace(cached_tokens=0))
+        msg = types.SimpleNamespace(content='{"ok": true}')
+        return types.SimpleNamespace(usage=usage, choices=[types.SimpleNamespace(message=msg)])
+
+
+def test_paid_call_sends_low_reasoning_effort_and_ledgers_every_call(monkeypatch, tmp_path):
+    monkeypatch.setenv("OBT_ALLOW_PAID", "1")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-SECRET")
+    monkeypatch.setitem(sys.modules, "openai", types.SimpleNamespace(OpenAI=_FakeOpenAI))
+    _FakeOpenAI.seen.clear()
+    meter = llm.CostMeter(tmp_path / "ledger.json", cap=16.0)
+    m = llm.LLM("openai", e5_paid.TERRA, meter=meter, log_path=tmp_path / "calls.jsonl", run_tag="t",
+                cache_dir=tmp_path / "cache")
+    m.chat("sys", "user", purpose="buyer")
+    m.chat("sys", "user", purpose="buyer")                            # cached: not sent, not paid again
+    assert len(_FakeOpenAI.seen) == 1 and _FakeOpenAI.seen[0]["reasoning_effort"] == "low"
+    assert meter.spent() == pytest.approx((1000 * 2.0 + 300 * 12.0) / 1e6)
+    lines = [json.loads(x) for x in (tmp_path / "ledger.jsonl").read_text().splitlines()]
+    assert len(lines) == 1 and lines[0]["reasoning_tokens"] == 200 and lines[0]["run"] == "t"
+    log = [json.loads(x) for x in (tmp_path / "calls.jsonl").read_text().splitlines()]
+    assert log[0]["reasoning_tokens"] == 200 and log[1]["cached"]
+    for f in tmp_path.rglob("*"):
+        if f.is_file():
+            assert "SECRET" not in f.read_text()                       # the key is never written anywhere
+
+
+def test_hard_stop_at_sixteen(monkeypatch, tmp_path):
+    meter = llm.CostMeter(tmp_path / "ledger.json", cap=16.0)
+    meter.add(e5_paid.TERRA, 7_000_000, 0)                             # $14
+    meter.check(e5_paid.TERRA, 100_000, 4096)                           # $0.25 more fits
+    meter.add(e5_paid.TERRA, 900_000, 0)                                # $15.80
+    with pytest.raises(llm.BudgetExceeded):
+        meter.check(e5_paid.TERRA, 100_000, 4096)
+
+
+def test_load_key_never_prints(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("OPENAI_API_KEY", "")                          # so teardown restores the real env
+    monkeypatch.delenv("OPENAI_API_KEY")
+    env = tmp_path / ".env"
+    env.write_text("OPENAI_API_KEY=sk-test-SECRET\n")
+    e5_paid._load_key(env)
+    import os
+    assert os.environ["OPENAI_API_KEY"] == "sk-test-SECRET"
+    assert "SECRET" not in capsys.readouterr().out

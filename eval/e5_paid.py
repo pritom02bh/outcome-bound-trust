@@ -1,34 +1,51 @@
-"""E5: paid runs, PREPARE ONLY (FIXES Evaluation E5). This script never runs anything.
+"""E5: paid runs, Plan B (DECISIONS D37).
 
-    python -m eval.e5_paid            # prints the plan, the projected cost, and the commands; aborts over $12
+    python -m eval.e5_paid                          # dry run: plan + projection from measured gpt-oss usage; no calls
+    OBT_ALLOW_PAID=1 python -m eval.e5_paid pilot   # Terra obt+planner s1 + first 20 extractor test items, then
+                                                    #   re-project the rest of Plan B from the pilot's real tokens
+    OBT_ALLOW_PAID=1 python -m eval.e5_paid rest    # everything else (Luna first, then Terra) if pilot spend +
+                                                    #   re-projected rest <= GO_USD; otherwise stops and says so
 
-Plan: Luna, 12 scenarios x {none, obt} x seed 1, plus the extractor eval; Terra, scenarios {1, 3, 5, 8, 9, 11} x
-obt x seed 1, plus the extractor eval. Token use is projected from measured local LLM-buyer runs (tokens per
-call from the call logs, calls per round from the run records), times a safety margin. Prices come only from
-obt.llm.PAID_PRICES, which is empty until the user fills in real prices: without them the projection aborts
-(fails closed). Paid execution needs OBT_ALLOW_PAID=1, which only the user sets.
+Plan B: Luna runs obt+planner and none, Terra runs obt+planner; k = 1, all 12 scenarios, seed 1, the OBT default
+(b0 5%, W 0, delta 0). Each model also gets the extractor eval: test set (199) and hard subset (30), LLM alone and
+with the code deadline guard.
+
+Extraction follows D24: in every eval run the paid model is the buyer and the extractor stays the frozen local
+gpt-oss:20b, served from the shared extraction cache when it has seen the message. The paid models' own extraction
+is measured only in the extractor eval.
+
+Money: every paid call goes through obt.llm.CostMeter, a persistent ledger (runs/cost_ledger.json, per-call lines
+in runs/cost_ledger.jsonl) with a hard stop at CAP_USD. Nothing is paid for twice: completed runs are skipped
+on resume (run key + config hash), every paid reply is cached (LLM cache; a resumed partial run replays its paid
+calls for free), and every extractor item is cached by text + model (extraction cache).
+
+The OpenAI key is read from .env into this process only. It is never printed, logged or written anywhere.
 """
 from __future__ import annotations
 
 import json
+import os
 import sys
 from collections import defaultdict
 from pathlib import Path
 
+from eval import run as er
 from obt import llm
+from obt.extractor import LLMExtractor
 from obt.llm import RUNS
 
-# API model ids for GPT-5.6 Luna / Terra (DESIGN §10). Confirm them before any paid run.
 LUNA = "gpt-5.6-luna"
 TERRA = "gpt-5.6-terra"
-CAP_USD = 12.0            # abort threshold for the projection; the harness's hard stop stays at $13
-MARGIN = 1.5              # safety factor on measured token use (tokenizers differ across model families)
-EXTRACTOR_ITEMS = 229     # 199 test + 30 hard-subset items; the no-guard ablation reuses the same outputs
-ROUNDS = 50
-# Fallback when no current LLM-buyer run exists: per-call means measured on the v1 local gpt-oss eval (its
-# numbers are invalid for the paper, but its token counts per call are a fair size estimate).
-FALLBACK = {("buyer", "none"): (1563, 63), ("buyer", "obt"): (1563, 63), ("replan", "obt"): (160, 1),
-            ("extract", "obt"): (431, 44)}
+CAP_USD = 16.0            # hard stop on total paid spend (user decision, D37)
+GO_USD = 14.0             # the rest of Plan B runs only if pilot spend + re-projected rest is at most this
+MARGIN = 1.25             # safety factor on projected tokens
+SIM = {"b0_frac": 0.05, "window": 0, "grace": 0}       # the OBT default (E1 pick)
+LOCAL_EXTRACTOR = "gpt-oss:20b"
+OUT = RUNS / "e5"
+SCENARIOS = tuple(range(1, 13))
+TEST_ITEMS, HARD_ITEMS, PILOT_ITEMS = 199, 30, 20
+DEFENSES = {LUNA: ("obt+planner", "none"), TERRA: ("obt+planner",)}
+DIRS = {LUNA: "luna", TERRA: "terra"}
 
 
 class Abort(RuntimeError):
@@ -36,103 +53,214 @@ class Abort(RuntimeError):
 
 
 def plan() -> list[dict]:
-    items = [{"kind": "run", "model": LUNA, "scenario": n, "defense": d, "seed": 1}
-             for n in range(1, 13) for d in ("none", "obt")]
-    items += [{"kind": "run", "model": TERRA, "scenario": n, "defense": "obt", "seed": 1} for n in (1, 3, 5, 8, 9, 11)]
-    items += [{"kind": "extractor_eval", "model": m, "scenario": None, "defense": None, "seed": None}
-              for m in (LUNA, TERRA)]
+    items = [{"kind": "run", "model": m, "scenario": n, "defense": d, "seed": 1}
+             for m in (LUNA, TERRA) for d in DEFENSES[m] for n in SCENARIOS]
+    items += [{"kind": "extractor_eval", "model": m, "scenario": None, "defense": None, "seed": None,
+               "items": TEST_ITEMS + HARD_ITEMS} for m in (LUNA, TERRA)]
     return items
 
 
-def measured_usage(runs: Path = RUNS) -> tuple[dict, str]:
-    """(purpose, defense) -> (prompt tokens, completion tokens) per round, from local LLM-buyer runs."""
-    per_call: dict = defaultdict(lambda: [0, 0, 0])            # tokens in, out, n (uncached calls only)
-    calls: dict = defaultdict(lambda: [0, 0])                  # calls incl. cache hits, rounds
-    for f in runs.rglob("results.jsonl"):
-        if "_invalid" in str(f):
-            continue
-        for line in f.read_text().splitlines():
-            try:
-                r = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if r.get("buyer") != "llm":
-                continue
-            for purpose, u in r["usage"]["by_purpose"].items():
-                c = calls[(purpose.split(":")[0], r["defense"])]
-                c[0] += u["calls"]
-                c[1] += r["rounds"]
-        log = f.parent / "llm_calls.jsonl"
-        if log.exists():
-            for line in log.read_text().splitlines():
-                x = json.loads(line)
-                if x.get("cached") or not x.get("run"):
-                    continue
-                parts = x["run"].split("|")
-                if len(parts) >= 2:
-                    k = per_call[(x["purpose"].split(":")[0], parts[1])]
-                    k[0] += x["prompt_tokens"]
-                    k[1] += x["completion_tokens"]
-                    k[2] += 1
-    usage = {}
-    for key, (n_calls, n_rounds) in calls.items():
-        tin, tout, n = per_call.get(key, (0, 0, 0))
-        if n and n_rounds:
-            usage[key] = (tin / n * n_calls / n_rounds, tout / n * n_calls / n_rounds)
-    if usage:
-        return usage, "measured on current local LLM-buyer runs"
-    return dict(FALLBACK), "fallback: per-call sizes from the v1 local eval, one call per round"
+def eval_config(model: str, scenarios=SCENARIOS) -> er.EvalConfig:
+    return er.EvalConfig(backend="openai", model=model, buyer="llm", scenarios=tuple(scenarios),
+                         defenses=DEFENSES[model], seeds=(1,), extractor_eval=False, cap_usd=CAP_USD, cache=True,
+                         sim=dict(SIM), extractor_model=LOCAL_EXTRACTOR, extractor_backend="ollama",
+                         extractor_eval_model=model)
 
 
-def project(items: list[dict], per_round: dict, rounds: int = ROUNDS, extractor_items: int = EXTRACTOR_ITEMS) -> dict:
+# ------------------------------------------------------------------ measured usage (gpt-oss logs, no calls)
+
+def _calls(f: Path) -> list[dict]:
+    return [json.loads(x) for x in f.read_text().splitlines() if x.strip()] if f.exists() else []
+
+
+def _scen(tag: str) -> int:
+    return int(tag.split("|")[0].split("_")[0])
+
+
+def measured_buyer(runs: Path = RUNS) -> dict[tuple[str, int], tuple[float, float]]:
+    """(defense, scenario) -> mean buyer (input, output) tokens per run on the local gpt-oss buyer:
+    obt+planner from E2c, none from E2 (seeds 1-3; E2c has no none)."""
+    acc: dict = defaultdict(lambda: [0, 0, set()])
+    for f, d, seeds in ((runs / "e2c" / "llm_calls.jsonl", "obt+planner", None),
+                        (runs / "e2" / "llm_calls.jsonl", "none", {1, 2, 3})):
+        for r in _calls(f):
+            p = r.get("run", "").split("|")
+            if r["purpose"] != "buyer" or len(p) < 3 or p[1] != d or (seeds and int(p[2][1:]) not in seeds):
+                continue
+            a = acc[(d, _scen(r["run"]))]
+            a[0] += r["prompt_tokens"]
+            a[1] += r["completion_tokens"]
+            a[2].add(r["run"])
+    return {k: (v[0] / len(v[2]), v[1] / len(v[2])) for k, v in acc.items()}
+
+
+def measured_extract_item(runs: Path = RUNS) -> tuple[float, float]:
+    """Mean (input, output) tokens of one uncached gpt-oss extractor call outside eval runs."""
+    rows = [r for sub in ("e4", "tuning", "tuning/v3_pass1", "tuning/v3_hard")
+            for r in _calls(runs / sub / "llm_calls.jsonl")
+            if r["purpose"] == "extract" and not r["cached"] and r["model"] == LOCAL_EXTRACTOR]
+    return (sum(r["prompt_tokens"] for r in rows) / len(rows), sum(r["completion_tokens"] for r in rows) / len(rows))
+
+
+def _usd(model: str, tin: float, tout: float) -> float:
+    pin, pout = llm.PAID_PRICES[model]
+    return (tin * pin + tout * pout) / 1e6
+
+
+def project(items: list[dict], buyer: dict, extract_item: tuple[float, float], scale=(1.0, 1.0),
+            margin: float = MARGIN) -> dict:
+    """Cost of `items`: buyer tokens per run x scale (paid / gpt-oss, from the pilot) and extractor-eval tokens
+    per item, times the margin. In eval runs the extractor is local (free); only the buyer is paid."""
     out, missing = [], set()
     for it in items:
         if it["kind"] == "run":
-            keys = [k for k in per_round if k[1] == it["defense"]]
-            tin = sum(per_round[k][0] for k in keys) * rounds * MARGIN
-            tout = sum(per_round[k][1] for k in keys) * rounds * MARGIN
+            tin, tout = buyer[(it["defense"], it["scenario"])]
+            tin, tout = tin * scale[0] * margin, tout * scale[1] * margin
         else:
-            tin, tout = (x * extractor_items * MARGIN for x in per_round.get(("extract", "obt"), (0, 0)))
-        price = llm.PAID_PRICES.get(it["model"])
-        if price is None:
+            tin, tout = (x * it["items"] * margin for x in extract_item)
+        if it["model"] not in llm.PAID_PRICES:
             missing.add(it["model"])
-        usd = None if price is None else (tin * price[0] + tout * price[1]) / 1e6
+            usd = None
+        else:
+            usd = _usd(it["model"], tin, tout)
         out.append({**it, "tokens_in": round(tin), "tokens_out": round(tout), "usd": usd})
     total = None if missing else sum(p["usd"] for p in out)
     return {"items": out, "total_usd": total, "missing_prices": sorted(missing)}
 
 
-def check(proj: dict) -> None:
+def check(proj: dict, limit: float = GO_USD) -> None:
     if proj["missing_prices"]:
-        raise Abort(f"no price in obt.llm.PAID_PRICES for {proj['missing_prices']}; fill in real prices first")
-    if proj["total_usd"] > CAP_USD:
-        raise Abort(f"projected ${proj['total_usd']:.2f} is over the ${CAP_USD:.0f} limit")
+        raise Abort(f"no price in obt.llm.PAID_PRICES for {proj['missing_prices']}")
+    if proj["total_usd"] > limit:
+        raise Abort(f"projected ${proj['total_usd']:.2f} is over the ${limit:.0f} limit")
 
 
-def commands() -> list[str]:
-    base = "OBT_ALLOW_PAID=1 python -m eval.run --backend openai --buyer llm --seeds 1"
-    return [f"{base} --model {LUNA} --scenarios 1-12 --defenses none,obt --out runs/e5_luna",
-            f"{base} --model {TERRA} --scenarios 1,3,5,8,9,11 --defenses obt --out runs/e5_terra"]
+# ------------------------------------------------------------------ paid stages
+
+def _load_key(env: Path = Path(__file__).resolve().parent.parent / ".env") -> None:
+    """Put OPENAI_API_KEY into this process's environment from .env. Never prints or logs it."""
+    if os.environ.get("OPENAI_API_KEY"):
+        return
+    for line in env.read_text().splitlines():
+        k, _, v = line.partition("=")
+        if k.strip() == "OPENAI_API_KEY" and v.strip():
+            os.environ["OPENAI_API_KEY"] = v.strip().strip("'\"")
+            return
+    raise Abort("OPENAI_API_KEY not found in .env")
+
+
+def meter() -> llm.CostMeter:
+    return llm.CostMeter(cap=CAP_USD)
+
+
+def ledger(runs: Path = RUNS) -> list[dict]:
+    return _calls(runs / "cost_ledger.jsonl")
+
+
+def usage(rows: list[dict]) -> dict:
+    return {"calls": len(rows), "input": sum(r["prompt_tokens"] for r in rows),
+            "output": sum(r["completion_tokens"] for r in rows),
+            "reasoning": sum(r.get("reasoning_tokens", 0) for r in rows), "usd": sum(r["usd"] for r in rows)}
+
+
+def run_models(model: str, scenarios=SCENARIOS) -> dict:
+    """E5 eval runs for one model (resumable). Raises on any invariant or loss-bound violation (STOP rule)."""
+    report = er.run_eval(eval_config(model, scenarios), OUT / DIRS[model], meter())
+    if report["stopped"]:
+        raise Abort(f"hard stop: {report['stopped']}")
+    return report
+
+
+def extractor_items(model: str, limit: int) -> dict:
+    """The paid model's extraction on the first `limit` test items (cached per item, never paid twice)."""
+    ec = eval_config(model)
+    m = meter()
+    er.check_budget(ec, m)
+    ext = LLMExtractor(er.make_llm(ec, "extractor_eval", m, model=model, backend="openai"),
+                       er.make_extract_cache(ec, model, "openai"))
+    return er.extractor_eval(ext, limit)
+
+
+def extractor_report(model: str) -> dict:
+    """Full extractor eval (test 199 + hard 30, LLM alone and with the code guard), written to extractor.json."""
+    ec = eval_config(model)
+    (OUT / DIRS[model]).mkdir(parents=True, exist_ok=True)
+    ec.log_dir = OUT / DIRS[model]
+    return er._extractor_report(ec, OUT / DIRS[model], meter())
+
+
+def reproject(runs: Path = RUNS) -> dict:
+    """Pilot spend + the rest of Plan B projected from the pilot's real tokens."""
+    rows = ledger(runs)
+    pilot_run = [r for r in rows if r["model"] == TERRA and r["run"].startswith("1_honest|obt+planner|s1")]
+    pilot_ext = [r for r in rows if r["model"] == TERRA and r["run"] == "extractor_eval"]
+    if not pilot_run or not pilot_ext:
+        raise Abort("no pilot usage in the ledger")
+    buyer = measured_buyer(runs)
+    run_u, ext_u = usage(pilot_run), usage(pilot_ext)
+    base = buyer[("obt+planner", 1)]
+    scale = (run_u["input"] / base[0], run_u["output"] / base[1])
+    per_item = (ext_u["input"] / ext_u["calls"], ext_u["output"] / ext_u["calls"])
+    # What is left: runs not yet in results (the pilot's run included) and extractor items not yet paid for.
+    done = {(m, r["defense"], r["scenario"]) for m in (LUNA, TERRA)
+            for r in er.load_results(runs / "e5" / DIRS[m]) if r["model"] == m}
+    paid_items = {m: sum(r["run"] == "extractor_eval" and r["model"] == m for r in rows) for m in (LUNA, TERRA)}
+    rest = [it for it in plan() if it["kind"] != "run" or (it["model"], it["defense"], it["scenario"]) not in done]
+    for it in rest:
+        if it["kind"] == "extractor_eval":
+            it["items"] = max(0, TEST_ITEMS + HARD_ITEMS - paid_items[it["model"]])
+    proj = project(rest, buyer, per_item, scale)
+    spent = sum(r["usd"] for r in rows)
+    return {"pilot": {"run": run_u, "extractor_items": ext_u}, "scale_vs_gpt_oss": scale,
+            "paid_tokens_per_extractor_item": per_item, "spent_usd": spent, "rest": proj,
+            "total_usd": spent + proj["total_usd"]}
+
+
+def pilot() -> dict:
+    _load_key()
+    run_models(TERRA, scenarios=(1,))
+    extractor_items(TERRA, PILOT_ITEMS)
+    rp = reproject()
+    (OUT / "pilot.json").write_text(json.dumps(rp, indent=1, default=str) + "\n")
+    return rp
+
+
+def rest() -> dict:
+    _load_key()
+    rp = reproject()
+    if rp["total_usd"] > GO_USD:
+        raise Abort(f"re-projected total ${rp['total_usd']:.2f} is over ${GO_USD:.0f}: not running the rest")
+    for model in (LUNA, TERRA):
+        run_models(model)
+        extractor_report(model)
+    spent = llm.CostMeter(cap=CAP_USD).spent()
+    (OUT / "spend.json").write_text(json.dumps({"ledger_usd": spent, "by_model": {
+        m: usage([r for r in ledger() if r["model"] == m]) for m in (LUNA, TERRA)}}, indent=1) + "\n")
+    return {"spent_usd": spent}
 
 
 def main(argv: list[str] | None = None) -> None:
-    usage, source = measured_usage()
-    proj = project(plan(), usage)
-    print(f"E5 paid plan ({len(plan())} items); token use {source}, margin x{MARGIN}")
+    stage = (argv or [None])[0]
+    if stage == "pilot":
+        print(json.dumps(pilot(), indent=1, default=str))
+        return
+    if stage == "rest":
+        print(json.dumps(rest(), indent=1, default=str))
+        return
+    proj = project(plan(), measured_buyer(), measured_extract_item())
+    print(f"E5 Plan B ({len(plan())} items); buyer tokens measured on local gpt-oss runs, margin x{MARGIN}")
     for p in proj["items"]:
         usd = "-" if p["usd"] is None else f"${p['usd']:.3f}"
-        what = f"s{p['scenario']} {p['defense']}" if p["kind"] == "run" else "extractor eval"
-        print(f"  {p['model']:15s} {what:16s} in {p['tokens_in']:>8,} out {p['tokens_out']:>7,}  {usd}")
+        what = f"s{p['scenario']} {p['defense']}" if p["kind"] == "run" else f"extractor eval ({p['items']})"
+        print(f"  {p['model']:15s} {what:24s} in {p['tokens_in']:>9,} out {p['tokens_out']:>8,}  {usd}")
     total = "unknown (prices missing)" if proj["total_usd"] is None else f"${proj['total_usd']:.2f}"
-    print(f"projected total: {total} (abort above ${CAP_USD:.0f}; hard stop ${llm.HARD_CAP_USD:.0f})")
+    print(f"projected total: {total} (go limit ${GO_USD:.0f}; hard stop ${CAP_USD:.0f})")
     try:
         check(proj)
     except Abort as e:
         print(f"ABORT: {e}")
         sys.exit(1)
-    print("Commands (NOT RUN by this script; only the user runs paid commands):")
-    for c in commands():
-        print("  " + c)
+    print("Not run by this command. Paid stages: OBT_ALLOW_PAID=1 python -m eval.e5_paid pilot | rest")
 
 
 if __name__ == "__main__":

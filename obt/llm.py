@@ -19,9 +19,15 @@ RUNS = Path(__file__).resolve().parent.parent / "runs"
 DEFAULT_MODEL = "gpt-oss:20b"
 HARD_CAP_USD = 13.0
 
-# USD per 1M tokens (input, output). Fill in real prices before any paid run; a
-# model missing here can't be called on the paid backend (fails closed).
-PAID_PRICES: dict[str, tuple[float, float]] = {}
+# USD per 1M tokens (input, output), Standard tier, from https://developers.openai.com/api/docs/pricing
+# (checked 2026-09-30; DECISIONS D37). Cached input is billed at the full input price here: our prompts never
+# qualify (a GPT-5.6 implicit cache hit needs the prompt to match through its latest user message), and full
+# price keeps the ledger an upper bound. Reasoning tokens are part of completion_tokens and billed as output.
+# A model missing here can't be called on the paid backend (fails closed).
+PAID_PRICES: dict[str, tuple[float, float]] = {
+    "gpt-5.6-luna": (0.20, 1.20),
+    "gpt-5.6-terra": (2.00, 12.00),
+}
 
 
 class PaidCallRefused(RuntimeError):
@@ -39,6 +45,8 @@ class LLMReply:
     completion_tokens: int
     latency_s: float
     cached: bool = False
+    reasoning_tokens: int = 0          # paid backend: the hidden reasoning part of completion_tokens
+    cached_input_tokens: int = 0       # paid backend: reported by the API; billed at full price (see PAID_PRICES)
 
 
 class CostMeter:
@@ -65,11 +73,19 @@ class CostMeter:
         if self.spent() + worst > self.cap:
             raise BudgetExceeded(f"${self.spent():.4f} spent; next call could pass the ${self.cap} cap")
 
-    def add(self, model: str, prompt_tokens: int, completion_tokens: int) -> float:
+    def add(self, model: str, prompt_tokens: int, completion_tokens: int, tag: str = "",
+            reasoning_tokens: int = 0) -> float:
         pin, pout = self.price(model)
         cost = (prompt_tokens * pin + completion_tokens * pout) / 1e6
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps({"spent_usd": self.spent() + cost}))
+        # Per-call lines first, then the total (written atomically), so a crash can't lose a charge.
+        with self.path.with_suffix(".jsonl").open("a") as f:
+            f.write(json.dumps({"ts": time.time(), "model": model, "run": tag, "prompt_tokens": prompt_tokens,
+                                "completion_tokens": completion_tokens, "reasoning_tokens": reasoning_tokens,
+                                "usd": cost}) + "\n")
+        tmp = self.path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"spent_usd": self.spent() + cost}))
+        os.replace(tmp, self.path)
         return cost
 
 
@@ -95,6 +111,7 @@ class LLM:
         self.max_tokens = max_tokens
         self.meter = meter or CostMeter()
         self.run_tag = run_tag
+        self._extra: dict = {}          # usage details of the last paid call, for the log
         self.calls = 0
         self.tokens = 0
         self.latency = 0.0
@@ -119,10 +136,12 @@ class LLM:
                 text, pt, ct = self._ollama(system, user, schema)
             else:
                 text, pt, ct = self._openai(system, user, schema)
-            reply = LLMReply(text, pt, ct, time.perf_counter() - t0)
+            reply = LLMReply(text, pt, ct, time.perf_counter() - t0, **self._extra)
+            self._extra = {}
             if cache_file is not None:
                 cache_file.parent.mkdir(parents=True, exist_ok=True)
-                cache_file.write_text(json.dumps({"text": text, "prompt_tokens": pt, "completion_tokens": ct}))
+                cache_file.write_text(json.dumps({"text": text, "prompt_tokens": pt, "completion_tokens": ct,
+                                                  "reasoning_tokens": reply.reasoning_tokens}))
         self.calls += 1
         self.tokens += reply.prompt_tokens + reply.completion_tokens
         self.latency += reply.latency_s
@@ -164,11 +183,18 @@ class LLM:
                if schema else None)
         client = OpenAI()
         kwargs = {"response_format": fmt} if fmt else {}
+        # `think` is the reasoning level on both backends: gpt-oss runs locally at "low", so paid calls send the
+        # same level (Chat Completions `reasoning_effort`; DECISIONS D37) and results stay comparable.
+        if self.think is not None:
+            kwargs["reasoning_effort"] = self.think
         r = client.chat.completions.create(
             model=self.model, messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             max_completion_tokens=self.max_tokens, seed=self.seed, **kwargs)
         pt, ct = r.usage.prompt_tokens, r.usage.completion_tokens
-        self.meter.add(self.model, pt, ct)
+        ctd, ptd = getattr(r.usage, "completion_tokens_details", None), getattr(r.usage, "prompt_tokens_details", None)
+        self._extra = {"reasoning_tokens": int(getattr(ctd, "reasoning_tokens", 0) or 0),
+                       "cached_input_tokens": int(getattr(ptd, "cached_tokens", 0) or 0)}
+        self.meter.add(self.model, pt, ct, tag=self.run_tag, reasoning_tokens=self._extra["reasoning_tokens"])
         return r.choices[0].message.content or "", pt, ct
 
     def _log(self, reply: LLMReply, purpose: str, key: str) -> None:
@@ -177,6 +203,8 @@ class LLM:
                "run": self.run_tag, "prompt_tokens": reply.prompt_tokens,
                "completion_tokens": reply.completion_tokens, "latency_s": round(reply.latency_s, 4),
                "cached": reply.cached, "key": key[:16]}
+        if self.backend == "openai":
+            row |= {"reasoning_tokens": reply.reasoning_tokens, "cached_input_tokens": reply.cached_input_tokens}
         with self.log_path.open("a") as f:
             f.write(json.dumps(row) + "\n")
 

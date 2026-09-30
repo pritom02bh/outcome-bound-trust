@@ -515,3 +515,23 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - The k = 2 runs and probes stay committed as evidence for the conclusion, not as claims.
   - The k = 2 mutant runs at B0 = 1 and ITEM at B with k = 2 were not run, because the criterion failed first. `MaxQty` stays in the spec (default 2).
   - Fixed along the way: `run_simulation.sh` added `K = 1` with a `\n` in a sed replacement, which BSD sed doesn't turn into a newline. It now uses awk.
+
+## D37. E5 paid runs: setup (user decisions)
+- **Authorization.** The user authorized `OBT_ALLOW_PAID=1` for E5 only, with Plan B, a pilot first, and a hard stop at **$16 total**. That replaces the $13 in FIXES/CLAUDE.md for E5; the harness default `HARD_CAP_USD` stays 13. The rest of Plan B runs only if the pilot's actual spend plus the rest, re-projected from the pilot's real tokens, is at most $14.
+- **Reasoning effort `low` on every paid call.** This is the same reasoning level as the local gpt-oss runs (`think="low"`), so results are comparable.
+  - `obt/llm.py` calls Chat Completions, where the parameter is `reasoning_effort`. The paid path now sends `reasoning_effort=self.think`, which is `"low"` everywhere, and nothing overrides it.
+  - Verified on OpenAI's model pages, which say the same for both models: [gpt-5.6-luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna) and [gpt-5.6-terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra) support Chat Completions, structured outputs, and "Reasoning.effort supports: none, low, medium (default), high, xhigh, and max". The [reasoning guide](https://developers.openai.com/api/docs/guides/reasoning) names it `reasoning_effort` for Chat Completions.
+  - Reasoning tokens are billed as output and are part of `completion_tokens`. They are logged per call, in `llm_calls.jsonl` and the ledger.
+- **Extraction follows D24.** In every E5 eval run the paid model is the buyer, and the extractor stays the frozen local gpt-oss:20b, served from the shared extraction cache for messages it has seen.
+  - New `EvalConfig.extractor_backend` (here `ollama`): the extractor runs on its own backend. It's part of the run config hash only when set, so earlier runs keep their hashes.
+  - The paid models' own extraction is measured only in the extractor eval: new `EvalConfig.extractor_eval_model`, with the test set (199) and hard subset (30), LLM alone and with the code deadline guard.
+- **Prices** (`obt.llm.PAID_PRICES`, from the [pricing page](https://developers.openai.com/api/docs/pricing), Standard tier): Luna $0.20 / $1.20 and Terra $2.00 / $12.00 per 1M input / output tokens.
+  - No cached-input discount is applied. Our prompts never qualify: a GPT-5.6 implicit cache hit needs the prompt to match through its latest user message ([prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching)), and extractor prompts are also below the 1,024-token minimum. Billing at the full input price also keeps the ledger an upper bound.
+- **Ledger and resumability.**
+  - `runs/cost_ledger.json` holds the total, written atomically. `runs/cost_ledger.jsonl` has one line per paid call: model, run, tokens, reasoning tokens, $. The hard stop is checked before every call (worst case: estimated input + 4,096 output tokens) and before every run.
+  - Nothing is paid for twice:
+    - completed runs are skipped on resume (run key + config hash);
+    - every paid reply is cached (`EvalConfig.cache=True`), so a run interrupted mid-way replays its paid calls for free;
+    - every extractor item is cached by text + model, so the pilot's 20 items count toward the full eval.
+- **Key handling.** `eval/e5_paid.py` reads `OPENAI_API_KEY` from `.env` into its own process only. `.env` is gitignored, and no log, ledger or output file contains the key (a test checks this with a fake client).
+- **Utility cost for Terra.** Plan B runs `none` only on Luna, so Terra's utility cost uses Luna's `none` run as its reference. That is a cross-model comparison and is labelled as such in the report.
