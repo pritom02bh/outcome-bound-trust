@@ -444,7 +444,7 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - The multiplier also reaches every code-side projection of B: the scripted buyer's lot request, the D32 planner, and the view's BUDGET MATH and TRUST GROWTH numbers.
   - The frozen TRUST GROWTH text describes k = 1. E2b ran only at k = 1.
 - **Loss bound (DESIGN §6).** The per-event bound `L_e` has no k in it: it's built from each failure's own shortfall, prices and lead times, so the STOP check `damage ≤ Σ L_e` is correct for every k. What scales with k is the budget corollary: B(c) at the order is at most `b0 + k·X`, and E7 reports damage against that k-scaled a-priori bound as well.
-  - The TLA+ model fixes k = 1. For k > 1, I1–I4 rest on the same code paths and the runtime monitors, not on model checking.
+  - The TLA+ model takes k as the constant `K` (D36a). For k > 1, I1–I4 rest on the same code paths and the runtime monitors; no bound checked so far exercises k > 1 (D36a).
 - **Compatibility.** k = 1 is dropped from the config hash, so every earlier run keeps its hash. k = 1 reproduces E1's OBT default exactly: 36/36 runs with E1's extractor served from the cache (no model calls).
 - **E7** (`eval/e7.py`, `runs/e7/`). OBT at the E1 default with k ∈ {1, 2, 4} at 50 and 100 rounds, plus `none` at each horizon as the utility reference; 12 scenarios × 3 seeds, scripted buyer.
   - It runs in process with the rule extractor, like E6 (D29). This is exact on the run bank except scenario 11, where the rule extractor reads injected text slightly differently from gpt-oss: 33/36 k = 1 runs match E1, and the other 3 differ by $0.50 each. Since the same extractor is used for every k, comparisons across k are unaffected.
@@ -462,3 +462,22 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - **Reading.** k = 2 cuts OBT's utility cost by about a quarter at 50 rounds (5.89% → 4.54%) and raises loss from lies ($137 → $195). The max damage per bound stays about 0.65.
   - **k = 4 adds almost nothing over k = 2.** The scripted buyer never requests a lot larger than 2 × mean demand (40 units), so a budget beyond that can't be used. That's a limit of the buyer, not of k.
 - **E3 table.** The second-model table (E3 and E3b) now always splits loss from lies into damage + reroute + resid (`eval.stats.loss_split`). For E3's `obt`, $3,189 of loss is $41.5 damage, –$235.6 reroute and $3,383 resid: the qwen buyer's own over-stocking. Damage is n/a for `none`, which has no claims.
+
+## D36a. Model-checking k = 2: the checked bounds can't see k (OPEN, user decision)
+- **Done.** `OBT.tla` takes `K` (`Bud = B0 + K·MaxOf(earned)`; `ASSUME K ∈ Nat \ {0}`). `run_mutants.sh` reads `K` (default 1), and `spec/replay.py` passes the cfg's `K` to `BudgetConfig`.
+  - K = 1 reproduces the committed quick and A′ exhaustive runs exactly (55,007,884 · 30 and 116,548,616 · 22), and every verdict is the same.
+  - K = 2 passes at quick and A′ with every applicable mutant caught (`spec/results/README.md`).
+- **Finding.** The K = 2 state spaces are identical to K = 1's.
+  - A probe invariant, `KNeverDecides` (no order or payment is OVER_BUDGET while the supplier's earned term is > 0), holds exhaustively at both bounds.
+  - `NoEarned` is violated, so trust is earned, but the budget only ever binds at B0. With B0 = 2, orders of 1–2 units and only 2 order ids, there's never enough pending exposure left.
+  - K scales only the earned term, so at these bounds it can't change a decision for any K. **The k = 2 check is vacuous.** DESIGN §7 and the README say so; k > 1 is not claimed as verified.
+- **Candidates, probed at K = 1** (`spec/results/k_probe/candidates/`). A `KNeverDecides` violation means K can change a decision:
+
+  | candidate | witness? |
+  |---|---|
+  | quick with **B0 = 1** | yes: 327,044 states, a 19-step trace |
+  | A′ with **B0 = 1** | yes: 4,423,702 states, a 19-step trace |
+  | quick with **Orders = {o1, o2, o3}** | none within 10 min: 96M states, queue still growing (probably a multi-hour search) |
+
+- **Recommendation.** Add configs quick-B1 and A′-B1 (B0 = 1, otherwise unchanged). Run them exhaustively at K = 1 and K = 2 with all mutants, and require `KNeverDecides` to be violated there as a non-vacuity check. The run_mutants comment notes that quick used B0 = 2 so I2's witness fits in 3 rounds, so mutant reachability at B0 = 1 must be rechecked; any mutant that can't act becomes N/A with a reason, as at A′.
+- **Status: not started; waiting for the user's choice of bounds.**

@@ -183,7 +183,7 @@ The damage from one broken promise is linear in the trust budget the counterpart
 - **The per-event bound `L_e` doesn't change.** It is built from the event's own shortfall `U_e`, prices and lead times, and the derivation above never uses B. A larger k only admits larger orders, and the realized `U_e` of a failure carries that into `L_e`. So the STOP check `damage ≤ Σ_e L_e` needs no change and holds for any k.
 - **What scales with k is the budget corollary.** I1 still gives `V_e ≤ B(c)` and `U_e ≤ B(c)/u_e`, but now `B(c) ≤ b0 + k·(largest honored exposure)`. So a counterparty that honored exposure X can make a single broken promise cost up to `(b0 + k·X)·(1 + (p_b·(δ+ℓ_b+1) + Δu_max + h·T)/u_min)`: k times as much trust exposed per honored dollar.
 - **The results report both ratios:** damage against `Σ_e L_e` (the check), and damage against the k-scaled a-priori value (B at the order, which includes k).
-- **The TLA+ model** (`spec/OBT.tla`) fixes k = 1. For k > 1, I1–I4 rest on the same code paths and on the runtime monitors (the verifier-only rise of B, I2, is unchanged: only the earned term is scaled), but they are not model-checked.
+- **The TLA+ model** (`spec/OBT.tla`) takes k as the constant `K`. What is exhaustively verified for which k is stated in §7. For k > 1, I1–I4 rest on the same code paths and on the runtime monitors (the verifier-only rise of B, I2, is unchanged: only the earned term is scaled).
 
 ## 7. Invariants
 
@@ -197,6 +197,10 @@ The damage from one broken promise is linear in the trust budget the counterpart
 
 **Checked three ways.**
 - **TLA+** (`spec/OBT.tla`): models the §5 phase order exactly; nondeterminism only in deliveries/invoice prices, supplier claims, and buyer proposals. I1–I3 are action properties; I4, I6, I7 are state invariants. TLC runs on small bounds via `spec/run_mutants.sh`, with the claim, order and payment id pools as symmetry sets. That is sound because every property is a safety property and no step tells ids apart. Earliest-deadline ties are nondeterministic in the spec, which over-approximates the code's claim_id tie-break. Bounds, TLC version, state counts, depths and runtimes are in `spec/results/README.md`.
+  - **Growth multiplier k (D36, D36a).**
+    - **k = 1** (DESIGN §6's rule) is exhaustively verified at quick (1 supplier, 1 item, 3 rounds), A′ (2 suppliers, 1 item, 2 rounds) and B (1 supplier, 2 items, 3 rounds). A rerun at quick and A′ reproduces the committed exhaustive state counts and depths exactly.
+    - **k = 2** passes exhaustively at quick and A′, with every applicable mutant caught; B was not run. But at these bounds k can't change any gate decision: a probe invariant shows no order or payment is ever OVER_BUDGET while earned trust is > 0 (the budget only ever binds at b0), and k scales only the earned term. So the k = 2 state spaces are identical to k = 1's, and the check is vacuous.
+    - **k > 1 is therefore not model-checked in any meaningful sense.** It rests on the runtime monitors (0 violations in E7 at k ∈ {1, 2, 4}) until bounds that exercise it are chosen (D36a, open).
 - **Mutation check**: for each of I1, I2, I4, I6, I7 one spec mutant removes the enforcing guard (budget row; cool-down floor; same-step flagging; capacity; receipt bookkeeping). Three more remove a binding. ITEM drops same-item binding (caught as I1). XSUP-RECEIPT lets allocation ignore the supplier (caught as I7). XSUP-BUDGET lets a pass earn budget for every supplier (caught as I2). TLC must find a counterexample for every mutant that can act in a config, and the unmutated spec must pass. The exhaustive results come from these configs:
   - A′: 2 suppliers, 1 item, 2 rounds (cross-supplier binding).
   - B: 1 supplier, 2 items, 3 rounds (cross-item binding).

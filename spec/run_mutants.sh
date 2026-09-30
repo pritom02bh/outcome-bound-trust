@@ -15,6 +15,7 @@ JAVA=$(ls -d ../tools/jdk-*/Contents/Home/bin/java 2>/dev/null | head -1)
 JAVA=${JAVA:-java}
 [ -f tla2tools.jar ] || curl -sSL -o tla2tools.jar https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
 MODE=${1:-full}
+K=${K:-1}                     # budget growth multiplier (DECISIONS D36); K = 1 is DESIGN §6
 if [ "$MODE" = tiny ]; then
   # Symmetry cross-check bounds: small enough to finish without symmetry.
   BOUNDS='Sups = {s1}
@@ -84,7 +85,7 @@ else
     MinLead = 2'
 fi
 SYM=${SYM:-1}
-TAG=$MODE; [ "$SYM" = 1 ] || TAG=${MODE}_nosym
+TAG=$MODE; [ "$K" = 1 ] || TAG=${MODE}_k${K}; [ "$SYM" = 1 ] || TAG=${TAG}_nosym
 ONLY=${ONLY:-}
 if [ "$SYM" = 1 ]; then SYMLINE='SYMMETRY Symm'; SYMDESC='Permutations(Claims) \cup Permutations(Orders) \cup Permutations(Pays)'
 else SYMLINE=''; SYMDESC='none'; fi
@@ -96,7 +97,7 @@ SUMMARY=$RESULTS/${TAG}_summary${ONLY:+_only_${ONLY// /_}}.txt
   echo "# date: $(date -u +%Y-%m-%dT%H:%M:%SZ)  host: $(uname -sm)  cores: $(sysctl -n hw.ncpu 2>/dev/null || nproc)"
   echo "# tla2tools.jar sha256: $(shasum -a 256 tla2tools.jar | cut -d' ' -f1)"
   echo "# java: $("$JAVA" -version 2>&1 | head -1)"
-  echo "# bounds: $(echo "$BOUNDS" | tr -s ' \n' ' ') W = 1"
+  echo "# bounds: $(echo "$BOUNDS" | tr -s ' \n' ' ') W = 1 K = $K"
   echo "# symmetry: $SYMDESC"
   printf '%-12s %-18s %-32s %16s %6s %9s\n' mutant verdict violation distinct_states depth runtime_s
 } > "$SUMMARY"
@@ -121,6 +122,7 @@ SPECIFICATION Spec
 CONSTANTS
     $BOUNDS
     W = 1
+    K = $K
     NoRef = NoRef
     MUTANT = "$m"
 $SYMLINE

@@ -352,4 +352,15 @@ I7 == /\ \A key \in RKeys : rc[key] <= rq[key]
       /\ \A s \in Sups, i \in Items :
             SumAlloc({k \in Claims : cl[k].tmpl = "D" /\ cl[k].sup = s /\ cl[k].item = i})
                 <= SumArr({key \in RKeys : key[2] = s /\ key[3] = i})
-=============================================================================
+(* K probe (scratch only, not committed): the earned term of B, 0 in a cool-down. If no gate decision is
+   OVER_BUDGET while it is > 0, then K (which scales only this term) never changes a decision at these bounds. *)
+EarnedTerm(s) == IF FailedOf(s) # {} /\ now - LastFail(s) < W THEN 0 ELSE (Bud(s) - B0) \div K
+KNeverDecides ==
+    /\ \A o \in Orders : (phase = "gate" /\ od[o].st = "PROPOSED" /\ OrderTable(od[o], TRUE) = "OVER_BUDGET")
+                           => EarnedTerm(od[o].sup) = 0
+    /\ \A p \in Pays : (phase = "gate" /\ py[p].st = "PROPOSED" /\ py[p].ref \in Orders
+                         /\ PayTable(py[p]) = "OVER_BUDGET") => EarnedTerm(py[p].sup) = 0
+\* Sanity: earned trust does arise (otherwise the probe is vacuous for a different reason).
+NoEarned == \A s \in Sups : EarnedTerm(s) = 0
+
+=========================================================================

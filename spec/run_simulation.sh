@@ -11,7 +11,8 @@ NUM=${1:?number of traces}
 SEED=${2:-20260925}
 mkdir -p results states
 cfg=states/sim_full.cfg
-{ sed -e '/^SYMMETRY/d' results/full_partial/full_none.cfg; echo "INVARIANT SimDepth"; } > "$cfg"
+# The committed full-bounds cfg predates the K constant (D36): K = 1 there.
+{ sed -e '/^SYMMETRY/d' -e 's/^    W = 1$/    W = 1\n    K = 1/' results/full_partial/full_none.cfg; echo "INVARIANT SimDepth"; } > "$cfg"
 out=results/simulation_full.out
 start=$(date +%s)
 "$JAVA" -XX:+UseParallelGC -Xmx12g -cp tla2tools.jar tlc2.TLC -simulate num="$NUM" -depth 500 -seed "$SEED" \

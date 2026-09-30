@@ -22,6 +22,7 @@ Tier 2 below checks this empirically.
   - **B:** 1 supplier, 2 items, 3 rounds.
 
   In addition, every guard mutant that can act at a config's bounds is caught there.
+- **Budget growth multiplier K (D36).** All of the above is at K = 1. K = 2 also passes at quick and A′, with every applicable mutant caught, but those bounds can't tell K = 2 from K = 1 (the probe below). So **K > 1 is not claimed as verified** at any bound.
 - **Not claimed:** exhaustive verification at the full bounds (2 suppliers, 2 items, 6 rounds), or at config A (2 suppliers, 1 item, 3 rounds). Neither exhaustive search finished. Both are reported below as partial, non-exhaustive evidence.
 - **Two-supplier behavior over 3+ rounds is not covered by a completed exhaustive search.** It is covered by:
   - the partial exhaustive run of config A (547M states, 0 violations);
@@ -31,7 +32,7 @@ Tier 2 below checks this empirically.
 
 ## Tier 1: exhaustive checks
 
-Common constants: `Claims = {k1, k2, k3}`, `Orders = {o1, o2}`, `Pays = {p1}`, `Notes = {n1}`, `W = 1`, `NoRef = NoRef`, symmetry as above. No state constraints.
+Common constants: `Claims = {k1, k2, k3}`, `Orders = {o1, o2}`, `Pays = {p1}`, `Notes = {n1}`, `W = 1`, `K = 1` (see the K section below), `NoRef = NoRef`, symmetry as above. No state constraints.
 
 | config | Sups | Items | MaxRound | B0 | MinLead | unmutated result | distinct states | depth | runtime |
 |---|---|---|---|---|---|---|---|---|---|
@@ -54,7 +55,7 @@ Each mutant removes exactly one enforcing guard. TLC must report a violation of 
 | XSUP-RECEIPT | allocation ignores the supplier | I7 |
 | XSUP-BUDGET | a PASSED claim earns budget for every supplier | I2 |
 
-Results: violated property, distinct states when TLC stopped, counterexample length and runtime.
+Results: violated property, distinct states when TLC stopped, counterexample length and runtime. With `-workers auto` the first counterexample found depends on worker scheduling, so a caught mutant's state count and length vary between reruns (the K = 1 reruns below differ by up to 20%). The verdicts don't vary, and neither do the counts of exhaustive (PASS) runs.
 
 | mutant | quick | A′ | B |
 |---|---|---|---|
@@ -133,6 +134,49 @@ Python reason codes reached in the unmutated campaigns:
 
 No trace ended early from deadlock: every trace reached the final round's execute step.
 
+## Budget growth multiplier K (DECISIONS D36, D36a)
+
+`OBT.tla` now takes `K` as a constant: `Bud(s) = B0 + K * MaxOf(earned)`, with `ASSUME K \in Nat \ {0}`. `run_mutants.sh` reads `K` from the environment (default 1); K ≠ 1 tags its outputs `<bounds>_k<K>_*`. `run_k2.sh` runs everything in this section.
+
+**K = 1 reproduces the committed results** (`k1_repro/`). Every verdict is identical, and the exhaustive runs match exactly:
+
+| config | unmutated, committed | unmutated, K = 1 rerun | verdicts |
+|---|---|---|---|
+| quick | 55,007,884 states · depth 30 | 55,007,884 · 30 | 9/9 identical (ITEM, XSUP-* no-op PASS at 55,007,884 · 30) |
+| A′ | 116,548,616 · 22 | 116,548,616 · 22 | 9/9 identical (3 N/A) |
+
+The caught mutants' counterexample counts differ from the committed ones, as expected under `-workers auto` (see Mutants above). For example, quick I1 went from 1,397,603 · 23 to 1,338,745 · 24, and A′ I1 from 24,189,963 · 21 to 19,395,933 · 21.
+
+**K = 2** (`quick_k2_*`, `fallbackA2_k2_*`). All pass, and every applicable mutant is caught.
+
+| mutant | quick, K = 2 | A′, K = 2 |
+|---|---|---|
+| none | **PASS** · 55,007,884 · 30 · 252 s | **PASS** · 116,548,616 · 22 · 542 s |
+| I1 | caught I1 · 1,449,810 · 24 · 8 s | caught I1 · 22,323,315 · 21 · 119 s |
+| I2 | caught I2 · 2,072,406 · 24 · 10 s | N/A (1) |
+| I4 | caught I4 · 20,273 · 19 · 2 s | caught I4 · 711,192 · 18 · 7 s |
+| I6 | caught I6 · 2,515 · 13 · 0 s | caught I6 · 14,451 · 12 · 1 s |
+| I7 | caught I7 · 6,633,047 · 28 · 34 s | N/A (2) |
+| ITEM | PASS (no-op) · 55,007,884 · 30 · 248 s | N/A (3) |
+| XSUP-RECEIPT | PASS (no-op) · 55,007,884 · 30 · 240 s | caught I7 · 442,523 · 16 · 5 s |
+| XSUP-BUDGET | PASS (no-op) · 55,007,884 · 30 · 253 s | caught I2 · 373,240 · 16 · 4 s |
+
+Runtimes are wall-clock, on a host that was also running the E3b LLM runs (ollama). That is why the K = 1 reruns were also slower than the committed runs, for example 217 s vs 168 s at quick. No host sleep occurred.
+
+**At these bounds K = 2 checks nothing that K = 1 doesn't.** The K = 2 state spaces are identical to K = 1's, and a probe shows why (`k_probe/`). The probe is `OBT.tla` plus two scratch invariants, run at K = 1:
+
+| probe invariant | meaning | quick | A′ |
+|---|---|---|---|
+| `NoEarned` | no supplier ever has earned trust | **violated** (11,349 states) | **violated** (434,601 states) |
+| `KNeverDecides` | no order or payment is ever judged OVER_BUDGET while its supplier's earned term is > 0 | **holds**, exhaustive (55,007,884) | **holds**, exhaustive (116,548,616) |
+
+So earned trust does arise, but once it has, the budget never binds. Only order ids {o1, o2} exist, and an order is 1–2 units, so too little pending exposure is left to exceed B0 + earned. K scales only the earned term, so it can't change any gate decision at these bounds, for any K ≥ 1.
+
+**What is verified:**
+- K = 1: exhaustive at quick, A′ and B.
+- K = 2: exhaustive at quick and A′, but vacuously, since the configurations are behaviorally the same as K = 1.
+- **No bound has yet exercised K > 1 where it matters.** That needs bounds at which `KNeverDecides` is violated. B0 = 1 at the quick and A′ bounds gives such a witness (`k_probe/candidates/`); a third order id found none within 10 minutes. See DECISIONS D36a, which is open. B was not rerun at K = 2 (too slow, per the request) and was not probed.
+
 ## Coverage: invariant by evidence
 
 "PASS" means the unmutated spec satisfies the property exhaustively at that config. "caught X" means that config's mutant for it is caught (as property X).
@@ -151,7 +195,8 @@ No trace ended early from deadlock: every trace reached the final round's execut
 ## Reproduce
 
 ```
-spec/run_mutants.sh quick|fallbackA2|fallbackB|tiny     # SYM=0 disables symmetry; ONLY="I2 I7" runs a subset
+spec/run_mutants.sh quick|fallbackA2|fallbackB|tiny     # SYM=0 disables symmetry; ONLY="I2 I7" runs a subset; K=2 sets the multiplier
+spec/run_k2.sh                                           # K = 1 reproduction check + K = 2 at quick and A′ (D36)
 python -m spec.make_crosscheck                           # after tiny, SYM=0 tiny, and ONLY="I2 I7" quick with/without SYM
 spec/run_replay.sh                                       # replay campaigns -> replay/
 spec/run_simulation.sh 102272 20260925                   # full-bounds simulation -> simulation_full.*

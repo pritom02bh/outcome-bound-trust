@@ -26,7 +26,7 @@ Mapping from spec to code (the spec abstracts prices to one level):
     order                  -> ORDER, unit_price 1.00, value = qty, executed_round = round if exec
     (all money is exact Decimal on both sides, D19: integers in the spec, cents in the code)
     payment                -> PAYMENT, value = amount, ref_order = the order id (NoRef -> None)
-    B0, W, MinLead         -> BudgetConfig(b0=B0, window=W), Gate(min_lead={s: MinLead})
+    B0, W, MinLead, K      -> BudgetConfig(b0=B0, window=W, k=K), Gate(min_lead={s: MinLead})
 
 `build_world` bypasses the ledger's append-only API on purpose: it reconstructs
 an arbitrary reachable state rather than replaying how it was reached. Harness
@@ -61,15 +61,15 @@ def with_item(claim: Claim, item: str) -> Claim:
 
 
 def build_world(claims: list[Claim], actions: list[Action], b0: Decimal, window: int,
-                min_lead: dict[str, int]) -> Gate:
+                min_lead: dict[str, int], k: int = 1) -> Gate:
     led, log = Ledger(), ActionLog()
     for c in claims:
         led._claims[c.claim_id] = c
     for a in actions:
         log._actions[a.action_id] = a
-        for k in dict.fromkeys(a.cited_claims):
-            log._by_claim.setdefault(k, []).append(a.action_id)
-    budget = TrustBudget(led, log, BudgetConfig(b0=b0, window=window))
+        for cid in dict.fromkeys(a.cited_claims):
+            log._by_claim.setdefault(cid, []).append(a.action_id)
+    budget = TrustBudget(led, log, BudgetConfig(b0=b0, window=window, k=k))
     return Gate(led, log, budget, min_lead=min_lead)
 
 
@@ -255,7 +255,7 @@ def replay_state(s: dict, kind: str, ident: str, consts: dict) -> tuple[bool, st
     others = [a for a in acts if a is not target]
     sups = set(s["made"])
     gate = build_world(claims_from(s), others, b0=Decimal(consts["B0"]), window=int(consts["W"]),
-                       min_lead={sup: int(consts["MinLead"]) for sup in sups})
+                       min_lead={sup: int(consts["MinLead"]) for sup in sups}, k=int(consts.get("K", 1)))
     ok, why = gate.allow(target, s["now"])
     _, mwhy = table_verdict(snapshot(gate, target, s["now"]))
     return ok, why, mwhy
