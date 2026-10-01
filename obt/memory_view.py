@@ -44,6 +44,9 @@ class ClaimCard:
         if self.template == "DELIVERY":
             body = (f"DELIVERY up to {s['qty']} {s['item']} by round {s['by_round']} "
                     f"(capacity left {self.remaining})")
+        elif self.template == "SLA":
+            body = (f"SLA {s['item']} available >= {float(s['min_availability']):.0%} of rounds "
+                    f"{s['start']}-{s['end']}")
         else:
             body = f"PRICE {s['item']} <= ${s['unit_price']:.2f}/unit until round {s['valid_until']}"
         return f"[{self.claim_id}] {body} | status {self.status} | resolves round {self.deadline}"

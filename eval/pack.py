@@ -22,7 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PACK = ROOT / "paper_pack"
-VERSION = "v1.5"                 # the release this pack belongs to (tag v1.5-results)
+VERSION = "v1.6"                 # the release this pack belongs to (tag v1.6-results)
 ZIP = ROOT / f"paper_pack_{VERSION}.zip"
 TJ = "results/tables.json"
 NUMERIC = re.compile(r"^-?[\d,]*\d(\.\d+)?$")
@@ -72,6 +72,8 @@ COLUMNS = {
     "farm then defect": "identities that shipped in full at least twice before a short order",
     "claim splitting": "rounds whose message names two or more quantities", "injection or decoy":
     "rounds whose message addresses the buyer's software or quotes two or more prices",
+    "provider share": "share of reserved capacity units bought from the main provider, honest scenario (E9)",
+    "events": "failure-event type (QUOTA, SLA, all)", "runs with events": "OBT runs with at least one event",
     "identity resets": "switches to a new identity", "invoice overpricing":
     "orders invoiced above the price the round's message stated ($5.00 if none)",
 }
@@ -178,6 +180,7 @@ def sheets() -> list[tuple[str, list[tuple]]]:
         ("reputation grid", [tblock("reputation_grid")]),
         ("Enron", [tblock("enron")]),
         *([("E8", [tblock("e8"), tblock("e8_strategies"), cblock("results/e8/runs.csv")])] if "e8" in _tables() else []),
+        *([("E9", [tblock("e9"), tblock("e9_damage_vs_bound")])] if "e9" in _tables() else []),
         ("TLA+ verification", [tlc_block("quick", "quick"), tlc_block("fallbackA2", "A′"), tlc_block("fallbackB", "B"),
                                tlc_block("quick_b01", "quick, B0 = 1"), tlc_block("fallbackA2_b01", "A′, B0 = 1"),
                                coverage_block()]),

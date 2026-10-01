@@ -274,7 +274,7 @@ def check_additive(tag: str, new_tables=("e8", "e8_strategies"), new_sheets=("E8
                 bad["numbers"].append(("unexpected new row", r[0]))
     for f in sorted((ROOT / "results").glob("*/*.csv")):
         rel = str(f.relative_to(ROOT))
-        if rel.startswith("results/e8/"):
+        if rel.startswith(("results/e8/", "results/e9/")):
             continue
         try:
             if _old(tag, rel) != f.read_text():
@@ -300,7 +300,9 @@ def main(argv: list[str] | None = None) -> None:
     argv = argv if argv is not None else sys.argv[1:]
     if "--additive" in argv:
         tag = [a for a in argv if not a.startswith("--")][0]
-        report = check_additive(tag)
+        opt = lambda k, d: next((a.split("=", 1)[1] for a in argv if a.startswith(f"--{k}=")), d)  # noqa: E731
+        report = check_additive(tag, new_tables=tuple(opt("tables", "e8,e8_strategies").split(",")),
+                                new_sheets=tuple(opt("sheets", "E8").split(",")), marker=opt("marker", "e8["))
         for k, v in report.items():
             print(f"{k}: {'identical' if not v else f'{len(v)} DIFFERENCES'}")
             for d in v:
@@ -308,7 +310,8 @@ def main(argv: list[str] | None = None) -> None:
         if any(report.values()):
             print(f"STOP: prior numbers differ from {tag}")
             sys.exit(1)
-        print(f"OK: every prior number is identical to {tag}; the only additions are E8's tables, rows and sheet")
+        print(f"OK: every prior number is identical to {tag}; the only additions are the listed new tables, rows "
+              "and sheets")
         return
     if "--drop-per-unit" in argv:
         tag = [a for a in argv if not a.startswith("--")][0]

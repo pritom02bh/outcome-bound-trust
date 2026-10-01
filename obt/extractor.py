@@ -24,7 +24,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .llm import LLM, parse_json
-from .types import Claim, Message
+from .types import ITEMS, Claim, Message
 
 
 _CANDIDATES = {
@@ -112,6 +112,10 @@ class Extractor:
                 c = Claim.make(claim_id=cid, counterparty=msg.counterparty,
                                source_msg_hash=msg.msg_hash, created_round=msg.round,
                                template=spec["template"], slots=spec["slots"])
+                # The supply catalog stays closed (D44): an item outside it is invalid, exactly as before the
+                # cloud domain widened the item type.
+                if c.slots.get("item") not in ITEMS:
+                    raise ValueError("item outside the supply catalog")
                 if not grounded(c, cands, msg.text if self.deadline_guard else None):
                     raise ValueError("slot value not grounded in text, or ambiguous")
                 out.append(c)

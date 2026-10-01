@@ -733,3 +733,36 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - `eval/verify_release.py v1.4.1-results --additive`: every prior number identical, and only E8 added.
   - All tests, then commit and tag `v1.5-results`. No push.
   - It stops on an invariant or loss-bound violation (run_eval raises) or any failed step.
+
+## D44. E9: a second domain (cloud/API capacity), approved with the minimal change (user decision)
+- **Approved plan:** `docs/E9_PLAN.md`, with the minimal core change of §8. Conditions:
+  1. The E9 code sits behind a domain flag.
+  2. Before E9 runs, it must be shown that the supply-chain domain is unchanged: E1's default scripted runs (12 scenarios, seed 1) and the gate differential test give byte-identical ledgers, costs and verdicts against `v1.4.1-results`.
+  3. DESIGN §7 states that the TLA+ spec doesn't model SLA and that SLA safety rests on the runtime monitors.
+  - E9 is built and run only after E8's chain has finished, and is tagged `v1.6-results` (E8 took v1.5).
+- **Domain flag:**
+  - `SimConfig.domain`, either "supply" (the default: the Beer Game, every existing path untouched) or "cloud" (`obt/env/cloud.py`, `CloudGame`).
+  - `config_hash` drops the field at its default, as for `budget_k`, so every existing config hash is unchanged.
+  - Cloud orders carry the item "capacity"; supply orders keep the default.
+- **Core changes, all additive:**
+  - **`types.py`:**
+    - the `SLA` template with typed slots (`item`, `min_availability ∈ (0, 1]`, `start` ≤ `end`; deadline = `end`);
+    - the item type admits "capacity". The supply catalog `ITEMS` stays ("widget",), and `CLOUD_ITEMS` = ("capacity",).
+  - **`verifier.py`:** `check_sla` (up rounds in the window ≥ ⌈a·n⌉, from the environment's uptime log; an unrecorded round counts as down), in the template registry. Existing templates are untouched.
+  - **`gate.py`:** one line. `_consume` records reliance on cited SLA claims (`consumed += qty`, the same bookkeeping PRICE gets), so a relied-on SLA resolves PASSED or FAILED, not LAPSED (D11). No gate row changes.
+  - **`oracles.py`:** an uptime log, written by the environment only.
+  - **`extractor.py`:** a guard keeping the supply catalog closed. An extracted item outside ("widget",) is invalid, exactly as it was before the item type widened. The frozen extractor prompt and its schema are unchanged.
+  - **`memory_view.py`:** a card line for SLA claims, for display only.
+- **Two refinements of the plan, found while building:**
+  1. **The kept-promise replay restores a FAILED SLA's excess down rounds only for the units of the orders that cited it.** That is the promise the gate relied on. Restoring the whole provider would also bring back capacity no order relied on, which neither the counterfactual nor the bound `k_e·C_e·p_od` covers.
+  2. **The runtime monitors need no change.** They don't re-derive consumption: I3 reads `consumed` from the ledger, and I6 applies to DELIVERY only. The plan's note that the I1 monitor "must mirror" the bookkeeping turned out to be unnecessary.
+- **Capacity prices are per unit for the whole term** (main $5.00, backup $6.00, as `GameConfig`), so the PRICE template and claims are unchanged. Per unit-round this equals the plan's $1.00 and $1.20.
+  - Hence the QUOTA bound is `V_e + U_e·p_od·(δ + ℓ_b + 1) + U_e·(u_b − u_e)`, with prices per unit-term. That is the plan's formula with `L·u` → `u`.
+- **Equivalence proof** (`eval/e9_equivalence.py`): dumps E1's default runs and the 10,000 derandomized gate-differential verdicts under `v1.4.1-results` (a git worktree) and under the E9 code, then compares sha256 per scenario (ledger, costs, verdicts) and for the differential set.
+- **Chain** (`eval/e9.sh`, run after E8's chain):
+  - the equivalence proof (stop unless byte-identical);
+  - all tests;
+  - E9's 84 runs (stop on any violation);
+  - refresh results, `NUMBERS.md` (RQ5), tables, workbook and pack (`paper_pack_v1.6.zip`);
+  - `verify_release v1.5-results --additive` (every prior number identical; only E9 added);
+  - all tests, then commit and tag `v1.6-results`. No push.

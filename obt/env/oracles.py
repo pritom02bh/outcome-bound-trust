@@ -35,7 +35,11 @@ class Oracles:
     def __init__(self) -> None:
         self._receipts: list[Receipt] = []
         self._invoices: list[Invoice] = []
+        self._uptime: dict[tuple[int, str], bool] = {}       # E9 (D44): (round, provider) -> up
         self.view = OracleView(self)
+
+    def record_uptime(self, round_: int, supplier: str, up: bool) -> None:
+        self._uptime[(round_, supplier)] = bool(up)
 
     def record_receipt(self, r: Receipt) -> None:
         self._receipts.append(r)
@@ -64,6 +68,11 @@ class OracleView:
 
     def receipts(self) -> tuple[Receipt, ...]:
         return tuple(self.__src._receipts)
+
+    def uptime(self, supplier: str, start: int, end: int) -> tuple[int, int]:
+        """(up rounds, recorded rounds) of `supplier` in rounds [start, end] (E9, D44)."""
+        rec = [self.__src._uptime[(t, supplier)] for t in range(start, end + 1) if (t, supplier) in self.__src._uptime]
+        return sum(rec), len(rec)
 
     def all_invoices(self) -> tuple[Invoice, ...]:
         return tuple(self.__src._invoices)
