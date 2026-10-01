@@ -1,0 +1,15 @@
+\begin{table}[t]
+\centering
+\small
+\caption{E9 damage against the per-event bound (OBT runs; QUOTA and SLA events; docs/E9\_PLAN.md §4). A ratio above 1 would break the bound.}
+\label{tab:e9_damage_vs_bound}
+\begin{tabular}{lrrrrrrr}
+\toprule
+events & failure events & runs with events & sum of bounds & damage & max damage/bound & max damage/a-priori & held \\
+\midrule
+QUOTA & 54 & 12 & 910.0 & - & - & - & - \\
+SLA & 41 & 12 & 342.0 & - & - & - & - \\
+all & 95 & 15 & 1,252.0 & 366.0 & 1.000 & 4.000 & yes \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,83 @@
+{
+ "e1_default": {
+  "10_farm_fail_refarm": {
+   "costs": true,
+   "ledger": true,
+   "verdicts": true
+  },
+  "11_extraction_attack": {
+   "costs": true,
+   "ledger": true,
+   "verdicts": true
+  },
+  "12_sybil_reentry": {
+   "costs": true,
+   "ledger": true,
+   "verdicts": true
+  },
+  "1_honest": {
+   "costs": true,
+   "ledger": true,
+   "verdicts": true
+  },
+  "2_always_lie": {
+   "costs": true,
+   "ledger": true,
+   "verdicts": true
+  },
+  "3_farm_then_lie": {
+   "costs": true,
+   "ledger": true,
+   "verdicts": true
+  },
+  "4_slow_drift": {
+   "costs": true,
+   "ledger": true,
+   "verdicts": true
+  },
+  "5_price_bait": {
+   "costs": true,
+   "ledger": true,
+   "verdicts": true
+  },
+  "6_vague": {
+   "costs": true,
+   "ledger": true,
+   "verdicts": true
+  },
+  "7_far_deadlines": {
+   "costs": true,
+   "ledger": true,
+   "verdicts": true
+  },
+  "8_claim_splitting": {
+   "costs": true,
+   "ledger": true,
+   "verdicts": true
+  },
+  "9_noisy_honest": {
+   "costs": true,
+   "ledger": true,
+   "verdicts": true
+  }
+ },
+ "e1_identical": true,
+ "gate_differential": {
+  "identical": true,
+  "new": {
+   "disagreements": 0,
+   "examples": 10000,
+   "sha256": "1e2f05a7a6ec6dc0b3692abd15fd26caa81efcb4f706cf4eb6579cd8b90a3356"
+  },
+  "old": {
+   "disagreements": 0,
+   "examples": 10000,
+   "sha256": "1e2f05a7a6ec6dc0b3692abd15fd26caa81efcb4f706cf4eb6579cd8b90a3356"
+  }
+ },
+ "identical": true,
+ "uncached_llm_calls": {
+  "new": 0,
+  "old": 0
+ }
+}

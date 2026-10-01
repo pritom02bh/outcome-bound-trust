@@ -212,6 +212,11 @@ The damage from one broken promise is linear in the trust budget the counterpart
   Config A, with 3 rounds and 2 suppliers, did not finish; its partial run is reported separately. A symmetry cross-check backs these up, and random simulation plus spec–code trace replay cover the full bounds (2 suppliers, 2 items, 6 rounds). The full bounds are not verified exhaustively. The invariant-by-config coverage table and all outputs are in `spec/results/`.
 - **Runtime monitors** (`obt/monitor.py`): check I1–I4, I6, I7 after every phase of every run. I1 is re-derived by a second implementation of the §6 table from a pre-commit gate snapshot. Violations go into each run's metrics; the eval fails loudly if the total isn't 0.
 
+**The TLA+ spec does not model the SLA template (E9, D44).**
+- The spec's abstract `D`/`P` templates cover QUOTA, which is the DELIVERY template over the "capacity" item. So the exhaustive results (k = 1, five bounds) apply to QUOTA's gate, budget and propagation logic unchanged.
+- The SLA template is not in the spec: neither its window/uptime check nor the gate's bookkeeping of reliance on cited SLA claims.
+- **SLA safety therefore rests on the runtime monitors:** I1–I4, I6 and I7 are checked after every phase of every E9 run, and any violation stops the run. It also rests on unit and property tests (`tests/test_e9.py`). It is not model-checked.
+
 **Buyer behaviour is outside the verified core.** The TLA+ buyer (`Propose` in `spec/OBT.tla`) is fully nondeterministic. In any round it may propose nothing, or one ORDER to any supplier for any item and any quantity within the model's bounds, citing **any subset of claim ids**, including unknown ones. It may also write any note, and code proposes the payments. So every concrete buyer is a refinement of that buyer: the scripted buyer, the LLM buyer, and the D32 order planner, which only chooses among orders the buyer could always have proposed. I1–I4 therefore hold for all of them, and adding the planner needed no spec change. The Python buyer may also place a backup order in the same round as an S_main order. Backup orders pass the gate as `OK`, touch no claim, and don't count toward any S_main counterparty's exposure P(c).
 
 ## 8. Environment
@@ -311,6 +316,10 @@ So trust earned with many small true claims can't be spent on one large order. T
 - **RQ5, generalization across buyer models:**
   - **E3** (qwen3:8b, `obt` and `none`) and **E3b** (qwen3:8b, `obt+planner` and `rep+planner`), seed 1.
   - **E5** (`eval/e5_paid.py`, D37/D37a/D41): paid GPT-5.6 Luna and Terra buyers, `obt+planner` and `none`, 12 scenarios, seeds 1–3, with the frozen gpt-oss extractor. Every buyer call was sampled fresh (v2). Seed 1 ran under a $16 hard stop; seeds 2–3 ran with no harness cap (D41).
+  - **E9** (`eval/e9.py`, D44, `docs/E9_PLAN.md`): a second domain, an agent buying cloud/API capacity, behind the `domain` flag. It adds QUOTA (DELIVERY over "capacity") and the new SLA template, checked against an environment-owned uptime log.
+    - Scripted buyer and providers with structured intents, so no natural-language extraction is involved.
+    - 7 scenarios × none / rep-strict / rep-n18 / obt × seeds 1–3.
+    - The trust core is unchanged except one gate bookkeeping line that records reliance on cited SLA claims.
 - **RQ6, extraction reliability:**
   - **E4:** both local models on the test set and the hard subset.
   - The E5 models' own extraction on the same sets.

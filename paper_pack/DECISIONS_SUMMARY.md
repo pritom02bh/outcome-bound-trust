@@ -54,3 +54,4 @@ Summary of `docs/DECISIONS.md` (the full file has the reasoning).
 - **D42**: Annotator package for an independent second labeling (user request)
 - **D43**: E8: an LLM-powered adversarial supplier (user request)
 - **D43a**: E8 stopped on an A2A timeout, not a violation; transport timeouts raised
+- **D44**: E9: a second domain (cloud/API capacity), approved with the minimal change (user decision)

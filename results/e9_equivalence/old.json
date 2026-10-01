@@ -1,0 +1,93 @@
+{
+ "e1_default": {
+  "10_farm_fail_refarm": {
+   "costs": "8c38ee6b26fb4ce78bac6bb3e0cbb49f5c60dadcea8fdef929c06b6bee966c29",
+   "ledger": "f45d3cb7f168316c0aae0ceb37a1be045fb239e8d0782245e2818ff0cb36dc3a",
+   "total_cost": 6065.0,
+   "uncached_llm_calls": 0,
+   "verdicts": "6ba8d82da36f118050e831a989535e3b78cf23b145f6e9bdcc660e05e732927a"
+  },
+  "11_extraction_attack": {
+   "costs": "3793fbaafd148053b145f7265001be4da2b4fff91517156b0be9ae3b04e147fd",
+   "ledger": "24c022cfea13d55419d44965e53a7eb35ea26c5d20a067667cff47e5ac4e65df",
+   "total_cost": 6180.5,
+   "uncached_llm_calls": 0,
+   "verdicts": "8facb1fee136608a14efcd9ebf198c270035050b1c9e55092f24a610f68a458a"
+  },
+  "12_sybil_reentry": {
+   "costs": "bc150b7a9869a07b46800fd8654552feb8844ca53c8c5688558f28f71873e154",
+   "ledger": "fb2c8eb8da01c42d582b003e4d966112ba226708076ee11aeb9f4dcf38814c11",
+   "total_cost": 6234.5,
+   "uncached_llm_calls": 0,
+   "verdicts": "db7dd1dd38ad141930ea00f8429336985e0c3729fb6aad966fc04850c3f9772f"
+  },
+  "1_honest": {
+   "costs": "bc366c9a9844254f4e55eaaf73864a53eaab66afab69d6c49f8ace9684eaa615",
+   "ledger": "d9b240910600618ffcb907505d7ac31d6435c319d2b0939fd7c103d66b3eaf2c",
+   "total_cost": 6038.0,
+   "uncached_llm_calls": 0,
+   "verdicts": "d0efb786790977d767b9b051b82d54eea20e17f97ec750c75a567493ce0ed065"
+  },
+  "2_always_lie": {
+   "costs": "bc150b7a9869a07b46800fd8654552feb8844ca53c8c5688558f28f71873e154",
+   "ledger": "a6b0fd62471d337a4242470b8b4ee84e21a23db017df2c349e8e2d0d40d01717",
+   "total_cost": 6234.5,
+   "uncached_llm_calls": 0,
+   "verdicts": "1401bb6caf3283ceaced2cc03ff3f9e3fd409d52813835b104441d91d0cd2dae"
+  },
+  "3_farm_then_lie": {
+   "costs": "a0846f791b7f60efaeeac15e9a370c3b0913c9a54f663fa1ac145c741f08ebdb",
+   "ledger": "151464728b43e4372a2b1d3826c02f6a86411d897fb63cb18e1dccad343c6ca3",
+   "total_cost": 6044.5,
+   "uncached_llm_calls": 0,
+   "verdicts": "9255fa93db1ed1c83c8c814ccbf4cd2f0d36d096cfcb4309389151527d45fac0"
+  },
+  "4_slow_drift": {
+   "costs": "d98a7e9d82010a019d18856ec723e6226060d8391c845c60031193a91003c47c",
+   "ledger": "3c621c75fe6f036c53e2f74211b527d06a7d6e41161b17ad23760167ebb7eb7b",
+   "total_cost": 6211.5,
+   "uncached_llm_calls": 0,
+   "verdicts": "130a67098c9079bf047cac247ddef39fd5eb70f5dcfd3cb0571d628a57990df0"
+  },
+  "5_price_bait": {
+   "costs": "a2d982167e2280727c7eee2dd5dfbe3bea7668e5a6b4aa56e04e60d6f238df4e",
+   "ledger": "7f6f01d39e004f6adc6c8b0fe2c77faeaf866a658630d6f0fbc344d4b4511ded",
+   "total_cost": 6157.0,
+   "uncached_llm_calls": 0,
+   "verdicts": "dfcca0812b35bcc6c81dfa12fd0da8f4da5b6696ffa50ab6994a5f31cf92ad74"
+  },
+  "6_vague": {
+   "costs": "d735c5a6a2c26d392c65d711fd4ff60caa7cc4c9eb7da236f865028410ff4bbf",
+   "ledger": "0b9069ed641d9220729822d9a3d014c40245b953c462fdef5e9ad121d8cc7a91",
+   "total_cost": 6181.0,
+   "uncached_llm_calls": 0,
+   "verdicts": "c40530e0df907564696683ee718317a7de6d8f5461d7f7955d0c16440cff8cfb"
+  },
+  "7_far_deadlines": {
+   "costs": "d735c5a6a2c26d392c65d711fd4ff60caa7cc4c9eb7da236f865028410ff4bbf",
+   "ledger": "3f06646250f805499a2eeb572d5c659c1ca9430be8d3b43f7cd86f7e8a8077a8",
+   "total_cost": 6181.0,
+   "uncached_llm_calls": 0,
+   "verdicts": "c40530e0df907564696683ee718317a7de6d8f5461d7f7955d0c16440cff8cfb"
+  },
+  "8_claim_splitting": {
+   "costs": "595ce1ce09234f58487439a043545e73474c7b2d677ae34e0a021db545d5d30e",
+   "ledger": "ef20e36179c825bf036e88428f0cd888f717bad0db564f1426b0dc541336533f",
+   "total_cost": 6176.0,
+   "uncached_llm_calls": 0,
+   "verdicts": "8c426ff2f8e324d38793bc7fb95fda1fa390bd73868eeb717db0a113f233c936"
+  },
+  "9_noisy_honest": {
+   "costs": "bf3ec3d2f046601628ab90419a6a1c87486a3bebf8c5a2121abc590ecfdaef43",
+   "ledger": "5fdeddbdf50c6f7577eef917940f658a7861e9ec6e14a8541b74ada5f545fc17",
+   "total_cost": 6113.5,
+   "uncached_llm_calls": 0,
+   "verdicts": "afd7daa40452cb1b7b683ec27e938f0e66fa27dc158fe9e3b7236a2779098c96"
+  }
+ },
+ "gate_differential": {
+  "disagreements": 0,
+  "examples": 10000,
+  "sha256": "1e2f05a7a6ec6dc0b3692abd15fd26caa81efcb4f706cf4eb6579cd8b90a3356"
+ }
+}

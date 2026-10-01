@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\small
+\caption{E9, second domain (an agent buying cloud/API capacity; scripted buyer and providers, structured intents, no natural-language extraction; seeds 1-3): loss from lies (mean of scenarios 2-7) and utility cost against none, mean [95\% bootstrap CI over seeds]; damage + reroute premium + resid are means over attack runs; \$ per run.}
+\label{tab:e9}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+defense & seeds & loss from lies & damage & reroute premium & resid & utility cost & utility (\% of cost) & provider share \\
+\midrule
+none & 3 & 1,165.9 [1,120.7, 1,197.8] & n/a & 0.0 & 1,165.9 & 0.0 [0.0, 0.0] & 0.00 & 0.974 \\
+rep-strict & 3 & 134.9 [116.0, 145.0] & n/a & 0.0 & 134.9 & 266.0 [240.0, 304.0] & 18.34 & 0.193 \\
+rep-n18 & 3 & 477.2 [437.8, 512.7] & n/a & 0.0 & 477.2 & 0.0 [0.0, 0.0] & 0.00 & 0.974 \\
+obt & 3 & 42.6 [34.8, 53.2] & 20.3 & 19.6 & 2.7 & 327.3 [310.0, 346.0] & 22.57 & 0.111 \\
+\bottomrule
+\end{tabular}
+\end{table}
