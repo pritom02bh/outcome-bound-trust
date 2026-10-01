@@ -456,10 +456,9 @@ def summarize(results: list[dict]) -> dict:
                 a, b = overhead[d][k], overhead["none"][k]
                 overhead[d][f"added_{k}"] = None if a is None or b is None else round(a - b, 3)
     # Reroute premium: what the defense's own reroutes cost in the honest world (absolute, not differenced).
-    # Stored under the key `price_of_safety` (a legacy field name, kept for compatibility).
-    price_of_safety = {d: mean([idx[(1, d, s)]["metrics"]["loss_bound"]["reroute_cost"] for s in seeds
-                                if (1, d, s) in idx]) for d in defenses}
-    return {"loss_from_lies": loss, "loss_bound": bound, "price_of_safety": price_of_safety,
+    reroute_premium = {d: mean([idx[(1, d, s)]["metrics"]["loss_bound"]["reroute_cost"] for s in seeds
+                       if (1, d, s) in idx]) for d in defenses}
+    return {"loss_from_lies": loss, "loss_bound": bound, "reroute_premium": reroute_premium,
             "utility": utility, "overhead": overhead,
             "defenses": defenses, "scenarios": scenarios, "seeds": seeds}
 
@@ -494,7 +493,7 @@ def markdown(summary: dict, ext: dict | None) -> str:
           "Absolute backup premium the defense's own reroutes cost in the honest scenario (not differenced).", "",
           "| Defense | Reroute premium ($) |", "|---|---|"]
     for x in d:
-        L.append(f"| {x} | {f(summary.get('price_of_safety', {}).get(x))} |")
+        L.append(f"| {x} | {f(summary.get('reroute_premium', {}).get(x))} |")
     L += ["", "## Utility (scenarios 1 and 9)", "", "| Scenario | Defense | Cost | Extra vs none | Blocked S_main orders |",
           "|---|---|---|---|---|"]
     for k, v in summary["utility"].items():

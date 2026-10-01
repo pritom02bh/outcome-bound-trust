@@ -22,7 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PACK = ROOT / "paper_pack"
-VERSION = "v1.6"                 # the release this pack belongs to (tag v1.6-results)
+VERSION = "v1.7"                 # the release this pack belongs to (tag v1.7-results)
 ZIP = ROOT / f"paper_pack_{VERSION}.zip"
 TJ = "results/tables.json"
 NUMERIC = re.compile(r"^-?[\d,]*\d(\.\d+)?$")
@@ -41,7 +41,7 @@ COLUMNS = {
                        "run, $ per run", "resid": "loss from lies − damage − reroute premium, $ per run",
     "sum of bounds": "sum of per-event bounds Σ L_e, $", "max damage/bound": "largest per-run damage / Σ L_e",
     "failure events": "FAILED claims with consumed units", "runs": "runs (or attacker evaluations)",
-    "held": "damage ≤ Σ L_e in every run", "config": "OBT config: b0 fraction, window W, grace δ",
+    "held": "damage ≤ Σ L_e in every run", "config": "config: E1, OBT b0 fraction, window W, grace δ; E9 calibration, grid point and its settings",
     "default": "the chosen default (D22 rule)", "k": "budget growth multiplier (D36)", "rounds": "game length T",
     "max damage/a-priori": "largest damage / k-scaled a-priori bound",
     "extractor": "extraction model (frozen prompt) or rule baseline", "precision": "test set (199), template + slots",
@@ -54,7 +54,7 @@ COLUMNS = {
     "from non-commitments": "claims recorded from rows labeled no", "attacker": "E6 attacker picked by ratio or damage",
     "damage / bound": "damage / Σ L_e, worst of 3 seeds", "n0": "reputation probation length",
     "theta": "reputation threshold", "cap": "reputation order-value cap, $", "locks out": "never trades after a lock-out",
-    "never trades": "never trades with an honest S_main", "chosen": "the chosen reputation config (D33)",
+    "never trades": "never trades with an honest S_main", "chosen": "the config chosen by the selection rule (D33 reputation grid; D45 E9 calibration)",
     "run": "E3 or E3b", "attack runs": "attack runs in the mean", "buyer": "paid buyer model (E5 v2)",
     "scenario": "scenario (1 honest ... 12 sybil re-entry)",
     "mutant": "guard removed in the spec (none = unmutated)", "verdict": "TLC result: PASS, CAUGHT(property) or N/A",
@@ -74,6 +74,11 @@ COLUMNS = {
     "rounds whose message addresses the buyer's software or quotes two or more prices",
     "provider share": "share of reserved capacity units bought from the main provider, honest scenario (E9)",
     "events": "failure-event type (QUOTA, SLA, all)", "runs with events": "OBT runs with at least one event",
+    "setting": "E9 config source: transferred from the supply domain (D44) or calibrated on the cloud domain (D45)",
+    "point": "E9 calibration grid point", "front": "on the defense's Pareto front (never-trading points excluded)",
+    "transferred": "the config E9 ran with (D44)", "OBT runs": "OBT grid runs checked",
+    "invariant violations": "invariant violations over every grid run (target 0)",
+    "transferred points reproduce E9": "the transferred grid points' costs equal E9's runs exactly",
     "identity resets": "switches to a new identity", "invoice overpricing":
     "orders invoiced above the price the round's message stated ($5.00 if none)",
 }
@@ -181,6 +186,8 @@ def sheets() -> list[tuple[str, list[tuple]]]:
         ("Enron", [tblock("enron")]),
         *([("E8", [tblock("e8"), tblock("e8_strategies"), cblock("results/e8/runs.csv")])] if "e8" in _tables() else []),
         *([("E9", [tblock("e9"), tblock("e9_damage_vs_bound")])] if "e9" in _tables() else []),
+        *([("E9 calibration", [tblock("e9_calibration"), tblock("e9_calibration_bound"),
+                                tblock("e9_calibration_grid")])] if "e9_calibration" in _tables() else []),
         ("TLA+ verification", [tlc_block("quick", "quick"), tlc_block("fallbackA2", "A′"), tlc_block("fallbackB", "B"),
                                tlc_block("quick_b01", "quick, B0 = 1"), tlc_block("fallbackA2_b01", "A′, B0 = 1"),
                                coverage_block()]),

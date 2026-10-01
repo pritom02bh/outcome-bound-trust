@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\small
+\caption{E9 with transferred vs calibrated configs (D45). Transferred: the supply-domain configs E9 ran with (D44). Calibrated: each defense's cloud-domain grid point chosen by E1's rule (Pareto front in utility cost and attack loss, smallest sum; never-trading points excluded). Seeds 1-3, mean [95\% bootstrap CI over seeds]; \$ per run.}
+\label{tab:e9_calibration}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+defense & setting & config & loss from lies & damage & reroute premium & resid & utility cost & utility (\% of cost) & provider share \\
+\midrule
+obt & transferred & obt\_b0.05\_k1 (b0\_frac 0.05, budget\_k 1) & 42.6 [34.8, 53.2] & 20.3 & 19.6 & 2.7 & 327.3 [310.0, 346.0] & 22.57 & 0.111 \\
+obt & calibrated & obt\_b0.2\_k1 (b0\_frac 0.2, budget\_k 1) & 46.3 [40.8, 50.0] & 68.7 & 35.4 & -57.8 & 293.7 [269.0, 323.0] & 20.25 & 0.222 \\
+rep-strict & transferred & rep\_n3\_th0.9\_cap200 (rep\_n0 3, rep\_theta 0.9, rep\_cap 200.0) & 134.9 [116.0, 145.0] & n/a & 0.0 & 134.9 & 266.0 [240.0, 304.0] & 18.34 & 0.193 \\
+rep-strict & calibrated & rep\_n8\_th0.8\_cap200 (rep\_n0 8, rep\_theta 0.8, rep\_cap 200.0) & 371.0 [340.8, 387.0] & n/a & 0.0 & 371.0 & 0.0 [0.0, 0.0] & 0.00 & 0.974 \\
+\bottomrule
+\end{tabular}
+\end{table}

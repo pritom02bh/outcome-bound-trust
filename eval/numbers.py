@@ -19,7 +19,7 @@ RQS = [("RQ1", "Security: does OBT cut the loss from lies?"),
        ("RQ2", "Utility cost: what does OBT cost honest trade?"),
        ("RQ3", "Tightness under adaptive attack: how close does damage come to the per-event bound?"),
        ("RQ4", "Earning trust: the order planner, trust over time, and the budget growth multiplier k"),
-       ("RQ5", "Generalization across buyer models (E3, E3b, E5)"),
+       ("RQ5", "Generalization across buyer models and domains (E3, E3b, E5, E9)"),
        ("RQ6", "Extraction reliability (E4, hard subset, E5 extractors, Enron)"),
        ("S6", "Section 6: verification (not an RQ)")]
 
@@ -172,6 +172,25 @@ def entries(results: Path = ROOT / "results", spec_results: Path = ROOT / "spec"
         add("RQ5", f"E9 OBT damage vs Σ bound (QUOTA events {b['QUOTA']['failure events']}, SLA events "
             f"{b['SLA']['failure events']})", f"max {b['all']['max damage/bound']}; held {b['all']['held']}", "ratio",
             "3 seeds", f"{J} → e9_damage_vs_bound[events=all]")
+    # E9 calibration (D45): each defense's cloud-domain config by E1's rule, next to the transferred one.
+    if "e9_calibration" in T.t:
+        for d in ("obt", "rep-strict"):
+            t, c = T.row("e9_calibration", defense=d, setting="transferred"), \
+                T.row("e9_calibration", defense=d, setting="calibrated")
+            add("RQ5", f"E9 `{d}`, transferred → calibrated config (D45): loss from lies; utility cost (% of cost) "
+                "(mean [95% CI])", f"{t['config']}: {t['loss from lies']}; {t['utility cost']} "
+                f"({t['utility (% of cost)']}%) → {c['config']}: {c['loss from lies']}; {c['utility cost']} "
+                f"({c['utility (% of cost)']}%)", "$ per run", "seeds 1-3",
+                f"{J} → e9_calibration[defense={d}, setting=transferred|calibrated]")
+        g = T.t["e9_calibration_grid"]
+        front = lambda d: ", ".join(r[1] for r in g["rows"] if r[0] == d and r[6] == "yes")  # noqa: E731
+        add("RQ5", "E9 calibration Pareto fronts (OBT; reputation, never-trading points excluded)",
+            f"{front('obt')}; {front('rep-strict')}", "grid points", "seeds 1-3",
+            f"{J} → e9_calibration_grid[front=yes]")
+        b = dict(zip(T.t["e9_calibration_bound"]["columns"], T.t["e9_calibration_bound"]["rows"][0]))
+        add("RQ5", f"E9 calibration: loss bound over every OBT grid run ({b['OBT runs']} runs, "
+            f"{b['failure events']} failure events)", f"max {b['max damage/bound']}; held {b['held']}; invariant "
+            f"violations {b['invariant violations']}", "ratio", "seeds 1-3", f"{J} → e9_calibration_bound")
 
     # ---- RQ6 extraction reliability
     for m in ("gpt-oss:20b", "qwen3:8b", "gpt-5.6-luna", "gpt-5.6-terra"):

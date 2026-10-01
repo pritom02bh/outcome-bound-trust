@@ -172,7 +172,7 @@ def build(results: Path, out: Path) -> dict:
     sizes = []
     for name, fn, data in (("pareto", fig_pareto, load("pareto")), ("trust_over_time", fig_trust, load("trust")),
                            ("damage_vs_bound", fig_damage, load("damage_bound")),
-                           ("loss_by_scenario", fig_loss, load("loss"))):
+                           ("loss_by_scenario", fig_loss, load("loss")), ("e9_pareto", fig_pareto, load("e9_pareto"))):
         if data:
             sizes.append(fn(data, out / "figures" / f"{name}.pdf"))
     tables = json.loads((results / "tables.json").read_text()) if (results / "tables.json").exists() else {}

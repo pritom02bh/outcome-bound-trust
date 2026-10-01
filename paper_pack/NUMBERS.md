@@ -65,7 +65,7 @@ Grouped by the paper's research questions (DESIGN §10); verification is Section
 | Horizon: OBT utility cost (% of cost) at T = 50 → T = 100 (scripted buyer) | 5.89 → 5.01 | % of cost | seeds 1-3 | results/tables.json → horizon[defense=obt] |
 | E7: budget growth k = 1 → k = 2, utility cost (% of cost) and loss from lies (T = 50) | 5.89 → 4.54; loss 136.9 → 195.1 | % of cost; $ per run | seeds 1-3 | results/tables.json → budget_k[k=1|2, rounds=50] |
 
-## RQ5. Generalization across buyer models (E3, E3b, E5)
+## RQ5. Generalization across buyer models and domains (E3, E3b, E5, E9)
 
 | claim | value | unit | seeds | source (file → key) |
 |---|---|---|---|---|
@@ -84,6 +84,10 @@ Grouped by the paper's research questions (DESIGN §10); verification is Section
 | E9 cloud domain, `rep-n18`: loss from lies; utility cost (% of cost) (mean [95% CI]) | 477.2 [437.8, 512.7]; 0.0 [0.0, 0.0] (0.00%) | $ per run | 3 seeds | results/tables.json → e9[defense=rep-n18] |
 | E9 cloud domain, `obt`: loss from lies; utility cost (% of cost) (mean [95% CI]) | 42.6 [34.8, 53.2]; 327.3 [310.0, 346.0] (22.57%) | $ per run | 3 seeds | results/tables.json → e9[defense=obt] |
 | E9 OBT damage vs Σ bound (QUOTA events 54, SLA events 41) | max 1.000; held yes | ratio | 3 seeds | results/tables.json → e9_damage_vs_bound[events=all] |
+| E9 `obt`, transferred → calibrated config (D45): loss from lies; utility cost (% of cost) (mean [95% CI]) | obt_b0.05_k1 (b0_frac 0.05, budget_k 1): 42.6 [34.8, 53.2]; 327.3 [310.0, 346.0] (22.57%) → obt_b0.2_k1 (b0_frac 0.2, budget_k 1): 46.3 [40.8, 50.0]; 293.7 [269.0, 323.0] (20.25%) | $ per run | seeds 1-3 | results/tables.json → e9_calibration[defense=obt, setting=transferred|calibrated] |
+| E9 `rep-strict`, transferred → calibrated config (D45): loss from lies; utility cost (% of cost) (mean [95% CI]) | rep_n3_th0.9_cap200 (rep_n0 3, rep_theta 0.9, rep_cap 200.0): 134.9 [116.0, 145.0]; 266.0 [240.0, 304.0] (18.34%) → rep_n8_th0.8_cap200 (rep_n0 8, rep_theta 0.8, rep_cap 200.0): 371.0 [340.8, 387.0]; 0.0 [0.0, 0.0] (0.00%) | $ per run | seeds 1-3 | results/tables.json → e9_calibration[defense=rep-strict, setting=transferred|calibrated] |
+| E9 calibration Pareto fronts (OBT; reputation, never-trading points excluded) | obt_b0.05_k1, obt_b0.1_k1, obt_b0.1_k2, obt_b0.2_k1, obt_b0.2_k2; rep_n3_th0.85_cap200, rep_n3_th0.9_cap200, rep_n8_th0.8_cap200 | grid points | seeds 1-3 | results/tables.json → e9_calibration_grid[front=yes] |
+| E9 calibration: loss bound over every OBT grid run (168 runs, 586 failure events) | max 1.000; held yes; invariant violations 0 | ratio | seeds 1-3 | results/tables.json → e9_calibration_bound |
 
 ## RQ6. Extraction reliability (E4, hard subset, E5 extractors, Enron)
 

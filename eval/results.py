@@ -22,7 +22,7 @@ from eval.stats import (e2b_report, e2b_trust_svg, loss_split, main_share, repor
 from obt.attacks.suppliers import scenario_name
 
 # e1 grid points are summarized together as one grid (_e1), not as separate evals.
-SKIP = ("_invalid", "_archive", "_v1_shared_cache", "e8", "e9", "cache", "message_bank", "tuning", "e1", "e4", "e6", "rep_grid")
+SKIP = ("_invalid", "_archive", "_v1_shared_cache", "e8", "e9", "e9_calib", "cache", "message_bank", "tuning", "e1", "e4", "e6", "rep_grid")
 
 
 def _read_rows(f: Path) -> list[dict]:
@@ -1015,6 +1015,76 @@ def _paper_data(runs: Path, out: Path) -> str | None:
               "|" + "---|" * len(tables["e9_damage_vs_bound"]["columns"])]
         L += ["| " + " | ".join(str(c) for c in r) + " |" for r in tables["e9_damage_vs_bound"]["rows"]]
         (out / "e9" / "report.md").write_text("\n".join(L) + "\n")
+    # E9 calibration (D45): each defense's own cloud-domain config by E1's rule, next to the transferred defaults.
+    if e9rows and (runs / "e9_calib").exists():
+        from eval import e9_calib
+        cs = e9_calib.summarize(runs / "e9_calib", runs / "e9")
+        sc = e9m.summary(e9_calib.calibrated_rows(runs / "e9_calib", runs / "e9"))
+        cfg = lambda p: ", ".join(f"{k} {v}" for k, v in cs["points"][p].items()  # noqa: E731
+                                  if k in (("b0_frac", "budget_k") if cs["points"][p]["defense"] == "obt"
+                                           else ("rep_n0", "rep_theta", "rep_cap")))
+        side = []
+        for d in ("obt", "rep-strict"):
+            for setting, s, p in (("transferred", s9, cs["transferred"][d]), ("calibrated", sc, cs["picks"][d])):
+                v = s["defenses"][d]
+                side.append([d, setting, f"{p} ({cfg(p)})", fmt(v["loss"]), money(v["split"]["damage"]),
+                             money(v["split"]["reroute"]), money(v["split"]["resid"]), fmt(v["util"]),
+                             f"{mean(v['util_pct']):.2f}", "-" if v["share"] is None else f"{v['share']:.3f}"])
+        tables["e9_calibration"] = {
+            "caption": "E9 with transferred vs calibrated configs (D45). Transferred: the supply-domain configs E9 ran "
+                       "with (D44). Calibrated: each defense's cloud-domain grid point chosen by E1's rule (Pareto "
+                       "front in utility cost and attack loss, smallest sum; never-trading points excluded). Seeds "
+                       "1-3, mean [95% bootstrap CI over seeds]; $ per run.",
+            "columns": ["defense", "setting", "config", "loss from lies", "damage", "reroute premium", "resid",
+                        "utility cost", "utility (% of cost)", "provider share"],
+            "rows": side}
+        tables["e9_calibration_grid"] = {
+            "caption": "E9 calibration grids (D45): every point, scripted buyer, seeds 1-3, $ per run. OBT over b0 "
+                       "(fraction of per-round spend) and k; reputation over n0, theta and cap (the D33 grid). "
+                       "Max damage/bound over the point's OBT runs.",
+            "columns": ["defense", "point", "utility cost", "loss from lies", "never trades", "locks out", "front",
+                        "chosen", "transferred", "max damage/bound"],
+            "rows": [["obt" if p["defense"] == "obt" else "rep-strict", n, f"{p['utility_cost']:.1f}",
+                      f"{p['attack_loss']:.1f}", "yes" if p["never_trades"] else "", "yes" if p["locked"] else "",
+                      "yes" if n in cs["fronts"]["obt" if p["defense"] == "obt" else "rep-strict"] else "",
+                      "yes" if n in cs["picks"].values() else "", "yes" if n in cs["transferred"].values() else "",
+                      f3(p["max_ratio"]) if p["defense"] == "obt" else "-"] for n, p in cs["points"].items()]}
+        obt_pts = [p for p in cs["points"].values() if p["defense"] == "obt"]
+        ratios = [p["max_ratio"] for p in obt_pts if p["max_ratio"] is not None]
+        tables["e9_calibration_bound"] = {
+            "caption": "E9 calibration (D45): the loss bound over every OBT grid run (8 points x 7 scenarios x 3 "
+                       "seeds), and the harness check that the transferred grid points reproduce E9's runs.",
+            "columns": ["OBT runs", "failure events", "max damage/bound", "held", "invariant violations",
+                        "transferred points reproduce E9"],
+            "rows": [[sum(p["runs"] for p in obt_pts), sum(p["failure_events"] for p in obt_pts), f3(max(ratios)),
+                      "yes" if all(p["bound_held"] for p in obt_pts) else "NO",
+                      sum(p["invariant_violations"] for p in cs["points"].values()),
+                      "yes" if all(cs["reproduces_e9"].values()) else "NO"]]}
+        none9 = s9["defenses"].get("none", {})
+        pick = lambda d: {"obt": cs["picks"]["obt"], "reputation": cs["picks"]["rep-strict"]}[d]  # noqa: E731
+        (fd / "e9_pareto.json").write_text(json.dumps({
+            "obt": [{"name": n, "utility_cost": p["utility_cost"], "attack_loss": p["attack_loss"],
+                     "front": n in cs["fronts"]["obt"]} for n, p in cs["points"].items() if p["defense"] == "obt"],
+            "reputation": [{"name": n, "utility_cost": p["utility_cost"], "attack_loss": p["attack_loss"],
+                            "front": n in cs["fronts"]["rep-strict"], "never_trades": p["never_trades"],
+                            "locked": p["locked"]} for n, p in cs["points"].items() if p["defense"] == "reputation"],
+            "none": {"utility_cost": 0.0, "attack_loss": round(mean(none9.get("loss") or [0.0]), 4)},
+            "chosen": {d: pick(d) for d in ("obt", "reputation")}, "transferred": cs["transferred"]},
+            indent=1, sort_keys=True))
+        L = ["# E9 calibration: transferred vs calibrated configs (D45)", "",
+             "Rule (fixed in E1, D22, with D33's never-trade exclusion): per defense, the Pareto front in (utility "
+             "cost, attack loss) over its non-degenerate grid points; pick the front point with the smallest sum.", ""]
+        for name in ("e9_calibration", "e9_calibration_bound", "e9_calibration_grid"):
+            t = tables[name]
+            L += [f"## {name}", "", t["caption"], "", "| " + " | ".join(t["columns"]) + " |",
+                  "|" + "---|" * len(t["columns"])]
+            L += ["| " + " | ".join(str(c) for c in r) + " |" for r in t["rows"]] + [""]
+        L += [f"OBT front: {', '.join(cs['fronts']['obt'])}.", "",
+              f"Reputation front (never-trading points excluded): {', '.join(cs['fronts']['rep-strict'])}.", ""]
+        (out / "e9" / "calibration.md").write_text("\n".join(L))
+        (out / "e9" / "calibration_pareto.svg").write_bytes(_loss_vs_utility(
+            sorted((n, p["utility_cost"], p["attack_loss"]) for n, p in cs["points"].items()
+                   if n in cs["fronts"]["obt"] + cs["fronts"]["rep-strict"]), "E9 calibration: Pareto fronts"))
     (out / "tables.json").write_text(json.dumps(tables, indent=1, sort_keys=True))
     return "figdata/ and tables.json: data for eval/paper.py (figures and LaTeX tables)"
 

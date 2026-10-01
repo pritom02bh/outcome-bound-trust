@@ -285,7 +285,7 @@ So trust earned with many small true claims can't be spent on one large order. T
 - `utility_cost(d, seed) = cost(d, honest, seed) − cost(none, honest, seed)`: the cost OBT imposes on honest trade. It is reported in $ per run and as a % of the honest run's total cost without a defense (same seed), with the count of blocked honest S_main orders.
 - **Loss per 100 S_main units** (D40) was explored and **rejected for the paper**. Its numerator includes costs that aren't trades with S_main (resid, over-stocking), so low-volume defenses are penalized and the ratio misleads. It is still computed, with its per-run trace, under `results/per_unit/` only.
 - **Reroute premium:** the dollar backup premium on quantity a defense reroutes to S_backup after its own blocks (`reroute_cost`).
-  - The honest run's absolute reroute premium is reported per defense. Its summary key is `price_of_safety`, a legacy field name.
+  - The honest run's absolute reroute premium is reported per defense (summary key `reroute_premium`; D45 renamed the legacy key).
   - In the loss split below, the reroute premium is differenced against the honest run (`reroute_cost_diff`).
 
 **Metrics.**
@@ -313,13 +313,14 @@ So trust earned with many small true claims can't be spent on one large order. T
   - Trust over time: B and S_main share per round.
   - The **horizon** check (T = 50 vs 100).
   - **E7:** the budget growth multiplier k ∈ {1, 2, 4} (D36).
-- **RQ5, generalization across buyer models:**
+- **RQ5, generalization across buyer models and domains:**
   - **E3** (qwen3:8b, `obt` and `none`) and **E3b** (qwen3:8b, `obt+planner` and `rep+planner`), seed 1.
   - **E5** (`eval/e5_paid.py`, D37/D37a/D41): paid GPT-5.6 Luna and Terra buyers, `obt+planner` and `none`, 12 scenarios, seeds 1–3, with the frozen gpt-oss extractor. Every buyer call was sampled fresh (v2). Seed 1 ran under a $16 hard stop; seeds 2–3 ran with no harness cap (D41).
   - **E9** (`eval/e9.py`, D44, `docs/E9_PLAN.md`): a second domain, an agent buying cloud/API capacity, behind the `domain` flag. It adds QUOTA (DELIVERY over "capacity") and the new SLA template, checked against an environment-owned uptime log.
     - Scripted buyer and providers with structured intents, so no natural-language extraction is involved.
     - 7 scenarios × none / rep-strict / rep-n18 / obt × seeds 1–3.
     - The trust core is unchanged except one gate bookkeeping line that records reliance on cited SLA claims.
+    - **E9 calibration** (`eval/e9_calib.py`, D45): OBT over b0 ∈ {2.5%, 5%, 10%, 20%} × k ∈ {1, 2} and reputation over the D33 grid, on the cloud domain. Each defense's config is chosen by E1's rule (fixed before any E9 data) and reported next to the transferred supply-domain configs, with both Pareto fronts.
 - **RQ6, extraction reliability:**
   - **E4:** both local models on the test set and the hard subset.
   - The E5 models' own extraction on the same sets.

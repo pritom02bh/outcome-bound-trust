@@ -1,0 +1,5 @@
+defense,setting,config,loss from lies,damage,reroute premium,resid,utility cost,utility (% of cost),provider share
+obt,transferred,"obt_b0.05_k1 (b0_frac 0.05, budget_k 1)","42.6 [34.8, 53.2]",20.3,19.6,2.7,"327.3 [310.0, 346.0]",22.57,0.111
+obt,calibrated,"obt_b0.2_k1 (b0_frac 0.2, budget_k 1)","46.3 [40.8, 50.0]",68.7,35.4,-57.8,"293.7 [269.0, 323.0]",20.25,0.222
+rep-strict,transferred,"rep_n3_th0.9_cap200 (rep_n0 3, rep_theta 0.9, rep_cap 200.0)","134.9 [116.0, 145.0]",n/a,0.0,134.9,"266.0 [240.0, 304.0]",18.34,0.193
+rep-strict,calibrated,"rep_n8_th0.8_cap200 (rep_n0 8, rep_theta 0.8, rep_cap 200.0)","371.0 [340.8, 387.0]",n/a,0.0,371.0,"0.0 [0.0, 0.0]",0.00,0.974

@@ -119,7 +119,7 @@ def test_honest_run_decomposes_to_zero(runs):
     assert honest.metrics["loss_bound"]["reroute_cost"] > 0
 
 
-def test_summary_reports_price_of_safety(tmp_path, rule_llm):
+def test_summary_reports_reroute_premium(tmp_path, rule_llm):
     from eval.run import EvalConfig, run_eval
     ec = EvalConfig(backend="fake", model="fake", buyer="scripted", scenarios=(1, 2), defenses=("obt", "none"),
                     rounds=30, extractor_eval=False)
@@ -127,7 +127,7 @@ def test_summary_reports_price_of_safety(tmp_path, rule_llm):
     honest = [r for r in map(__import__("json").loads, (tmp_path / "results.jsonl").read_text().splitlines())
               if r["scenario"] == 1]
     for r in honest:
-        assert rep["price_of_safety"][r["defense"]] == pytest.approx(r["metrics"]["loss_bound"]["reroute_cost"])
+        assert rep["reroute_premium"][r["defense"]] == pytest.approx(r["metrics"]["loss_bound"]["reroute_cost"])
     b = rep["loss_bound"]["2|obt"]
     assert b["damage"] + b["reroute_cost_diff"] + b["resid"] == pytest.approx(rep["loss_from_lies"]["2|obt"], abs=0.01)
     assert "reroute premium" in (tmp_path / "summary.md").read_text().lower()
