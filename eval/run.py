@@ -271,8 +271,8 @@ def run_one(ec: EvalConfig, n: int, defense: str, seed: int, meter: CostMeter, f
     if not isinstance(extractor, (LLMExtractor, NullExtractor)):
         raise RuntimeError("eval runs must use the LLM extractor (D24)")
     t0 = time.time()
-    sim = Sim(sim_config(ec, defense), seed, make_supplier(n, cfg, seed), buyer, extractor=extractor,
-              scenario=scenario_name(n))
+    main = make_supplier(n, cfg, seed, defense=defense, log_dir=ec.log_dir, tag=tag)
+    sim = Sim(sim_config(ec, defense), seed, main, buyer, extractor=extractor, scenario=scenario_name(n))
     res = sim.run()
     llms = [llm] if ext_llm is llm else [llm, ext_llm]
     by_purpose: dict = {}
@@ -288,7 +288,8 @@ def run_one(ec: EvalConfig, n: int, defense: str, seed: int, meter: CostMeter, f
             "buyer": ec.buyer, "transport": ec.transport, "total_cost": res.total_cost, "costs": res.costs,
             "metrics": res.metrics,
             "usage": usage, "wall_s": round(time.time() - t0, 2), "rounds": ec.rounds, "trace": res.trace,
-            "meta": run_meta(ec, n, defense, seed)}
+            "meta": run_meta(ec, n, defense, seed),
+            **({"adversary": main.report()} if callable(getattr(main, "report", None)) else {})}
 
 
 # ---------------------------------------------------------------- extractor accuracy

@@ -201,6 +201,11 @@ class Sim:
         self.reroutes: list[dict] = []
         self.reputation = Reputation(self, cfg.rep_cfg())
         self.monitor = Monitor(self)
+        # E8 (D43): a white-box attacker is given a read-only view of B(c), P(c) and its blocked orders.
+        bind = getattr(main, "bind_observer", None)
+        if callable(bind):
+            from .attacks.llm_adversary import TrustObserver
+            bind(TrustObserver(self))
 
     @property
     def main_id(self) -> str:

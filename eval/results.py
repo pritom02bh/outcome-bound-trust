@@ -22,7 +22,7 @@ from eval.stats import (e2b_report, e2b_trust_svg, loss_split, main_share, repor
 from obt.attacks.suppliers import scenario_name
 
 # e1 grid points are summarized together as one grid (_e1), not as separate evals.
-SKIP = ("_invalid", "_archive", "_v1_shared_cache", "cache", "message_bank", "tuning", "e1", "e4", "e6", "rep_grid")
+SKIP = ("_invalid", "_archive", "_v1_shared_cache", "e8", "cache", "message_bank", "tuning", "e1", "e4", "e6", "rep_grid")
 
 
 def _read_rows(f: Path) -> list[dict]:
@@ -946,6 +946,36 @@ def _paper_data(runs: Path, out: Path) -> str | None:
                    "(runs with failure events). A ratio above 1 would break the bound.",
         "columns": ["eval", "defense", "runs", "failure events", "damage", "sum of bounds", "max damage/bound",
                     "held"], "rows": tight}
+    # E8 (D43): the LLM adversarial supplier, against honest runs of the same defense and seed (hash-matched).
+    e8rows = read(runs / "e8")
+    if any(r["scenario"] in (13, 14) for r in e8rows):
+        from eval import e8 as e8m
+        recs = e8m.per_run(e8rows, e8m.honest_runs(root=runs))
+        f1 = lambda x, p=1: "-" if x is None else f"{x:,.{p}f}"   # noqa: E731
+        tables["e8"] = {
+            "caption": "E8: an LLM adversarial supplier (gpt-oss:20b, maximizing its own profit; black-box or "
+                       "white-box) against each defense, LLM buyer gpt-oss:20b, seeds 1-3. Loss from lies against "
+                       "the same defense's honest run (mean [95% bootstrap CI over seeds]) = damage + reroute "
+                       "premium + resid (means); attacker profit = payments received - $3 x units delivered; "
+                       "S_main share in the attack runs; $ per run.",
+            "columns": ["knowledge", "defense", "seeds", "loss from lies", "damage", "reroute premium", "resid",
+                        "max damage/bound", "attacker profit", "utility cost", "S_main share"],
+            "rows": [[g["knowledge"], g["defense"], g["seeds"], fmt(g["loss"]), money(g["damage"]),
+                      money(g["reroute"]), money(g["resid"]), "-" if g["max_ratio"] is None else f"{g['max_ratio']:.3f}",
+                      fmt(g["profit"]), fmt(g["utility"]), f1(g["share"], 3)] for g in e8m.summary(recs)]}
+        tables["e8_strategies"] = {
+            "caption": "E8 attacker strategies per run, classified by code from the run logs (D43): identities that "
+                       "farmed then defected, rounds with claim splitting, rounds with injection or decoy text, "
+                       "identity resets, and orders invoiced above the message's stated price.",
+            "columns": ["knowledge", "defense", "seed", "loss from lies", "attacker profit", "farm then defect",
+                        "claim splitting", "injection or decoy", "identity resets", "invoice overpricing"],
+            "rows": [[x["knowledge"], x["defense"], x["seed"], f1(x["loss"]), f1(x["profit"]), x["farm_then_defect"],
+                      x["claim_splitting"], x["injection_or_decoy"], x["identity_resets"], x["invoice_overpricing"]]
+                     for x in recs]}
+        (out / "e8").mkdir(parents=True, exist_ok=True)
+        keys = list(recs[0]) if recs else []
+        (out / "e8" / "runs.csv").write_text(_csv([keys] + [[x[k] for k in keys] for x in recs]))
+        (out / "e8" / "report.md").write_text(e8m.report_md(recs))
     (out / "tables.json").write_text(json.dumps(tables, indent=1, sort_keys=True))
     return "figdata/ and tables.json: data for eval/paper.py (figures and LaTeX tables)"
 

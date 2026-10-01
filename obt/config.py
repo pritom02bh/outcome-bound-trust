@@ -13,3 +13,8 @@ EXTRACTOR_DATASET_SHA256 = "20ceb2459af9cac98b28558818e42da3fee444184fde090749ba
 
 # E2b (D30): the frozen "trust-aware" buyer view variant (obt.memory_view.TRUST_AWARE_OBT + TRUST_AWARE_REP).
 BUYER_TRUST_AWARE_SHA256 = "490aa22eac5d66925d01b9fc370b7a11f546805cdde6a90a028b9975afc5fa78"
+
+# E8 (D43): the frozen LLM-adversary prompts (obt.attacks.llm_adversary). White-box covers the template and every
+# defense description. Frozen before any E8 run; a test fails if either prompt changes without updating these.
+ATTACKER_BLACKBOX_SHA256 = "404c4deeab4cee5b825ca8c6d6ee22f94f54c6f2ea04ef11497cbb58803de795"
+ATTACKER_WHITEBOX_SHA256 = "5908a3f4efe26f0ec3314d291e2d72cb1cd6dd21d65a2f4d336a763018ccbddc"

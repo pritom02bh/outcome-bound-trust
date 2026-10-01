@@ -22,7 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PACK = ROOT / "paper_pack"
-VERSION = "v1.4.1"               # the release this pack belongs to (tag v1.4.1-results)
+VERSION = "v1.5"                 # the release this pack belongs to (tag v1.5-results)
 ZIP = ROOT / f"paper_pack_{VERSION}.zip"
 TJ = "results/tables.json"
 NUMERIC = re.compile(r"^-?[\d,]*\d(\.\d+)?$")
@@ -67,6 +67,13 @@ COLUMNS = {
     "S_main share (attack runs)": "S_main units / all executed order units, attack runs (D40)",
     "eval": "experiment the row comes from", "seed": "seed", "loss_from_lies": "cost − cost of the honest run, $",
     "s_main_units": "units bought from S_main in the run", "all_units": "all executed order units in the run",
+    "knowledge": "E8 attacker knowledge: black-box or white-box (D43)",
+    "attacker profit": "payments received by the attacker − $3 × units it delivered, $ per run",
+    "farm then defect": "identities that shipped in full at least twice before a short order",
+    "claim splitting": "rounds whose message names two or more quantities", "injection or decoy":
+    "rounds whose message addresses the buyer's software or quotes two or more prices",
+    "identity resets": "switches to a new identity", "invoice overpricing":
+    "orders invoiced above the price the round's message stated ($5.00 if none)",
 }
 
 
@@ -170,6 +177,7 @@ def sheets() -> list[tuple[str, list[tuple]]]:
                      *csvs("horizon__t100__rep-n18")]),
         ("reputation grid", [tblock("reputation_grid")]),
         ("Enron", [tblock("enron")]),
+        *([("E8", [tblock("e8"), tblock("e8_strategies"), cblock("results/e8/runs.csv")])] if "e8" in _tables() else []),
         ("TLA+ verification", [tlc_block("quick", "quick"), tlc_block("fallbackA2", "A′"), tlc_block("fallbackB", "B"),
                                tlc_block("quick_b01", "quick, B0 = 1"), tlc_block("fallbackA2_b01", "A′, B0 = 1"),
                                coverage_block()]),

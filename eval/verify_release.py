@@ -237,8 +237,79 @@ def check_drop_per_unit(tag: str) -> dict:
     return bad
 
 
+# ------------------------------------------------------------------ v1.5: E8 added, nothing else may change
+
+def check_additive(tag: str, new_tables=("e8", "e8_strategies"), new_sheets=("E8",), marker="e8[") -> dict:
+    """Against `tag`: every table, .tex, NUMBERS.md row, per-eval CSV and workbook sheet that existed is identical;
+    the only additions are the listed new tables, sheets and NUMBERS rows (sources containing `marker`)."""
+    bad: dict = {k: [] for k in ("tables", "tex", "numbers", "csvs", "workbook")}
+    old, new = json.loads(_old(tag, "results/tables.json")), json.loads((ROOT / "results/tables.json").read_text())
+    for name, t in old.items():
+        if name not in new or (t["columns"], t["rows"]) != (new[name]["columns"], new[name]["rows"]):
+            bad["tables"].append((name, "missing or differs"))
+    extra = sorted(set(new) - set(old) - set(new_tables))
+    if extra:
+        bad["tables"].append(("unexpected new tables", extra))
+    for tex in sorted((ROOT / "paper" / "tables").glob("*.tex")):
+        if tex.stem in new_tables:
+            continue
+        try:
+            o = _old(tag, f"paper/tables/{tex.name}")
+        except subprocess.CalledProcessError:
+            bad["tex"].append((tex.name, "not in base"))
+            continue
+        if Counter(NUM.findall(o)) != Counter(NUM.findall(tex.read_text())):
+            bad["tex"].append((tex.name, "numbers differ"))
+    newrows = defaultdict(list)
+    for r in _rows((ROOT / "paper" / "NUMBERS.md").read_text()):
+        newrows[r[4]].append(r)
+    oldrows = _rows(_old(tag, "paper/NUMBERS.md"))
+    for r in oldrows:
+        if not any((c[1], c[2], c[3]) == (r[1], r[2], r[3]) for c in newrows.get(r[4], [])):
+            bad["numbers"].append(("changed or missing", r[0], r[1]))
+    oldkeys = {(o[0], o[1], o[4]) for o in oldrows}
+    for rs in newrows.values():
+        for r in rs:
+            if (r[0], r[1], r[4]) not in oldkeys and marker not in r[4]:
+                bad["numbers"].append(("unexpected new row", r[0]))
+    for f in sorted((ROOT / "results").glob("*/*.csv")):
+        rel = str(f.relative_to(ROOT))
+        if rel.startswith("results/e8/"):
+            continue
+        try:
+            if _old(tag, rel) != f.read_text():
+                bad["csvs"].append((rel, "differs"))
+        except subprocess.CalledProcessError:
+            bad["csvs"].append((rel, "not in base"))
+    from openpyxl import load_workbook
+    ow = load_workbook(io.BytesIO(_old(tag, "paper_pack/results_all.xlsx", binary=True)))
+    nw = load_workbook(ROOT / "paper_pack" / "results_all.xlsx")
+    for ws in ow.worksheets:
+        if ws.title == "README":
+            continue
+        if ws.title not in nw.sheetnames or [list(r) for r in ws.iter_rows(values_only=True)] != \
+                [list(r) for r in nw[ws.title].iter_rows(values_only=True)]:
+            bad["workbook"].append((ws.title, "missing or differs"))
+    extra = sorted(set(nw.sheetnames) - set(ow.sheetnames) - set(new_sheets))
+    if extra:
+        bad["workbook"].append(("unexpected new sheets", extra))
+    return bad
+
+
 def main(argv: list[str] | None = None) -> None:
     argv = argv if argv is not None else sys.argv[1:]
+    if "--additive" in argv:
+        tag = [a for a in argv if not a.startswith("--")][0]
+        report = check_additive(tag)
+        for k, v in report.items():
+            print(f"{k}: {'identical' if not v else f'{len(v)} DIFFERENCES'}")
+            for d in v:
+                print("   ", d)
+        if any(report.values()):
+            print(f"STOP: prior numbers differ from {tag}")
+            sys.exit(1)
+        print(f"OK: every prior number is identical to {tag}; the only additions are E8's tables, rows and sheet")
+        return
     if "--drop-per-unit" in argv:
         tag = [a for a in argv if not a.startswith("--")][0]
         report = check_drop_per_unit(tag)

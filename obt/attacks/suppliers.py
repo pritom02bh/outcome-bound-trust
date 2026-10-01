@@ -279,9 +279,16 @@ SCENARIOS: dict[int, tuple[str, type[ScriptedSupplier]]] = {
 }
 
 
-def make_supplier(n: int, cfg: GameConfig, seed: int) -> ScriptedSupplier:
+# E8 (D43): LLM-powered adversaries. Kept out of SCENARIOS so everything that loops over scenarios 1-12 is unchanged.
+EXTRA: dict[int, tuple[str, str]] = {13: ("llm_adversary_blackbox", "black"), 14: ("llm_adversary_whitebox", "white")}
+
+
+def make_supplier(n: int, cfg: GameConfig, seed: int, **ctx):
+    if n in EXTRA:
+        from .llm_adversary import make_adversary
+        return make_adversary(EXTRA[n][1], cfg, seed, **ctx)
     return SCENARIOS[n][1](cfg, seed)
 
 
 def scenario_name(n: int) -> str:
-    return f"{n}_{SCENARIOS[n][0]}"
+    return f"{n}_{EXTRA[n][0]}" if n in EXTRA else f"{n}_{SCENARIOS[n][0]}"
