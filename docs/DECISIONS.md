@@ -674,3 +674,19 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - GPT-5.6 Terra `obt+planner` (3 seeds): loss from lies 176.2 [158.0, 189.5], utility cost 335.8 [312.0, 364.5] (5.75%), max damage/bound 0.653.
   - GPT-5.6 Terra `none` (3 seeds): loss from lies 1,177.2 [942.2, 1,575.1], utility cost 0.0 [0.0, 0.0] (0.00%), max damage/bound -.
 <!-- /D41 outcome -->
+
+## D42. Annotator package for an independent second labeling (user request)
+- **Package** (`annotation/`, for one independent annotator, blind to our labels):
+  - **`spotcheck_blind.csv`:** the 40 v2 spot-check rows (`data/spotcheck.csv`, same order), with `row`, `id`, `message`, `template` and `slots`, and an empty `looks_correct`.
+    - The `kind` column is left out: it would hint at the answer (vague, injection and so on).
+  - **`enron_blind.csv`:** all 100 Enron rows (`data/enron_candidates.csv`, same order), with `row`, `message` and the original label columns empty (`is_commitment`, `has_delivery_claim`, `qty`, `deadline`, `has_price_claim`, `price`, `valid_until`, `notes`).
+    - `stratum` (filled by code, not a label) is left out for the same reason.
+  - **`INSTRUCTIONS.md`:** the exact rules we used.
+    - The spot-check rule comes from FIXES F10, with the F5/D17/D23b gold rules: DELIVERY/PRICE in round wording; UNTESTABLE for relative time, competing candidates, computed values and unequal lot splits; ship/ready/scheduled are not deadlines.
+    - The Enron rules come from D38: `is_commitment`, slot rules, and the borderline reasons.
+    - Three worked examples per task, written fresh, none from either file.
+- **`eval/agreement.py`** (not run yet; it runs once the annotator's files come back). It reports, against our labels:
+  - Cohen's κ and raw agreement, with the list of disagreements, for spot-check `looks_correct` (joined on `id`) and Enron `is_commitment` (joined on `row`, checked against the message text);
+  - per-slot agreement on the Enron rows both mark yes, normalized (`$174` = `174`; conflicting dates match in either order).
+  - It refuses a reordered or unfinished file.
+- **κ is degenerate for the spot-check.** All 40 of our labels are "yes", so κ is 0, or undefined if the annotator also says yes to all 40, whatever they do. The script flags this, and the raw agreement and the disagreement list carry the information. Enron (10 yes / 90 no) has no such problem.
