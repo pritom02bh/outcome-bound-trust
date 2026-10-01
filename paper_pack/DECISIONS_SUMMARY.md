@@ -49,5 +49,5 @@ Summary of `docs/DECISIONS.md` (the full file has the reasoning).
 - **D37a**: E5 v2: no cross-run reply reuse (user decision)
 - **D38**: Enron labels and the real-text result (user decision)
 - **D39**: Paper structure and terminology (user decision; documentation and labels only)
-- **D40**: Loss per 100 S_main units (user request)
+- **D40**: Loss per 100 S_main units (user request) — EXPLORED, REJECTED for the paper (v1.4.1)
 - **D41**: Overnight batch: E5 seeds 2–3, per-unit metric, refresh (user decision)

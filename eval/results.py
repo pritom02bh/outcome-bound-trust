@@ -440,7 +440,7 @@ def _e5(runs: Path, out: Path) -> str | None:
          "frozen local gpt-oss:20b (D24). OBT default (b0 5%, W 0, δ 0), k = 1, 50 rounds, A2A.", "",
          "## v2 over every seed (mean [95% bootstrap CI over seeds])", "",
          "| run | seeds | loss from lies | damage | reroute premium | resid | utility cost | % of cost | "
-         "S_main share | loss per 100 S_main units | max damage/bound |", "|---|---|---|---|---|---|---|---|---|---|---|"]
+         "S_main share | max damage/bound |", "|---|---|---|---|---|---|---|---|---|---|"]
     for label, rs, d in (("Luna obt+planner", luna, "obt+planner"), ("Luna none", luna, "none"),
                          ("Terra obt+planner", terra, "obt+planner"), ("Terra none", terra, "none")):
         a = _e5_agg(rs, d) if rs else None
@@ -449,8 +449,7 @@ def _e5(runs: Path, out: Path) -> str | None:
         sp = a["split"]
         L.append(f"| {label} | {', '.join(map(str, a['seeds']))} | {_fmt_ci(a['loss'])} | {f(sp['damage'])} | "
                  f"{f(sp['reroute'])} | {f(sp['resid'])} | {_fmt_ci(a['util'])} | {f(a['util_pct'], 2)}% | "
-                 f"{f(a['share'], 3)} | {_fmt_ci([x for x in a['per_unit']['by_seed'].values() if x is not None])} | "
-                 f"{f(a['max_ratio'], 3)} |")
+                 f"{f(a['share'], 3)} | {f(a['max_ratio'], 3)} |")
     L += ["", "## Seed 1: v2 next to v1 (superseded) and the gpt-oss reference", "",
          "- **v2** (current): every buyer call sampled fresh; the reply cache is scoped to one run and call index "
          "(resume only). Terra has its own `none` baseline.",
@@ -756,15 +755,12 @@ def _paper_data(runs: Path, out: Path) -> str | None:
         uc = list(utility_cost_by_seed(rows, d).values())
         up = list(utility_pct_by_seed(rows, d).values())
         sh = [x for x in (main_share(r) for r in rows if r["defense"] == d and r["scenario"] == 1) if x is not None]
-        pu = [x for x in loss_per_100_units(rows, d)["by_seed"].values() if x is not None]
         main_rows.append([d, len(al), fmt(al), fmt(uc), f"{mean(up):.2f}" if up else "-",
-                          f"{mean(sh):.3f}" if sh else "-", fmt(pu)])
+                          f"{mean(sh):.3f}" if sh else "-"])
     tables["main"] = {"caption": "LLM buyer (gpt-oss:20b): loss from lies (mean of scenarios 2-12) and utility "
-                                 "cost with an honest supplier, mean [95% bootstrap CI over seeds], $ per run. Loss "
-                                 "per 100 S_main units = 100 x loss from lies / units bought from S_main in the "
-                                 "attack runs (D40).",
+                                 "cost with an honest supplier, mean [95% bootstrap CI over seeds], $ per run.",
                       "columns": ["defense", "seeds", "loss from lies", "utility cost", "utility (% of cost)",
-                                  "S_main share", "loss per 100 S_main units"], "rows": main_rows}
+                                  "S_main share"], "rows": main_rows}
     from obt.attacks.suppliers import scenario_name
     scen = [scenario_name(n) for n in range(2, 13)]
     cost = {(r["scenario"], r["defense"], r["seed"]): r["total_cost"] for r in rows}
@@ -860,23 +856,23 @@ def _paper_data(runs: Path, out: Path) -> str | None:
                 a = _e5_agg(rs, d)
                 if not a["loss"]:
                     continue
-                sp, pu = a["split"], [x for x in a["per_unit"]["by_seed"].values() if x is not None]
+                sp = a["split"]
                 e5_rows.append([model, d, len(a["seeds"]), fmt(a["loss"]), money(sp["damage"]), money(sp["reroute"]),
                                 money(sp["resid"]), fmt(a["util"]),
                                 "-" if a["util_pct"] is None else f"{a['util_pct']:.2f}",
-                                "-" if a["share"] is None else f"{a['share']:.3f}", fmt(pu),
+                                "-" if a["share"] is None else f"{a['share']:.3f}",
                                 "-" if a["max_ratio"] is None else f"{a['max_ratio']:.3f}"])
         tables["e5"] = {
             "caption": "Paid buyer models (E5 v2; reasoning effort low; frozen gpt-oss extractor; OBT default; "
                        "every buyer call sampled fresh): loss from lies (mean of scenarios 2-12) and utility cost "
                        "against the same model's none run, mean [95% bootstrap CI over seeds]; damage + reroute "
-                       "premium + resid are means over all attack runs; loss per 100 S_main units as in D40; "
-                       "$ per run.",
+                       "premium + resid are means over all attack runs; $ per run.",
             "columns": ["buyer", "defense", "seeds", "loss from lies", "damage", "reroute premium", "resid",
-                        "utility cost", "utility (% of cost)", "S_main share", "loss per 100 S_main units",
-                        "max damage/bound"],
+                        "utility cost", "utility (% of cost)", "S_main share", "max damage/bound"],
             "rows": e5_rows}
-    # Loss per 100 S_main units (D40), per defense and per scenario, for E2, E2c and E5; per-run trace file.
+    # Loss per 100 S_main units (D40): an explored metric, rejected for the paper. Still computed, with its per-run
+    # trace, under results/per_unit/ only; not in tables.json, so no paper table, NUMBERS row or pack sheet uses it.
+    pu_tables: dict = {}
     gpt = [(("E2c" if d in ("obt+planner", "rep-n18", "rep+planner") else "E2"), rows, d) for d in defenses]
     e5s = [(f"E5 {m}", rs, d) for m, rs in (("Luna", e5l), ("Terra", e5t)) if rs for d in ("obt+planner", "none")]
     pu_rows, trace = [], [["eval", "defense", "scenario", "seed", "loss_from_lies", "s_main_units", "all_units"]]
@@ -891,7 +887,7 @@ def _paper_data(runs: Path, out: Path) -> str | None:
                         fmt([v for v in x["by_seed"].values() if v is not None])])
         trace += [[ev, d, u["scenario"], u["seed"], round(u["loss"], 4), u["main_units"], u["all_units"]]
                   for u in per_unit_runs(rs, d)]
-    tables["loss_per_unit"] = {
+    pu_tables["loss_per_unit"] = {
         "caption": "Loss from lies per 100 units bought from S_main in the attack runs (D40): 100 x sum of losses / "
                    "sum of S_main units over scenarios 2-12 within a seed, mean [95% bootstrap CI over seeds], $ per "
                    "100 units. It compares defenses per unit actually traded, so one that avoids S_main is not "
@@ -902,17 +898,18 @@ def _paper_data(runs: Path, out: Path) -> str | None:
                             *["n/a" if loss_per_100_units(rs, d)["by_scenario"].get(n) is None
                               else f"{loss_per_100_units(rs, d)['by_scenario'][n]:,.1f}" for _, rs, d in items]]
                            for n in range(2, 13)]
-    tables["loss_per_unit_by_scenario"] = {
+    pu_tables["loss_per_unit_by_scenario"] = {
         "caption": "Loss per 100 S_main units by scenario, LLM buyer gpt-oss:20b (E2, E2c): 100 x sum of losses / "
                    "sum of S_main units over seeds (D40); n/a where no S_main unit was bought.",
         "columns": ["scenario", *[d for _, _, d in gpt]], "rows": by_sc(gpt)}
     if e5s:
-        tables["e5_loss_per_unit_by_scenario"] = {
+        pu_tables["e5_loss_per_unit_by_scenario"] = {
             "caption": "Loss per 100 S_main units by scenario, paid buyers (E5 v2): 100 x sum of losses / sum of "
                        "S_main units over seeds (D40); n/a where no S_main unit was bought.",
             "columns": ["scenario", *[f"{ev[3:]} {d}" for ev, _, d in e5s]], "rows": by_sc(e5s)}
     (out / "per_unit").mkdir(parents=True, exist_ok=True)
     (out / "per_unit" / "runs.csv").write_text(_csv(trace))
+    (out / "per_unit" / "loss_per_unit.json").write_text(json.dumps(pu_tables, indent=1, sort_keys=True) + "\n")
     # Enron real-text check (D34, D38): per stratum, never pooled.
     ef = runs / "enron" / "eval.json"
     if ef.exists():

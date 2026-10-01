@@ -278,11 +278,7 @@ So trust earned with many small true claims can't be spent on one large order. T
 **Definitions (FIXES, Evaluation).**
 - `loss_from_lies(d, s, seed) = cost(d, s, seed) − cost(d, honest, seed)`: the same defense and seed with an honest S_main. Reported as the mean over attack scenarios 2–12.
 - `utility_cost(d, seed) = cost(d, honest, seed) − cost(none, honest, seed)`: the cost OBT imposes on honest trade. It is reported in $ per run and as a % of the honest run's total cost without a defense (same seed), with the count of blocked honest S_main orders.
-- **Loss per 100 S_main units** (D40): 100 × loss from lies ÷ units bought from S_main in the attack runs. It compares defenses per unit actually traded with the main supplier, so a defense that avoids S_main is not credited for trading less.
-  - Per run: the run's loss from lies (cost − the honest run's cost, same defense and seed) and its executed S_main order units, counted as in the S_main share.
-  - Per defense: 100 × Σ loss ÷ Σ units over scenarios 2–12 within a seed (seeds with every attack scenario), then the mean [95% bootstrap CI] over seeds.
-  - Per scenario: 100 × Σ loss ÷ Σ units over seeds. "n/a" where no S_main unit was bought.
-  - Reported next to loss from lies and the S_main share, for E2, E2c and E5. The per-run trace is `results/per_unit/runs.csv`.
+- **Loss per 100 S_main units** (D40) was explored and **rejected for the paper**. Its numerator includes costs that aren't trades with S_main (resid, over-stocking), so low-volume defenses are penalized and the ratio misleads. It is still computed, with its per-run trace, under `results/per_unit/` only.
 - **Reroute premium:** the dollar backup premium on quantity a defense reroutes to S_backup after its own blocks (`reroute_cost`).
   - The honest run's absolute reroute premium is reported per defense. Its summary key is `price_of_safety`, a legacy field name.
   - In the loss split below, the reroute premium is differenced against the honest run (`reroute_cost_diff`).
@@ -297,7 +293,7 @@ So trust earned with many small true claims can't be spent on one large order. T
 - Extractor accuracy: the frozen test set (199 labeled messages), precision/recall on template + slots. The 30-item hard-phrasing subset is reported separately, LLM alone and with the code guard (§9).
 
 **Research questions and the runs that answer them.** Headline numbers, with their sources, are in `paper/NUMBERS.md`, grouped the same way.
-- **RQ1, security** (loss from lies against `none`, and loss per 100 S_main units, D40):
+- **RQ1, security** (loss from lies against `none`):
   - **E1** (`eval/e1.py`, scripted buyer): OBT over b0 × W × δ and the reputation baseline, all 12 scenarios × 3 seeds. It produces the Pareto front and the default (b0 5%, W 0, δ 0).
   - **E2:** the gpt-oss:20b LLM buyer against every defense, 12 scenarios × 3–5 seeds.
 - **RQ2, utility cost** (the cost imposed on honest trade):

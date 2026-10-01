@@ -628,7 +628,12 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - B's runtime was removed, as asked.
   - One RQ4 row was added, pointing to the trust-over-time figure. It carries no number.
 
-## D40. Loss per 100 S_main units (user request)
+## D40. Loss per 100 S_main units (user request) — EXPLORED, REJECTED for the paper (v1.4.1)
+- **Rejected for the paper (user decision, v1.4.1).** The numerator includes non-trade costs: the resid term (for example the buyer's own over-stocking) and other costs that don't come from trading with S_main. A defense that trades little with S_main is therefore penalized, and the ratio is misleading. In E5, obt+planner showed about 342 per 100 S_main units against about 200 for `none`, mostly because it bought roughly 9× fewer units.
+  - Removed from every paper-facing output: the column in the `main` and `e5` tables, the per-unit tables in `paper/tables/` and the pack, its RQ1 rows in `NUMBERS.md`, its workbook sheet and its `results/INDEX.md` row.
+  - The computation is kept (`eval/stats.py`), together with `results/per_unit/` (`runs.csv`, the per-run trace, and `loss_per_unit.json`, the tables it produced), for the record.
+  - `eval/verify_release.py --drop-per-unit` checks that the metric is off every paper output and unchanged in `results/per_unit/`, and that every other number is identical to `v1.4-results`.
+- The original definition follows, as explored.
 - **Why.** Loss from lies alone flatters a defense that simply stops trading with the main supplier: it loses little because it buys little. This metric is loss per unit actually traded with S_main in the attack runs, so defenses are compared per unit traded.
 - **Definition** (`eval/stats.py`: `per_unit_runs`, `loss_per_100_units`).
   - For each attack run (scenarios 2–12) whose honest run (same defense and seed) exists, take:
@@ -655,7 +660,7 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - Other API or transport errors are retried with backoff (up to 20 attempts per model). Resuming a run replays its own paid calls from the run-scoped cache at no cost.
   - Error text is scrubbed of anything key-like before it's logged.
 - **Parts B and C:**
-  - Rebuild results (E5 over seeds 1–3, mean [95% bootstrap CI]; the D40 metric), the paper tables, `NUMBERS.md`, the workbook and the pack (`paper_pack_v1.4.zip`; v1.3's zip is kept).
+  - Rebuild results (E5 over seeds 1–3, mean [95% bootstrap CI]; the D40 metric), the paper tables, `NUMBERS.md`, the workbook and the pack (`paper_pack_v1.4.zip`; v1.3's zip is kept). In v1.4.1 the D40 metric was taken out of every paper output again (D40).
   - Refresh `results/INDEX.md` and this entry's outcome (`eval/release_notes.py`).
   - Check against `v1.3-paper-pack` with `eval/verify_release.py`: every number not depending on the new runs or the new metric must be identical, and every new number must trace to its source.
   - Run all tests, then commit and tag `v1.4-results`. No push.
@@ -664,8 +669,8 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - gpt-5.6-luna: s1 $0.5580 (1,200 calls, 108,030 reasoning tokens); s2 $0.5663 (1,200 calls, 111,458 reasoning tokens); s3 $0.5685 (1,200 calls, 114,960 reasoning tokens)
   - gpt-5.6-terra: s1 $5.3598 (1,200 calls, 73,313 reasoning tokens); s2 $5.2804 (1,200 calls, 68,790 reasoning tokens); s3 $5.3261 (1,200 calls, 69,142 reasoning tokens)
   - Ledger total: $20.9249 (v1 + v2 seed 1 + seeds 2-3).
-  - GPT-5.6 Luna `obt+planner` (3 seeds): loss from lies 176.9 [160.0, 189.5], utility cost 342.2 [322.0, 359.0] (5.87%), loss per 100 S_main units 342.0 [308.2, 395.5], max damage/bound 0.653.
-  - GPT-5.6 Luna `none` (3 seeds): loss from lies 999.9 [812.8, 1,096.3], utility cost 0.0 [0.0, 0.0] (0.00%), loss per 100 S_main units 204.3 [182.8, 222.2], max damage/bound -.
-  - GPT-5.6 Terra `obt+planner` (3 seeds): loss from lies 176.2 [158.0, 189.5], utility cost 335.8 [312.0, 364.5] (5.75%), loss per 100 S_main units 341.5 [304.3, 395.5], max damage/bound 0.653.
-  - GPT-5.6 Terra `none` (3 seeds): loss from lies 1,177.2 [942.2, 1,575.1], utility cost 0.0 [0.0, 0.0] (0.00%), loss per 100 S_main units 199.8 [171.4, 253.9], max damage/bound -.
+  - GPT-5.6 Luna `obt+planner` (3 seeds): loss from lies 176.9 [160.0, 189.5], utility cost 342.2 [322.0, 359.0] (5.87%), max damage/bound 0.653.
+  - GPT-5.6 Luna `none` (3 seeds): loss from lies 999.9 [812.8, 1,096.3], utility cost 0.0 [0.0, 0.0] (0.00%), max damage/bound -.
+  - GPT-5.6 Terra `obt+planner` (3 seeds): loss from lies 176.2 [158.0, 189.5], utility cost 335.8 [312.0, 364.5] (5.75%), max damage/bound 0.653.
+  - GPT-5.6 Terra `none` (3 seeds): loss from lies 1,177.2 [942.2, 1,575.1], utility cost 0.0 [0.0, 0.0] (0.00%), max damage/bound -.
 <!-- /D41 outcome -->

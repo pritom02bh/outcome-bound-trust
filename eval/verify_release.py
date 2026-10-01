@@ -137,6 +137,7 @@ def check_trace() -> list:
     import csv
     bad = []
     t = json.loads((ROOT / "results/tables.json").read_text())
+    t |= json.loads((ROOT / "results/per_unit/loss_per_unit.json").read_text())     # D40: kept off the paper
     runs = list(csv.DictReader((ROOT / "results/per_unit/runs.csv").open()))
     groups = defaultdict(list)
     for r in runs:
@@ -164,8 +165,94 @@ def check_trace() -> list:
     return bad
 
 
+# ------------------------------------------------------------------ v1.4.1: the D40 metric leaves the paper
+
+PU_COL = "loss per 100 S_main units"
+PU_TABLES = ("loss_per_unit", "loss_per_unit_by_scenario", "e5_loss_per_unit_by_scenario")
+NEW_ROWS = ("`obt` vs `rep-strict`: loss from lies at matched utility cost (derived)",
+            "`obt+planner` vs `rep-strict`: S_main share (honest) and loss from lies (derived)")
+
+
+def check_drop_per_unit(tag: str) -> dict:
+    """Against `tag` (v1.4-results): the per-unit column, tables, NUMBERS rows and sheet are gone from the paper
+    outputs, the metric itself is unchanged under results/per_unit/, two derived RQ1 rows are new, and every other
+    number is identical."""
+    bad: dict = {k: [] for k in ("tables", "tex", "numbers", "csvs", "workbook", "per_unit")}
+    old, new = json.loads(_old(tag, "results/tables.json")), json.loads((ROOT / "results/tables.json").read_text())
+    for name, t in old.items():
+        if name in PU_TABLES:
+            if name in new:
+                bad["tables"].append((name, "still exported"))
+            continue
+        if name not in new:
+            bad["tables"].append((name, "missing"))
+            continue
+        cols, rows = t["columns"], t["rows"]
+        if PU_COL in cols:
+            i = cols.index(PU_COL)
+            cols, rows = cols[:i] + cols[i + 1:], [r[:i] + r[i + 1:] for r in rows]
+        if (cols, rows) != (new[name]["columns"], new[name]["rows"]):
+            bad["tables"].append((name, "differs"))
+    kept = json.loads((ROOT / "results/per_unit/loss_per_unit.json").read_text())
+    for name in PU_TABLES:
+        if name in old and kept.get(name, {}).get("rows") != old[name]["rows"]:
+            bad["per_unit"].append((name, "computation changed"))
+    for name in PU_TABLES:
+        if (ROOT / "paper" / "tables" / f"{name}.tex").exists() or (ROOT / "paper_pack" / "tables" / f"{name}.tex").exists():
+            bad["tex"].append((name, "table still in paper/ or the pack"))
+    for tex in sorted((ROOT / "paper" / "tables").glob("*.tex")):
+        if tex.stem in ("main", "e5"):
+            continue                                     # compared cell by cell through tables.json above
+        if Counter(NUM.findall(_old(tag, f"paper/tables/{tex.name}"))) != Counter(NUM.findall(tex.read_text())):
+            bad["tex"].append((tex.name, "numbers differ"))
+    newrows = defaultdict(list)
+    for r in _rows((ROOT / "paper" / "NUMBERS.md").read_text()):
+        newrows[r[4]].append(r)
+    oldrows = _rows(_old(tag, "paper/NUMBERS.md"))
+    for r in oldrows:
+        if "loss_per_unit" in r[4]:
+            if r[4] in newrows:
+                bad["numbers"].append(("per-unit row still present", r[0]))
+            continue
+        if not any((c[1], c[2], c[3]) == (r[1], r[2], r[3]) for c in newrows.get(r[4], [])):
+            bad["numbers"].append(("changed", r[0], r[1]))
+    added = [r[0] for rs in newrows.values() for r in rs
+             if not any((o[0], o[1]) == (r[0], r[1]) for o in oldrows)]
+    if sorted(added) != sorted(NEW_ROWS):
+        bad["numbers"].append(("unexpected new rows", added))
+    for f in sorted((ROOT / "results").glob("*/*.csv")):
+        rel = str(f.relative_to(ROOT))
+        if _old(tag, rel) != f.read_text():
+            bad["csvs"].append((rel, "differs"))
+    from openpyxl import load_workbook
+    ow = load_workbook(io.BytesIO(_old(tag, "paper_pack/results_all.xlsx", binary=True)))
+    nw = load_workbook(ROOT / "paper_pack" / "results_all.xlsx")
+    if "loss per unit" in nw.sheetnames:
+        bad["workbook"].append(("loss per unit", "sheet still present"))
+    for ws in ow.worksheets:
+        if ws.title in ("README", "E2", "E5", "loss per unit"):
+            continue                                     # E2/E5: through tables.json; README lists columns
+        if [list(r) for r in ws.iter_rows(values_only=True)] != [list(r) for r in nw[ws.title].iter_rows(values_only=True)]:
+            bad["workbook"].append((ws.title, "cells differ"))
+    return bad
+
+
 def main(argv: list[str] | None = None) -> None:
-    tag = (argv or sys.argv[1:] or ["v1.3-paper-pack"])[0]
+    argv = argv if argv is not None else sys.argv[1:]
+    if "--drop-per-unit" in argv:
+        tag = [a for a in argv if not a.startswith("--")][0]
+        report = check_drop_per_unit(tag)
+        for k, v in report.items():
+            print(f"{k}: {'as expected' if not v else f'{len(v)} DIFFERENCES'}")
+            for d in v:
+                print("   ", d)
+        if any(report.values()):
+            print(f"STOP: differences against {tag}")
+            sys.exit(1)
+        print(f"OK against {tag}: the per-unit metric is off every paper output and unchanged in results/per_unit/; "
+              "the two derived RQ1 rows are the only new numbers; everything else is identical")
+        return
+    tag = (argv or ["v1.3-paper-pack"])[0]
     report = {"tables": check_tables(tag), "numbers": check_numbers(tag), "csvs": check_csvs(tag),
               "workbook": check_workbook(tag), "trace": check_trace()}
     for k, v in report.items():

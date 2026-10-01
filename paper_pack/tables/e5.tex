@@ -1,16 +1,16 @@
 \begin{table}[t]
 \centering
 \small
-\caption{Paid buyer models (E5 v2; reasoning effort low; frozen gpt-oss extractor; OBT default; every buyer call sampled fresh): loss from lies (mean of scenarios 2-12) and utility cost against the same model's none run, mean [95\% bootstrap CI over seeds]; damage + reroute premium + resid are means over all attack runs; loss per 100 S\_main units as in D40; \$ per run.}
+\caption{Paid buyer models (E5 v2; reasoning effort low; frozen gpt-oss extractor; OBT default; every buyer call sampled fresh): loss from lies (mean of scenarios 2-12) and utility cost against the same model's none run, mean [95\% bootstrap CI over seeds]; damage + reroute premium + resid are means over all attack runs; \$ per run.}
 \label{tab:e5}
-\begin{tabular}{lrrrrrrrrrrr}
+\begin{tabular}{lrrrrrrrrrr}
 \toprule
-buyer & defense & seeds & loss from lies & damage & reroute premium & resid & utility cost & utility (\% of cost) & S\_main share & loss per 100 S\_main units & max damage/bound \\
+buyer & defense & seeds & loss from lies & damage & reroute premium & resid & utility cost & utility (\% of cost) & S\_main share & max damage/bound \\
 \midrule
-GPT-5.6 Luna & obt+planner & 3 & 176.9 [160.0, 189.5] & 59.1 & 0.0 & 117.7 & 342.2 [322.0, 359.0] & 5.87 & 0.295 & 342.0 [308.2, 395.5] & 0.653 \\
-GPT-5.6 Luna & none & 3 & 999.9 [812.8, 1,096.3] & n/a & 0.0 & 999.9 & 0.0 [0.0, 0.0] & 0.00 & 0.932 & 204.3 [182.8, 222.2] & - \\
-GPT-5.6 Terra & obt+planner & 3 & 176.2 [158.0, 189.5] & 59.1 & 0.0 & 117.1 & 335.8 [312.0, 364.5] & 5.75 & 0.293 & 341.5 [304.3, 395.5] & 0.653 \\
-GPT-5.6 Terra & none & 3 & 1,177.2 [942.2, 1,575.1] & n/a & 0.0 & 1,177.2 & 0.0 [0.0, 0.0] & 0.00 & 0.935 & 199.8 [171.4, 253.9] & - \\
+GPT-5.6 Luna & obt+planner & 3 & 176.9 [160.0, 189.5] & 59.1 & 0.0 & 117.7 & 342.2 [322.0, 359.0] & 5.87 & 0.295 & 0.653 \\
+GPT-5.6 Luna & none & 3 & 999.9 [812.8, 1,096.3] & n/a & 0.0 & 999.9 & 0.0 [0.0, 0.0] & 0.00 & 0.932 & - \\
+GPT-5.6 Terra & obt+planner & 3 & 176.2 [158.0, 189.5] & 59.1 & 0.0 & 117.1 & 335.8 [312.0, 364.5] & 5.75 & 0.293 & 0.653 \\
+GPT-5.6 Terra & none & 3 & 1,177.2 [942.2, 1,575.1] & n/a & 0.0 & 1,177.2 & 0.0 [0.0, 0.0] & 0.00 & 0.935 & - \\
 \bottomrule
 \end{tabular}
 \end{table}

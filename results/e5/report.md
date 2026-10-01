@@ -4,12 +4,12 @@ DECISIONS D37, D37a, D41. The buyer is the paid model with `reasoning_effort=low
 
 ## v2 over every seed (mean [95% bootstrap CI over seeds])
 
-| run | seeds | loss from lies | damage | reroute premium | resid | utility cost | % of cost | S_main share | loss per 100 S_main units | max damage/bound |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Luna obt+planner | 1, 2, 3 | 176.9 [160.0, 189.5] | 59.1 | 0.0 | 117.7 | 342.2 [322.0, 359.0] | 5.87% | 0.295 | 342.0 [308.2, 395.5] | 0.653 |
-| Luna none | 1, 2, 3 | 999.9 [812.8, 1,096.3] | n/a | 0.0 | 999.9 | 0.0 [0.0, 0.0] | 0.00% | 0.932 | 204.3 [182.8, 222.2] | n/a |
-| Terra obt+planner | 1, 2, 3 | 176.2 [158.0, 189.5] | 59.1 | 0.0 | 117.1 | 335.8 [312.0, 364.5] | 5.75% | 0.293 | 341.5 [304.3, 395.5] | 0.653 |
-| Terra none | 1, 2, 3 | 1,177.2 [942.2, 1,575.1] | n/a | 0.0 | 1,177.2 | 0.0 [0.0, 0.0] | 0.00% | 0.935 | 199.8 [171.4, 253.9] | n/a |
+| run | seeds | loss from lies | damage | reroute premium | resid | utility cost | % of cost | S_main share | max damage/bound |
+|---|---|---|---|---|---|---|---|---|---|
+| Luna obt+planner | 1, 2, 3 | 176.9 [160.0, 189.5] | 59.1 | 0.0 | 117.7 | 342.2 [322.0, 359.0] | 5.87% | 0.295 | 0.653 |
+| Luna none | 1, 2, 3 | 999.9 [812.8, 1,096.3] | n/a | 0.0 | 999.9 | 0.0 [0.0, 0.0] | 0.00% | 0.932 | n/a |
+| Terra obt+planner | 1, 2, 3 | 176.2 [158.0, 189.5] | 59.1 | 0.0 | 117.1 | 335.8 [312.0, 364.5] | 5.75% | 0.293 | 0.653 |
+| Terra none | 1, 2, 3 | 1,177.2 [942.2, 1,575.1] | n/a | 0.0 | 1,177.2 | 0.0 [0.0, 0.0] | 0.00% | 0.935 | n/a |
 
 ## Seed 1: v2 next to v1 (superseded) and the gpt-oss reference
 

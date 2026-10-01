@@ -43,29 +43,21 @@ def update_index() -> None:
     f = ROOT / "results" / "INDEX.md"
     s = f.read_text()
     s = re.sub(r"^# Results index \(tags .*\)$",
-               "# Results index (tags `v1.0-results`, `v1.1-results`: + Enron, `v1.4-results`: E5 seeds 1-3 + "
-               "loss per 100 S_main units)", s, count=1, flags=re.M)
+               "# Results index (tags `v1.0-results`, `v1.1-results`: + Enron, `v1.4-results`: E5 seeds 1-3, "
+               "`v1.4.1-results`: paper-facing cleanup)", s, count=1, flags=re.M)
     lo, ln = _row(t, "e5", buyer="GPT-5.6 Luna", defense="obt+planner"), _row(t, "e5", buyer="GPT-5.6 Luna", defense="none")
     to, tn = _row(t, "e5", buyer="GPT-5.6 Terra", defense="obt+planner"), _row(t, "e5", buyer="GPT-5.6 Terra", defense="none")
     spend = json.loads((RUNS / "cost_ledger.json").read_text())["spent_usd"]
     seeds = lo["seeds"]
     e5 = (f"| **E5** paid buyers (v2) | GPT-5.6 Luna and Terra buyers, frozen gpt-oss extractor, `obt+planner` + "
           f"`none`, 12 scenarios × {seeds} seeds | {', '.join(f'`{c}`' for c in _commits())} | "
-          f"`results/e5/report.md` (`v1.4-results`) | Loss from lies **${lo['loss from lies']}** vs "
+          f"`results/e5/report.md` (`v1.4.1-results`) | Loss from lies **${lo['loss from lies']}** vs "
           f"${ln['loss from lies']} (Luna), **${to['loss from lies']}** vs ${tn['loss from lies']} (Terra); utility "
           f"{lo['utility (% of cost)']}% / {to['utility (% of cost)']}%; damage/bound ≤ "
           f"{max(float(lo['max damage/bound']), float(to['max damage/bound'])):.3f}; ledger total ${spend:,.2f} |")
     s = re.sub(r"^\| \*\*E5\*\* paid buyers \(v2\) .*$", lambda _: e5, s, count=1, flags=re.M)
-    pu = {(r[0], r[1]): r[-1] for r in t["loss_per_unit"]["rows"]}
-    line = (f"| Loss per 100 S_main units (D40) | loss from lies ÷ units bought from S_main in the attack runs × 100, "
-            f"E2, E2c, E5 | as each eval | `results/tables.json` `loss_per_unit` (`v1.4-results`) | "
-            f"E2 `obt` **{pu[('E2', 'obt')]}**, E2c `obt+planner` {pu[('E2c', 'obt+planner')]}, E2 `none` "
-            f"{pu[('E2', 'none')]}; E5 Luna `obt+planner` {pu.get(('E5 Luna', 'obt+planner'), '-')} vs `none` "
-            f"{pu.get(('E5 Luna', 'none'), '-')} |")
-    if "| Loss per 100 S_main units (D40) |" in s:
-        s = re.sub(r"^\| Loss per 100 S_main units \(D40\) .*$", lambda _: line, s, count=1, flags=re.M)
-    else:
-        s = re.sub(r"^(\| \*\*E2c\*\* planner .*)$", lambda m: m.group(1) + "\n" + line, s, count=1, flags=re.M)
+    # D40's loss per 100 S_main units was rejected for the paper: no INDEX row (results/per_unit/ keeps it).
+    s = re.sub(r"^\| Loss per 100 S_main units \(D40\) .*\n", "", s, flags=re.M)
     f.write_text(s)
 
 
@@ -82,8 +74,8 @@ def update_decisions() -> None:
     for r in t["e5"]["rows"]:
         x = dict(zip(t["e5"]["columns"], r))
         L.append(f"  - {x['buyer']} `{x['defense']}` ({x['seeds']} seeds): loss from lies {x['loss from lies']}, "
-                 f"utility cost {x['utility cost']} ({x['utility (% of cost)']}%), loss per 100 S_main units "
-                 f"{x['loss per 100 S_main units']}, max damage/bound {x['max damage/bound']}.")
+                 f"utility cost {x['utility cost']} ({x['utility (% of cost)']}%), max damage/bound "
+                 f"{x['max damage/bound']}.")
     L.append(OUT_END)
     f = ROOT / "docs" / "DECISIONS.md"
     s = f.read_text()

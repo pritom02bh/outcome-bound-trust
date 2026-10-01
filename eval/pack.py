@@ -22,7 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PACK = ROOT / "paper_pack"
-VERSION = "v1.4"                 # the release this pack belongs to (tag v1.4-results)
+VERSION = "v1.4.1"               # the release this pack belongs to (tag v1.4.1-results)
 ZIP = ROOT / f"paper_pack_{VERSION}.zip"
 TJ = "results/tables.json"
 NUMERIC = re.compile(r"^-?[\d,]*\d(\.\d+)?$")
@@ -170,9 +170,6 @@ def sheets() -> list[tuple[str, list[tuple]]]:
                      *csvs("horizon__t100__rep-n18")]),
         ("reputation grid", [tblock("reputation_grid")]),
         ("Enron", [tblock("enron")]),
-        ("loss per unit", [tblock("loss_per_unit"), tblock("loss_per_unit_by_scenario"),
-                           *([tblock("e5_loss_per_unit_by_scenario")] if "e5_loss_per_unit_by_scenario" in _tables()
-                             else []), cblock("results/per_unit/runs.csv")]),
         ("TLA+ verification", [tlc_block("quick", "quick"), tlc_block("fallbackA2", "A′"), tlc_block("fallbackB", "B"),
                                tlc_block("quick_b01", "quick, B0 = 1"), tlc_block("fallbackA2_b01", "A′, B0 = 1"),
                                coverage_block()]),

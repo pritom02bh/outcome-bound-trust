@@ -25,7 +25,7 @@ RQS = [("RQ1", "Security: does OBT cut the loss from lies?"),
 
 
 # Every exported table NUMBERS.md cites; paper.build writes it only when all are present.
-REQUIRED = ("main", "e5", "loss_per_unit", "second_model", "e1_obt_front", "bound_tightness", "horizon", "budget_k", "extractor",
+REQUIRED = ("main", "e5", "second_model", "e1_obt_front", "bound_tightness", "horizon", "budget_k", "extractor",
             "enron")
 
 
@@ -82,14 +82,16 @@ def entries(results: Path = ROOT / "results", spec_results: Path = ROOT / "spec"
         v = _mean(main(d)["loss from lies"])
         add("RQ1", f"{src(d)} loss reduction vs E2 `none`, `{d}` (derived)", f"{100 * (1 - v / none):.1f}", "%",
             "as above", f"1 − main[{d}] / main[none], loss from lies means ({v:,.1f} / {none:,.1f})")
-    # Loss per 100 S_main units (D40): loss from lies per unit actually bought from S_main in the attack runs.
-    for r in T.t["loss_per_unit"]["rows"]:
-        x = dict(zip(T.t["loss_per_unit"]["columns"], r))
-        add("RQ1", f"{x['eval']} loss per 100 S_main units, `{x['defense']}` (mean [95% CI]; S_main units per "
-            f"attack run {x['S_main units per attack run']}, S_main share {x['S_main share (attack runs)']})",
-            x["loss per 100 S_main units"], "$ per 100 units",
-            "seed 1" if int(x["seeds"]) == 1 else f"{x['seeds']} seeds",
-            f"{J} → loss_per_unit[eval={x['eval']}, defense={x['defense']}]")
+    # Comparisons with the strictest reputation baseline (derived from the main table's printed values).
+    o, p, r = main("obt"), main("obt+planner"), main("rep-strict")
+    add("RQ1", "`obt` vs `rep-strict`: loss from lies at matched utility cost (derived)",
+        f"{_mean(o['loss from lies']):,.1f} vs {_mean(r['loss from lies']):,.1f} at "
+        f"{o['utility (% of cost)']}% vs {r['utility (% of cost)']}% utility cost", "$ per run; % of cost",
+        f"{o['seeds']} seeds each", f"{J} → main[obt|rep-strict].loss from lies, utility (% of cost)")
+    add("RQ1", "`obt+planner` vs `rep-strict`: S_main share (honest) and loss from lies (derived)",
+        f"S_main share {p['S_main share']} vs {r['S_main share']}; loss {_mean(p['loss from lies']):,.1f} vs "
+        f"{_mean(r['loss from lies']):,.1f}", "share; $ per run", f"{p['seeds']} seeds each",
+        f"{J} → main[obt+planner|rep-strict].S_main share, loss from lies")
     add("RQ1", f"E1 default OBT ({dflt['config']}) loss from lies vs `none` (scripted buyer)",
         f"{dflt['loss from lies']} vs {pareto['none']['attack_loss']:,.1f}", "$ per run", "seeds 1-3",
         f"{J} → e1_obt_front[default=yes]; results/figdata/pareto.json → none.attack_loss")
