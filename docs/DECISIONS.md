@@ -733,3 +733,10 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - `eval/verify_release.py v1.4.1-results --additive`: every prior number identical, and only E8 added.
   - All tests, then commit and tag `v1.5-results`. No push.
   - It stops on an invariant or loss-bound violation (run_eval raises) or any failed step.
+
+### D43a. E8 stopped on an A2A timeout, not a violation; transport timeouts raised
+- **What happened.** On E8's second run (white-box, `obt`, seed 1), the A2A request for the supplier's offer timed out ("Client Request timed out"). In E8, composing an offer means an attacker LLM call inside the supplier's A2A handler. One such call took 39.9 s (mean 11 s, p95 20.7 s over the first 96), past the client's 30 s HTTP timeout. The limits had been sized for instant scripted suppliers.
+  - 1 run had completed (black-box `obt` seed 1). The chain stopped as designed, since any failed step stops it; no violation occurred.
+- **Fix.** The A2A client's HTTP timeout goes from 30 s to 300 s, and the outer wait from 60 s to 330 s (`obt/transport.py`).
+  - Timeouts only decide when a slow reply counts as a failure, so no result of any experiment changes. The E9 equivalence proof re-checks this for the supply domain.
+- **Resume.** `run_eval` skips the completed run and redoes the interrupted one from its start (the attacker has no reply cache, so it is sampled fresh).

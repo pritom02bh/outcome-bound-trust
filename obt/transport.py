@@ -231,7 +231,9 @@ class A2ATransport:
 
     # -- plumbing
     def _run(self, coro):
-        return asyncio.run_coroutine_threadsafe(coro, self._loop).result(timeout=60)
+        # D43a: generous limits, because an E8 supplier composes its offer with an LLM call (up to ~40 s seen).
+        # Timeouts only decide when a slow reply counts as a failure; they change no result.
+        return asyncio.run_coroutine_threadsafe(coro, self._loop).result(timeout=330)
 
     async def _resolve(self, url: str):
         import httpx
@@ -247,7 +249,7 @@ class A2ATransport:
         key = (url, token)
         if key not in self._clients:
             headers = {"Authorization": f"Bearer {token}"} if token is not None else {}
-            hc = httpx.AsyncClient(headers=headers, timeout=30)
+            hc = httpx.AsyncClient(headers=headers, timeout=300)        # D43a
             card = next((ep.card for ep in self.registry.values() if ep.url == url), None) or await self._resolve(url)
             self._clients[key] = (hc, ClientFactory(ClientConfig(streaming=False, httpx_client=hc)).create(card))
         _, client = self._clients[key]
