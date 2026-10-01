@@ -22,7 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PACK = ROOT / "paper_pack"
-VERSION = "v1.7"                 # the release this pack belongs to (tag v1.7-results)
+VERSION = "v1.8"                 # the release this pack belongs to (tag v1.8-results)
 ZIP = ROOT / f"paper_pack_{VERSION}.zip"
 TJ = "results/tables.json"
 NUMERIC = re.compile(r"^-?[\d,]*\d(\.\d+)?$")
@@ -75,7 +75,9 @@ COLUMNS = {
     "provider share": "share of reserved capacity units bought from the main provider, honest scenario (E9)",
     "events": "failure-event type (QUOTA, SLA, all)", "runs with events": "OBT runs with at least one event",
     "setting": "E9 config source: transferred from the supply domain (D44) or calibrated on the cloud domain (D45)",
-    "point": "E9 calibration grid point", "front": "on the defense's Pareto front (never-trading points excluded)",
+    "point": "E9 calibration grid point", "b0": "OBT b0 as a fraction of expected per-round spend",
+    "new in D45a": "grid point added by the D45a extension", "pick moved": "the rule's OBT pick differs from D45's",
+    "pick on grid edge": "edges of the extended grid the OBT pick sits on (b0/k min or max)", "front": "on the defense's Pareto front (never-trading points excluded)",
     "transferred": "the config E9 ran with (D44)", "OBT runs": "OBT grid runs checked",
     "invariant violations": "invariant violations over every grid run (target 0)",
     "transferred points reproduce E9": "the transferred grid points' costs equal E9's runs exactly",
@@ -188,6 +190,8 @@ def sheets() -> list[tuple[str, list[tuple]]]:
         *([("E9", [tblock("e9"), tblock("e9_damage_vs_bound")])] if "e9" in _tables() else []),
         *([("E9 calibration", [tblock("e9_calibration"), tblock("e9_calibration_bound"),
                                 tblock("e9_calibration_grid")])] if "e9_calibration" in _tables() else []),
+        *([("E9 calibration ext", [tblock("e9_calibration_ext"), tblock("e9_calibration_ext_bound"),
+                                    tblock("e9_calibration_ext_grid")])] if "e9_calibration_ext" in _tables() else []),
         ("TLA+ verification", [tlc_block("quick", "quick"), tlc_block("fallbackA2", "A′"), tlc_block("fallbackB", "B"),
                                tlc_block("quick_b01", "quick, B0 = 1"), tlc_block("fallbackA2_b01", "A′, B0 = 1"),
                                coverage_block()]),

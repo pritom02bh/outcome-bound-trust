@@ -56,3 +56,4 @@ Summary of `docs/DECISIONS.md` (the full file has the reasoning).
 - **D43a**: E8 stopped on an A2A timeout, not a violation; transport timeouts raised
 - **D44**: E9: a second domain (cloud/API capacity), approved with the minimal change (user decision)
 - **D45**: E9 calibration: the cloud domain's own configs, chosen by E1's rule (user request)
+- **D45a**: E9 calibration: OBT grid extended (user request)

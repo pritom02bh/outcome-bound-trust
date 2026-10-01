@@ -1085,6 +1085,65 @@ def _paper_data(runs: Path, out: Path) -> str | None:
         (out / "e9" / "calibration_pareto.svg").write_bytes(_loss_vs_utility(
             sorted((n, p["utility_cost"], p["attack_loss"]) for n, p in cs["points"].items()
                    if n in cs["fronts"]["obt"] + cs["fronts"]["rep-strict"]), "E9 calibration: Pareto fronts"))
+    # D45a: the extended OBT grid (b0 up to 80%, k up to 4), same rule; D45's tables above stay on the original grid.
+    ext_only = [n for n, d, _ in e9_calib.grid(ext=True) if (n, d) not in {(m, e) for m, e, _ in e9_calib.grid()}] \
+        if e9rows and (runs / "e9_calib").exists() else []
+    if ext_only and all((runs / "e9_calib" / n / "results.jsonl").exists() for n in ext_only):
+        cx = e9_calib.summarize(runs / "e9_calib", runs / "e9", ext=True)
+        sx = e9m.summary(e9_calib.calibrated_rows(runs / "e9_calib", runs / "e9", ext=True))
+        rows_x = []
+        for setting, s, p in (("transferred", s9, cs["transferred"]["obt"]), ("calibrated, D45 grid", sc,
+                                                                                cs["picks"]["obt"]),
+                              ("calibrated, extended grid", sx, cx["picks"]["obt"])):
+            v = s["defenses"]["obt"]
+            rows_x.append(["obt", setting, f"{p} ({cfg(p)})", fmt(v["loss"]), money(v["split"]["damage"]),
+                           money(v["split"]["reroute"]), money(v["split"]["resid"]), fmt(v["util"]),
+                           f"{mean(v['util_pct']):.2f}", "-" if v["share"] is None else f"{v['share']:.3f}"])
+        tables["e9_calibration_ext"] = {
+            "caption": "E9 OBT calibration on the extended grid (D45a: b0 2.5-80% of per-round spend x k 1, 2, 4), "
+                       "same rule as D45, next to the transferred config and D45's pick. Seeds 1-3, mean [95% "
+                       f"bootstrap CI over seeds]; $ per run. Pick moved: "
+                       f"{'yes' if cx['picks']['obt'] != cs['picks']['obt'] else 'no'}; pick on a grid edge: "
+                       f"{', '.join(cx['obt_pick_edges']) or 'none'}.",
+            "columns": tables["e9_calibration"]["columns"], "rows": rows_x}
+        obt_x = {n: p for n, p in cx["points"].items() if p["defense"] == "obt"}
+        tables["e9_calibration_ext_grid"] = {
+            "caption": "E9 extended OBT grid (D45a): every point, scripted buyer, seeds 1-3, $ per run. Max "
+                       "damage/bound over the point's runs.",
+            "columns": ["point", "b0", "k", "utility cost", "loss from lies", "never trades", "front", "chosen",
+                        "new in D45a", "max damage/bound"],
+            "rows": [[n, p["b0_frac"], p["budget_k"], f"{p['utility_cost']:.1f}", f"{p['attack_loss']:.1f}",
+                      "yes" if p["never_trades"] else "", "yes" if n in cx["fronts"]["obt"] else "",
+                      "yes" if n == cx["picks"]["obt"] else "", "yes" if n in ext_only else "",
+                      f3(p["max_ratio"])] for n, p in obt_x.items()]}
+        rx = [p["max_ratio"] for p in obt_x.values() if p["max_ratio"] is not None]
+        tables["e9_calibration_ext_bound"] = {
+            "caption": "E9 extended OBT grid (D45a): the loss bound over every run (18 points x 7 scenarios x 3 seeds).",
+            "columns": ["OBT runs", "failure events", "max damage/bound", "held", "invariant violations",
+                        "pick moved", "pick on grid edge"],
+            "rows": [[sum(p["runs"] for p in obt_x.values()), sum(p["failure_events"] for p in obt_x.values()),
+                      f3(max(rx)), "yes" if all(p["bound_held"] for p in obt_x.values()) else "NO",
+                      sum(p["invariant_violations"] for p in obt_x.values()),
+                      "yes" if cx["picks"]["obt"] != cs["picks"]["obt"] else "no",
+                      ", ".join(cx["obt_pick_edges"]) or "none"]]}
+        (fd / "e9_pareto_ext.json").write_text(json.dumps({
+            "obt": [{"name": n, "utility_cost": p["utility_cost"], "attack_loss": p["attack_loss"],
+                     "front": n in cx["fronts"]["obt"]} for n, p in obt_x.items()],
+            "reputation": [{"name": n, "utility_cost": p["utility_cost"], "attack_loss": p["attack_loss"],
+                            "front": n in cx["fronts"]["rep-strict"], "never_trades": p["never_trades"],
+                            "locked": p["locked"]} for n, p in cx["points"].items() if p["defense"] == "reputation"],
+            "none": {"utility_cost": 0.0, "attack_loss": round(mean(none9.get("loss") or [0.0]), 4)},
+            "chosen": {"obt": cx["picks"]["obt"], "reputation": cx["picks"]["rep-strict"]},
+            "transferred": cx["transferred"]}, indent=1, sort_keys=True))
+        L = ["# E9 calibration, extended OBT grid (D45a)", "",
+             "Same rule as D45. If the pick is again on a grid edge, that is reported, not extended further.", ""]
+        for name in ("e9_calibration_ext", "e9_calibration_ext_bound", "e9_calibration_ext_grid"):
+            t = tables[name]
+            L += [f"## {name}", "", t["caption"], "", "| " + " | ".join(t["columns"]) + " |",
+                  "|" + "---|" * len(t["columns"])]
+            L += ["| " + " | ".join(str(c) for c in r) + " |" for r in t["rows"]] + [""]
+        L += [f"OBT front (extended grid): {', '.join(cx['fronts']['obt'])}.", ""]
+        (out / "e9" / "calibration_ext.md").write_text("\n".join(L))
     (out / "tables.json").write_text(json.dumps(tables, indent=1, sort_keys=True))
     return "figdata/ and tables.json: data for eval/paper.py (figures and LaTeX tables)"
 

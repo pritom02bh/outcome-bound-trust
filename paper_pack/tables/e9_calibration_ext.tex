@@ -1,0 +1,15 @@
+\begin{table}[t]
+\centering
+\small
+\caption{E9 OBT calibration on the extended grid (D45a: b0 2.5-80\% of per-round spend x k 1, 2, 4), same rule as D45, next to the transferred config and D45's pick. Seeds 1-3, mean [95\% bootstrap CI over seeds]; \$ per run. Pick moved: no; pick on a grid edge: k min.}
+\label{tab:e9_calibration_ext}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+defense & setting & config & loss from lies & damage & reroute premium & resid & utility cost & utility (\% of cost) & provider share \\
+\midrule
+obt & transferred & obt\_b0.05\_k1 (b0\_frac 0.05, budget\_k 1) & 42.6 [34.8, 53.2] & 20.3 & 19.6 & 2.7 & 327.3 [310.0, 346.0] & 22.57 & 0.111 \\
+obt & calibrated, D45 grid & obt\_b0.2\_k1 (b0\_frac 0.2, budget\_k 1) & 46.3 [40.8, 50.0] & 68.7 & 35.4 & -57.8 & 293.7 [269.0, 323.0] & 20.25 & 0.222 \\
+obt & calibrated, extended grid & obt\_b0.2\_k1 (b0\_frac 0.2, budget\_k 1) & 46.3 [40.8, 50.0] & 68.7 & 35.4 & -57.8 & 293.7 [269.0, 323.0] & 20.25 & 0.222 \\
+\bottomrule
+\end{tabular}
+\end{table}

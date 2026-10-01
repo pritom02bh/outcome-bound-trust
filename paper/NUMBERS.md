@@ -88,6 +88,9 @@ Grouped by the paper's research questions (DESIGN §10); verification is Section
 | E9 `rep-strict`, transferred → calibrated config (D45): loss from lies; utility cost (% of cost) (mean [95% CI]) | rep_n3_th0.9_cap200 (rep_n0 3, rep_theta 0.9, rep_cap 200.0): 134.9 [116.0, 145.0]; 266.0 [240.0, 304.0] (18.34%) → rep_n8_th0.8_cap200 (rep_n0 8, rep_theta 0.8, rep_cap 200.0): 371.0 [340.8, 387.0]; 0.0 [0.0, 0.0] (0.00%) | $ per run | seeds 1-3 | results/tables.json → e9_calibration[defense=rep-strict, setting=transferred|calibrated] |
 | E9 calibration Pareto fronts (OBT; reputation, never-trading points excluded) | obt_b0.05_k1, obt_b0.1_k1, obt_b0.1_k2, obt_b0.2_k1, obt_b0.2_k2; rep_n3_th0.85_cap200, rep_n3_th0.9_cap200, rep_n8_th0.8_cap200 | grid points | seeds 1-3 | results/tables.json → e9_calibration_grid[front=yes] |
 | E9 calibration: loss bound over every OBT grid run (168 runs, 586 failure events) | max 1.000; held yes; invariant violations 0 | ratio | seeds 1-3 | results/tables.json → e9_calibration_bound |
+| E9 `obt` calibrated on the extended grid (D45a, b0 to 80%, k to 4): pick moved no; pick on grid edge: k min | obt_b0.2_k1 (b0_frac 0.2, budget_k 1): 46.3 [40.8, 50.0]; 293.7 [269.0, 323.0] (20.25%) | $ per run | seeds 1-3 | results/tables.json → e9_calibration_ext[setting=calibrated, extended grid] |
+| E9 extended OBT grid: Pareto front (D45a) | obt_b0.05_k1, obt_b0.1_k1, obt_b0.1_k2, obt_b0.2_k1, obt_b0.2_k2, obt_b0.4_k2, obt_b0.8_k1, obt_b0.8_k2 | grid points | seeds 1-3 | results/tables.json → e9_calibration_ext_grid[front=yes] |
+| E9 extended OBT grid: loss bound over every run (378 runs, 1500 failure events) | max 1.000; held yes; invariant violations 0 | ratio | seeds 1-3 | results/tables.json → e9_calibration_ext_bound |
 
 ## RQ6. Extraction reliability (E4, hard subset, E5 extractors, Enron)
 

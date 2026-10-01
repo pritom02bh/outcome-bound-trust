@@ -191,6 +191,21 @@ def entries(results: Path = ROOT / "results", spec_results: Path = ROOT / "spec"
         add("RQ5", f"E9 calibration: loss bound over every OBT grid run ({b['OBT runs']} runs, "
             f"{b['failure events']} failure events)", f"max {b['max damage/bound']}; held {b['held']}; invariant "
             f"violations {b['invariant violations']}", "ratio", "seeds 1-3", f"{J} → e9_calibration_bound")
+    # D45a: the extended OBT grid, same rule.
+    if "e9_calibration_ext" in T.t:
+        x = {r[1]: dict(zip(T.t["e9_calibration_ext"]["columns"], r)) for r in T.t["e9_calibration_ext"]["rows"]}
+        b = dict(zip(T.t["e9_calibration_ext_bound"]["columns"], T.t["e9_calibration_ext_bound"]["rows"][0]))
+        c = x["calibrated, extended grid"]
+        add("RQ5", f"E9 `obt` calibrated on the extended grid (D45a, b0 to 80%, k to 4): pick moved {b['pick moved']}; "
+            f"pick on grid edge: {b['pick on grid edge']}", f"{c['config']}: {c['loss from lies']}; "
+            f"{c['utility cost']} ({c['utility (% of cost)']}%)", "$ per run", "seeds 1-3",
+            f"{J} → e9_calibration_ext[setting=calibrated, extended grid]")
+        g = T.t["e9_calibration_ext_grid"]
+        add("RQ5", "E9 extended OBT grid: Pareto front (D45a)", ", ".join(r[0] for r in g["rows"] if r[6] == "yes"),
+            "grid points", "seeds 1-3", f"{J} → e9_calibration_ext_grid[front=yes]")
+        add("RQ5", f"E9 extended OBT grid: loss bound over every run ({b['OBT runs']} runs, {b['failure events']} "
+            "failure events)", f"max {b['max damage/bound']}; held {b['held']}; invariant violations "
+            f"{b['invariant violations']}", "ratio", "seeds 1-3", f"{J} → e9_calibration_ext_bound")
 
     # ---- RQ6 extraction reliability
     for m in ("gpt-oss:20b", "qwen3:8b", "gpt-5.6-luna", "gpt-5.6-terra"):
