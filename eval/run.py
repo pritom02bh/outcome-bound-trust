@@ -164,6 +164,8 @@ def config_hash(ec: EvalConfig, defense: str = "obt") -> str:
     sim.pop("defense")                      # part of the run key, not of the config
     if sim.get("budget_k") == 1:            # D36: the default multiplier keeps every earlier run's hash
         sim.pop("budget_k")
+    if sim.get("domain") == "supply":        # D44: likewise the default domain
+        sim.pop("domain")
     if variant_opts(defense):               # buyer-side variant options are part of that variant's identity
         sim["variant_opts"] = variant_opts(defense)
     blob = {"eval": {k: getattr(ec, k) for k in _RUN_FIELDS}, "sim": sim}

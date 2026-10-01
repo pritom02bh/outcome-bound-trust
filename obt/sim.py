@@ -45,6 +45,9 @@ class SimConfig:
     rep_theta: float = 0.8  # reputation baseline (F9, D22)
     rep_cap: float = 200.0
     rep_n0: int = 3
+    # E9 (D44): "cloud" swaps the environment for the capacity game; "supply" (the default) is the Beer Game and
+    # leaves every existing path untouched.
+    domain: str = "supply"
 
     def budget_cfg(self) -> BudgetConfig:
         return BudgetConfig.from_game(self.game, self.b0_frac, self.window, self.budget_k)
@@ -98,9 +101,10 @@ class BuyerAPI:
             return None
         if qty <= 0 and not cited:
             return None
+        item = {"item": "capacity"} if s.cfg.domain == "cloud" else {}      # E9 (D44); supply keeps the default
         return self._propose(Action(action_id=s.next_id("a"), kind="ORDER", counterparty=counterparty,
                                     qty=qty, unit_price=price, value=qty * price,
-                                    cited_claims=cited, round=t), promised)
+                                    cited_claims=cited, round=t, **item), promised)
 
     def _propose(self, a: Action, promised: int | None = None) -> Action:
         self.round_actions.append(a)
@@ -172,7 +176,13 @@ class Sim:
         self.transport = make_transport(cfg.transport, main, cfg.game)
         self.main_ids: tuple[str, ...] = self.transport.identities
         self.buyer = buyer
-        self.game = BeerGame(cfg.game, seed, self.transport.suppliers())
+        if cfg.domain == "cloud":
+            from .env.cloud import CloudGame
+            self.game = CloudGame(cfg.game, seed, self.transport.suppliers())
+        elif cfg.domain == "supply":
+            self.game = BeerGame(cfg.game, seed, self.transport.suppliers())
+        else:
+            raise ValueError(f"domain must be supply or cloud, not {cfg.domain!r}")
         self.ledger = Ledger()
         self.actions = ActionLog()
         self.notes = NoteLog()
@@ -443,8 +453,13 @@ class Sim:
             "rerouted_units": self.rerouted_qty,
             "shortfall_rerouted_units": self.shortfall_qty,
             "invariant_violations": self.monitor.summary(),
-            "loss_bound": lossbound.loss_bound(self),
+            "loss_bound": lossbound.loss_bound(self) if self.cfg.domain == "supply" else _cloud_bound(self),
         }
+
+
+def _cloud_bound(sim: "Sim") -> dict:
+    from .env import cloud_lossbound
+    return cloud_lossbound.loss_bound(sim)
 
 
 def loss_from_lies(result: SimResult, honest: SimResult) -> float:

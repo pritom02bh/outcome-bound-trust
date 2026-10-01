@@ -132,7 +132,7 @@ class Gate:
                 self.consumption.setdefault(a.action_id, []).append((k.claim_id, take))
                 left -= take
         for k in claims:
-            if k.template == "PRICE":
+            if k.template in ("PRICE", "SLA"):      # SLA: record reliance, so a relied-on SLA resolves (D44)
                 self.ledger.consume(k.claim_id, a.qty, price, now)
 
     def submit(self, a: Action, now: int, execute: Callable[[Action], None] | None = None) -> Action:

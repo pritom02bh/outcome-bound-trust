@@ -13,11 +13,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from .money import ZERO, Money
 
-# Closed item catalog: slot values must never carry free text into agent context (I5).
+# Closed item catalog: slot values must never carry free text into agent context (I5). ITEMS is the supply
+# domain's catalog; the cloud domain (E9, DECISIONS D44) has its own, and the type admits both.
 ITEMS = ("widget",)
-Item = Literal["widget"]
+CLOUD_ITEMS = ("capacity",)
+Item = Literal["widget", "capacity"]
 
-Template = Literal["DELIVERY", "PRICE"]
+Template = Literal["DELIVERY", "PRICE", "SLA"]
 ClaimStatus = Literal["PENDING", "PASSED", "FAILED", "LAPSED", "UNTESTABLE"]
 TERMINAL = ("PASSED", "FAILED", "LAPSED", "UNTESTABLE")
 ActionKind = Literal["ORDER", "PAYMENT"]
@@ -62,11 +64,29 @@ class PriceSlots(BaseModel):
     valid_until: int = Field(ge=0, le=MAX_ROUND)
 
 
-SLOT_MODELS: dict[str, type[BaseModel]] = {"DELIVERY": DeliverySlots, "PRICE": PriceSlots}
+class SlaSlots(BaseModel):
+    """E9 (D44): the provider is up in at least min_availability of the rounds start..end (uptime log)."""
+    model_config = _FROZEN
+    item: Item
+    min_availability: Decimal = Field(gt=0, le=1)
+    start: int = Field(ge=0, le=MAX_ROUND)
+    end: int = Field(ge=0, le=MAX_ROUND)
+
+    @model_validator(mode="after")
+    def _window(self) -> "SlaSlots":
+        if self.end < self.start:
+            raise ValueError("SLA window must have end >= start")
+        return self
+
+
+SLOT_MODELS: dict[str, type[BaseModel]] = {"DELIVERY": DeliverySlots, "PRICE": PriceSlots, "SLA": SlaSlots}
+
+
+DEADLINE_SLOT = {"DELIVERY": "by_round", "PRICE": "valid_until", "SLA": "end"}
 
 
 def deadline_for(template: str, slots: dict) -> int:
-    return slots["by_round"] if template == "DELIVERY" else slots["valid_until"]
+    return slots[DEADLINE_SLOT[template]]
 
 
 class Claim(BaseModel):

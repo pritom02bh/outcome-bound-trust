@@ -22,7 +22,7 @@ from eval.stats import (e2b_report, e2b_trust_svg, loss_split, main_share, repor
 from obt.attacks.suppliers import scenario_name
 
 # e1 grid points are summarized together as one grid (_e1), not as separate evals.
-SKIP = ("_invalid", "_archive", "_v1_shared_cache", "e8", "cache", "message_bank", "tuning", "e1", "e4", "e6", "rep_grid")
+SKIP = ("_invalid", "_archive", "_v1_shared_cache", "e8", "e9", "cache", "message_bank", "tuning", "e1", "e4", "e6", "rep_grid")
 
 
 def _read_rows(f: Path) -> list[dict]:
@@ -976,6 +976,45 @@ def _paper_data(runs: Path, out: Path) -> str | None:
         keys = list(recs[0]) if recs else []
         (out / "e8" / "runs.csv").write_text(_csv([keys] + [[x[k] for k in keys] for x in recs]))
         (out / "e8" / "report.md").write_text(e8m.report_md(recs))
+    # E9 (D44): the cloud/API-capacity domain (scripted, structured intents).
+    e9rows = read(runs / "e9")
+    if e9rows:
+        from eval import e9 as e9m
+        s9 = e9m.summary(e9rows)
+        f3 = lambda x: "-" if x is None else f"{x:.3f}"   # noqa: E731
+        tables["e9"] = {
+            "caption": "E9, second domain (an agent buying cloud/API capacity; scripted buyer and providers, "
+                       "structured intents, no natural-language extraction; seeds 1-3): loss from lies (mean of "
+                       "scenarios 2-7) and utility cost against none, mean [95% bootstrap CI over seeds]; damage + "
+                       "reroute premium + resid are means over attack runs; $ per run.",
+            "columns": ["defense", "seeds", "loss from lies", "damage", "reroute premium", "resid", "utility cost",
+                        "utility (% of cost)", "provider share"],
+            "rows": [[d, len(v["loss"]), fmt(v["loss"]), money(v["split"]["damage"]), money(v["split"]["reroute"]),
+                      money(v["split"]["resid"]), fmt(v["util"]),
+                      f"{mean(v['util_pct']):.2f}" if v["util_pct"] else "-",
+                      "-" if v["share"] is None else f"{v['share']:.3f}"] for d, v in s9["defenses"].items()]}
+        b = s9["bound"]
+        tables["e9_damage_vs_bound"] = {
+            "caption": "E9 damage against the per-event bound (OBT runs; QUOTA and SLA events; docs/E9_PLAN.md §4). "
+                       "A ratio above 1 would break the bound.",
+            "columns": ["events", "failure events", "runs with events", "sum of bounds", "damage",
+                        "max damage/bound", "max damage/a-priori", "held"],
+            "rows": [["QUOTA", b["QUOTA"]["events"], b["QUOTA"]["runs"], f"{b['QUOTA']['sum_bound']:,.1f}", "-", "-",
+                      "-", "-"],
+                     ["SLA", b["SLA"]["events"], b["SLA"]["runs"], f"{b['SLA']['sum_bound']:,.1f}", "-", "-", "-", "-"],
+                     ["all", b["QUOTA"]["events"] + b["SLA"]["events"], b["all"]["runs_with_events"],
+                      f"{b['all']['sum_bound']:,.1f}", f"{b['all']['damage']:,.1f}", f3(b["all"]["max_ratio"]),
+                      f3(b["all"]["max_apriori_ratio"]), "yes" if b["all"]["held"] else "NO"]]}
+        (out / "e9").mkdir(parents=True, exist_ok=True)
+        L = ["# E9: second domain, cloud/API capacity (D44)", "",
+             "Scripted buyer and providers; structured intents (no natural-language extraction). Defense rows over "
+             "seeds 1-3; $ per run.", "", "| " + " | ".join(tables["e9"]["columns"]) + " |",
+             "|" + "---|" * len(tables["e9"]["columns"])]
+        L += ["| " + " | ".join(str(c) for c in r) + " |" for r in tables["e9"]["rows"]]
+        L += ["", "## Damage vs bound (OBT)", "", "| " + " | ".join(tables["e9_damage_vs_bound"]["columns"]) + " |",
+              "|" + "---|" * len(tables["e9_damage_vs_bound"]["columns"])]
+        L += ["| " + " | ".join(str(c) for c in r) + " |" for r in tables["e9_damage_vs_bound"]["rows"]]
+        (out / "e9" / "report.md").write_text("\n".join(L) + "\n")
     (out / "tables.json").write_text(json.dumps(tables, indent=1, sort_keys=True))
     return "figdata/ and tables.json: data for eval/paper.py (figures and LaTeX tables)"
 

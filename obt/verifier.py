@@ -15,6 +15,7 @@ PRICE: resolves at valid_until; fails iff any invoice from c for i in
 """
 from __future__ import annotations
 
+import math
 from typing import Callable
 
 from .env.oracles import OracleView
@@ -38,9 +39,19 @@ def check_price(claim: Claim, oracles: OracleView) -> bool:
     return all(to_money(i.unit_price) <= s["unit_price"] for i in invs)
 
 
+def check_sla(claim: Claim, oracles: OracleView) -> bool:
+    """E9 (D44): up rounds in [start, end] >= ceil(min_availability x window length), from the env's uptime log.
+    A round the log does not cover counts as down (fail closed)."""
+    s = claim.slots
+    n = s["end"] - s["start"] + 1
+    up, _ = oracles.uptime(claim.counterparty, s["start"], s["end"])
+    return up >= math.ceil(s["min_availability"] * n)
+
+
 TEMPLATES: dict[str, Callable[..., bool]] = {
     "DELIVERY": check_delivery,
     "PRICE": check_price,
+    "SLA": check_sla,
 }
 
 Listener = Callable[[Claim, int], None]
@@ -99,6 +110,8 @@ class Verifier:
             if self._allocate:
                 return self.allocated(c.claim_id) >= c.consumed
             return check_delivery(c, self._oracles, self.grace)
+        if c.template == "SLA":
+            return check_sla(c, self._oracles)
         return check_price(c, self._oracles)
 
     def step(self, now: int) -> list[Claim]:
