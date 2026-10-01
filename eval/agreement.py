@@ -3,7 +3,9 @@
     python -m eval.agreement annotation/returned/spotcheck_blind.csv annotation/returned/enron_blind.csv
         -> runs/agreement/agreement.json and a printed report (not run until the annotator's files are back)
 
-Spot-check: `looks_correct` (yes/no) per row, joined on `id`, against data/spotcheck.csv.
+Spot-check: `looks_correct` (yes/no) on the 50-row blind sheet (40 v2 rows + 10 seeded v1 errors), joined on `row`
+through the private key data/annotation_spotcheck_key.csv; reported on all 50, the 40 v2 rows, and the 10 seeded
+rows (seeded-error detection rate).
 Enron: `is_commitment` (yes/no) per row, joined on `row` (1-based, the file order), against
 data/enron_candidates.csv; plus slot agreement on the rows both mark yes.
 
@@ -60,16 +62,29 @@ def _date(v: str):
     return tuple(sorted(p.lower() for p in parts)) or None
 
 
-def spotcheck(theirs: Path, ours: Path = ROOT / "data" / "spotcheck.csv") -> dict:
-    o = {r["id"]: yn(r["looks_correct"]) for r in csv.DictReader(ours.open(newline=""))}
-    t = {r["id"]: yn(r["looks_correct"]) for r in csv.DictReader(theirs.open(newline=""))}
-    missing = sorted(i for i in o if t.get(i) is None)
+def spotcheck(theirs: Path, key: Path = ROOT / "data" / "annotation_spotcheck_key.csv") -> dict:
+    """The 50-row blind sheet: 40 v2 rows (ours: all "yes") shuffled with 10 v1 rows the author marked "no"
+    (seeded errors). Joined on `row` through the private key (data/, outside annotation/). Reported on all 50, on
+    the 40 v2 rows, and on the 10 seeded rows, where the detection rate is the share the annotator marks "no"."""
+    k = {r["row"]: r for r in csv.DictReader(key.open(newline=""))}
+    t = {r["row"]: yn(r["looks_correct"]) for r in csv.DictReader(theirs.open(newline=""))}
+    if set(t) != set(k):
+        raise ValueError("the returned sheet's rows do not match the key")
+    missing = sorted((i for i in k if t[i] is None), key=int)
     if missing:
-        raise ValueError(f"annotator left {len(missing)} spot-check rows unlabeled, e.g. {missing[:5]}")
-    ids = sorted(o)
-    k = kappa([o[i] for i in ids], [t[i] for i in ids])
-    k["disagreements"] = [{"id": i, "ours": o[i], "theirs": t[i]} for i in ids if o[i] != t[i]]
-    return k
+        raise ValueError(f"annotator left {len(missing)} spot-check rows unlabeled, e.g. rows {missing[:5]}")
+    rows = sorted(k, key=int)
+
+    def part(sel):
+        ids = [i for i in rows if sel(k[i])]
+        out = kappa([k[i]["our_label"] for i in ids], [t[i] for i in ids])
+        out["disagreements"] = [{"row": int(i), "source": k[i]["source"], "id": k[i]["id"],
+                                 "ours": k[i]["our_label"], "theirs": t[i]} for i in ids if k[i]["our_label"] != t[i]]
+        return out
+    seeded = part(lambda r: r["source"] == "v1_seeded")
+    seeded["detection_rate"] = round(sum(t[i] == NO for i in rows if k[i]["source"] == "v1_seeded")
+                                     / max(1, sum(k[i]["source"] == "v1_seeded" for i in rows)), 4)
+    return {"all": part(lambda r: True), "v2": part(lambda r: r["source"] == "v2"), "seeded": seeded}
 
 
 def enron(theirs: Path, ours: Path = ROOT / "data" / "enron_candidates.csv") -> dict:
@@ -111,9 +126,11 @@ def main(argv: list[str] | None = None) -> None:
     out = ROOT / "runs" / "agreement"
     out.mkdir(parents=True, exist_ok=True)
     (out / "agreement.json").write_text(json.dumps(rep, indent=1) + "\n")
-    for name, r in rep.items():
+    parts = [(f"spotcheck {k}", v) for k, v in rep["spotcheck"].items()] + [("enron", rep["enron"])]
+    for name, r in parts:
         print(f"{name}: n={r['n']} raw agreement {r['raw_agreement']} kappa {r['kappa']}"
               + (f" (degenerate: {r['note']})" if r["degenerate"] else "")
+              + (f"; seeded-error detection rate {r['detection_rate']}" if "detection_rate" in r else "")
               + f"; {len(r['disagreements'])} disagreements")
     for s, v in rep["enron"]["slot_agreement_on_rows_both_yes"].items():
         print(f"  enron slot {s}: {v['agree']}/{v['rows']}")

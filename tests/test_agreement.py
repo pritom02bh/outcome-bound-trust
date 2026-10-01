@@ -30,13 +30,18 @@ def _write(path, header, rows):
 
 
 def test_spotcheck_and_enron_against_our_files(tmp_path):
-    ours_s, theirs_s = tmp_path / "s.csv", tmp_path / "s_t.csv"
-    _write(ours_s, ["id", "kind", "message", "template", "slots", "looks_correct"],
-           [["t1", "offer", "m1", "", "", "yes"], ["t2", "offer", "m2", "", "", "yes"]])
-    _write(theirs_s, ["row", "id", "message", "template", "slots", "looks_correct"],
-           [[1, "t1", "m1", "", "", "yes"], [2, "t2", "m2", "", "", "no"]])
-    s = ag.spotcheck(theirs_s, ours_s)
-    assert s["raw_agreement"] == 0.5 and s["disagreements"] == [{"id": "t2", "ours": "yes", "theirs": "no"}]
+    key, theirs_s = tmp_path / "key.csv", tmp_path / "s_t.csv"
+    _write(key, ["row", "source", "id", "our_label"],
+           [[1, "v2", "test001", "yes"], [2, "v1_seeded", "test029", "no"], [3, "v2", "test002", "yes"],
+            [4, "v1_seeded", "test030", "no"]])
+    _write(theirs_s, ["row", "message", "template", "slots", "looks_correct"],
+           [[1, "m", "", "", "yes"], [2, "m", "", "", "no"], [3, "m", "", "", "no"], [4, "m", "", "", "yes"]])
+    s = ag.spotcheck(theirs_s, key)
+    assert s["all"]["n"] == 4 and s["all"]["raw_agreement"] == 0.5 and s["all"]["kappa"] == 0.0
+    assert s["v2"]["n"] == 2 and s["v2"]["degenerate"] and [d["row"] for d in s["v2"]["disagreements"]] == [3]
+    assert s["seeded"]["n"] == 2 and s["seeded"]["detection_rate"] == 0.5
+    assert s["seeded"]["disagreements"] == [{"row": 4, "source": "v1_seeded", "id": "test030", "ours": "no",
+                                             "theirs": "yes"}]
     cols = ["is_commitment", "has_delivery_claim", "qty", "deadline", "has_price_claim", "price", "valid_until", "notes"]
     ours_e, theirs_e = tmp_path / "e.csv", tmp_path / "e_t.csv"
     _write(ours_e, ["message", "stratum", *cols],
@@ -71,4 +76,10 @@ def test_the_blind_files_match_our_order_and_hide_our_labels():
     assert [r["message"] for r in blind] == [r["message"] for r in ours] and len(blind) == 100
     assert not any(r[c] for r in blind for c in ag.SLOTS + ("is_commitment", "notes")) and "stratum" not in blind[0]
     spot = list(csv.DictReader(open(ag.ROOT / "annotation" / "spotcheck_blind.csv", newline="")))
-    assert len(spot) == 40 and not any(r["looks_correct"] for r in spot) and "kind" not in spot[0]
+    key = list(csv.DictReader(open(ag.ROOT / "data" / "annotation_spotcheck_key.csv", newline="")))
+    assert len(spot) == 50 and not any(r["looks_correct"] for r in spot)
+    assert list(spot[0]) == ["row", "message", "template", "slots", "looks_correct"]      # nothing marks origin
+    assert [r["row"] for r in spot] == [r["row"] for r in key]
+    assert sum(r["source"] == "v1_seeded" for r in key) == 10 and {r["our_label"] for r in key if r["source"] == "v2"} == {"yes"}
+    v2 = {r["message"] for r in csv.DictReader(open(ag.ROOT / "data" / "spotcheck.csv", newline=""))}
+    assert sum(r["message"] in v2 for r in spot) == 40

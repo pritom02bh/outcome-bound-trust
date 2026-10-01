@@ -690,6 +690,12 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - per-slot agreement on the Enron rows both mark yes, normalized (`$174` = `174`; conflicting dates match in either order).
   - It refuses a reordered or unfinished file.
 - **κ is degenerate for the spot-check.** All 40 of our labels are "yes", so κ is 0, or undefined if the annotator also says yes to all 40, whatever they do. The script flags this, and the raw agreement and the disagreement list carry the information. Enron (10 yes / 90 no) has no such problem.
+- **Update (user decision): seeded errors make the spot-check informative.**
+  - The 10 rows the author marked "no" in the v1 spot-check (`runs/message_bank/spotcheck_v1/`: test002, 015, 018, 023, 024, 027, 029, 030, 184 and 196) are shuffled in with the 40 v2 rows, with a fixed seed (20261001). That gives 50 rows.
+  - The columns are `row`, `message`, `template`, `slots` and `looks_correct`. Nothing marks origin: the `id` column is dropped, since v1 and v2 ids collide and would reveal the source.
+  - The private key mapping each row to its source, original id and our label is `data/annotation_spotcheck_key.csv`, outside `annotation/`. The seeded rows are rows 4, 8, 9, 13, 17, 19, 21, 25, 28 and 45.
+  - `agreement.py` reports κ and raw agreement on all 50; separately on the 40 v2 rows (where κ is still degenerate); and on the 10 seeded rows, with the **seeded-error detection rate** (the share the annotator marks "no").
+  - INSTRUCTIONS.md changed only in its row count (40 → 50).
 
 ## D43. E8: an LLM-powered adversarial supplier (user request)
 - **Attacker** (`obt/attacks/llm_adversary.py`): S_main is replaced by gpt-oss:20b (local) whose only goal is its own profit.

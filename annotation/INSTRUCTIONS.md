@@ -6,7 +6,7 @@ Open each CSV in a spreadsheet program, fill in only the empty columns, keep the
 
 ---
 
-## Task A — `spotcheck_blind.csv` (40 rows): does the extraction look correct?
+## Task A — `spotcheck_blind.csv` (50 rows): does the extraction look correct?
 
 Each row is a short message a supplier sent to a buyer that purchases **widgets** in a game played in numbered **rounds**. The columns `template` and `slots` show what an automatic extractor recorded from the message. Fill in `looks_correct` with **yes** or **no**: is the recording exactly what the rules below say the message promises?
 
