@@ -45,7 +45,7 @@ def invoice(o, rnd, unit_price, cp=CP):
 
 
 def test_templates_are_a_fixed_registry():
-    assert set(TEMPLATES) == {"DELIVERY", "PRICE"}
+    assert set(TEMPLATES) == {"DELIVERY", "PRICE", "SLA"}          # SLA added for E9 (D44)
 
 
 # DELIVERY: received >= qty in (created_round, by_round]

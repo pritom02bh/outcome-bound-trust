@@ -36,6 +36,7 @@ def test_k1_is_exactly_the_old_rule_and_keeps_old_config_hashes():
     sim = dataclasses.asdict(er.sim_config(ec))
     sim.pop("defense")
     sim.pop("budget_k")                                              # the pre-D36 blob had no budget_k
+    sim.pop("domain")                                                # nor domain (D44)
     blob = {"eval": {k: getattr(ec, k) for k in er._RUN_FIELDS}, "sim": sim}
     assert er.config_hash(ec) == hashlib.sha256(json.dumps(blob, sort_keys=True, default=str).encode()).hexdigest()
     assert er.config_hash(EvalConfig(sim={"budget_k": 2})) != er.config_hash(EvalConfig())
