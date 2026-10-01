@@ -1,0 +1,564 @@
+eval,defense,scenario,seed,loss_from_lies,s_main_units,all_units
+E2,obt,2,1,107.0,25,990
+E2,obt,2,2,124.0,25,1020
+E2,obt,2,3,135.5,25,1056
+E2,obt,2,4,111.0,25,1006
+E2,obt,2,5,129.0,25,1040
+E2,obt,3,1,3.25,48,991
+E2,obt,3,2,-1.25,58,1021
+E2,obt,3,3,5.0,80,1057
+E2,obt,3,4,-15.25,88,1007
+E2,obt,3,5,5.75,48,1041
+E2,obt,4,1,82.0,29,990
+E2,obt,4,2,71.0,30,1020
+E2,obt,4,3,105.0,33,1056
+E2,obt,4,4,92.5,31,1006
+E2,obt,4,5,106.0,30,1040
+E2,obt,5,1,-24.0,49,991
+E2,obt,5,2,-24.0,49,1021
+E2,obt,5,3,-11.0,49,1057
+E2,obt,5,4,-15.0,49,1007
+E2,obt,5,5,-23.5,49,1041
+E2,obt,6,1,24.5,0,991
+E2,obt,6,2,37.0,0,1021
+E2,obt,6,3,50.0,0,1057
+E2,obt,6,4,34.0,0,1007
+E2,obt,6,5,37.0,0,1041
+E2,obt,7,1,24.5,0,991
+E2,obt,7,2,37.5,0,1021
+E2,obt,7,3,50.0,0,1057
+E2,obt,7,4,34.0,0,1007
+E2,obt,7,5,37.0,0,1041
+E2,obt,8,1,12.5,24,991
+E2,obt,8,2,21.0,17,1021
+E2,obt,8,3,80.0,33,1056
+E2,obt,8,4,71.5,33,1006
+E2,obt,8,5,33.0,8,1041
+E2,obt,9,1,-9.5,62,986
+E2,obt,9,2,0.0,47,1019
+E2,obt,9,3,12.5,47,1050
+E2,obt,9,4,8.0,46,1001
+E2,obt,9,5,-25.0,52,1037
+E2,obt,10,1,5.0,61,991
+E2,obt,10,2,7.0,46,1021
+E2,obt,10,3,4.0,64,1057
+E2,obt,10,4,8.75,66,1007
+E2,obt,10,5,7.0,47,1041
+E2,obt,11,1,24.0,1,991
+E2,obt,11,2,36.5,1,1021
+E2,obt,11,3,49.5,1,1057
+E2,obt,11,4,33.5,1,1007
+E2,obt,11,5,36.5,1,1041
+E2,obt,12,1,112.0,26,990
+E2,obt,12,2,132.0,26,1020
+E2,obt,12,3,138.5,26,1056
+E2,obt,12,4,114.0,26,1006
+E2,obt,12,5,132.0,26,1040
+E2c,obt+planner,2,1,173.0,25,990
+E2c,obt+planner,2,2,188.0,25,1020
+E2c,obt+planner,2,3,188.5,25,1056
+E2c,obt+planner,2,4,174.0,25,1006
+E2c,obt+planner,2,5,200.5,25,1040
+E2c,obt+planner,3,1,64.0,92,991
+E2c,obt+planner,3,2,66.5,92,1021
+E2c,obt+planner,3,3,129.5,92,1057
+E2c,obt+planner,3,4,91.75,99,1007
+E2c,obt+planner,3,5,81.0,92,1041
+E2c,obt+planner,4,1,147.5,31,990
+E2c,obt+planner,4,2,137.5,31,1020
+E2c,obt+planner,4,3,165.5,31,1056
+E2c,obt+planner,4,4,152.0,34,1006
+E2c,obt+planner,4,5,177.5,31,1040
+E2c,obt+planner,5,1,65.5,25,991
+E2c,obt+planner,5,2,68.0,25,1021
+E2c,obt+planner,5,3,72.5,25,1057
+E2c,obt+planner,5,4,71.5,25,1007
+E2c,obt+planner,5,5,73.0,25,1041
+E2c,obt+planner,6,1,91.0,0,991
+E2c,obt+planner,6,2,101.0,0,1021
+E2c,obt+planner,6,3,103.0,0,1057
+E2c,obt+planner,6,4,97.0,0,1007
+E2c,obt+planner,6,5,108.5,0,1041
+E2c,obt+planner,7,1,91.0,0,991
+E2c,obt+planner,7,2,101.0,0,1021
+E2c,obt+planner,7,3,104.0,0,1057
+E2c,obt+planner,7,4,97.0,0,1007
+E2c,obt+planner,7,5,108.5,0,1041
+E2c,obt+planner,8,1,81.0,20,991
+E2c,obt+planner,8,2,81.0,20,1021
+E2c,obt+planner,8,3,94.5,17,1057
+E2c,obt+planner,8,4,87.0,20,1007
+E2c,obt+planner,8,5,103.5,10,1041
+E2c,obt+planner,9,1,40.0,88,985
+E2c,obt+planner,9,2,31.5,106,1017
+E2c,obt+planner,9,3,53.5,66,1043
+E2c,obt+planner,9,4,62.0,56,997
+E2c,obt+planner,9,5,60.5,60,1030
+E2c,obt+planner,10,1,87.5,69,991
+E2c,obt+planner,10,2,95.0,69,1021
+E2c,obt+planner,10,3,126.0,69,1057
+E2c,obt+planner,10,4,92.0,72,1007
+E2c,obt+planner,10,5,90.0,69,1041
+E2c,obt+planner,11,1,90.5,1,991
+E2c,obt+planner,11,2,101.5,1,1021
+E2c,obt+planner,11,3,104.5,1,1057
+E2c,obt+planner,11,4,96.5,1,1007
+E2c,obt+planner,11,5,108.0,1,1041
+E2c,obt+planner,12,1,178.5,26,990
+E2c,obt+planner,12,2,196.0,26,1020
+E2c,obt+planner,12,3,195.5,26,1056
+E2c,obt+planner,12,4,177.0,26,1006
+E2c,obt+planner,12,5,203.5,26,1040
+E2c,rep-n18,2,1,615.0,38,1029
+E2c,rep-n18,2,2,671.5,24,1045
+E2c,rep-n18,2,3,513.5,20,1077
+E2c,rep-n18,2,4,779.5,39,1046
+E2c,rep-n18,2,5,659.5,40,1081
+E2c,rep-n18,3,1,48.5,531,991
+E2c,rep-n18,3,2,43.5,577,1021
+E2c,rep-n18,3,3,79.0,544,1057
+E2c,rep-n18,3,4,320.25,735,1034
+E2c,rep-n18,3,5,55.5,593,1041
+E2c,rep-n18,4,1,270.5,330,1026
+E2c,rep-n18,4,2,244.5,364,1048
+E2c,rep-n18,4,3,499.0,358,1099
+E2c,rep-n18,4,4,564.0,371,1059
+E2c,rep-n18,4,5,467.0,373,1085
+E2c,rep-n18,5,1,867.5,562,991
+E2c,rep-n18,5,2,758.0,378,1021
+E2c,rep-n18,5,3,801.5,468,1057
+E2c,rep-n18,5,4,983.0,503,1007
+E2c,rep-n18,5,5,931.5,596,1041
+E2c,rep-n18,6,1,365.5,20,1001
+E2c,rep-n18,6,2,482.0,30,1036
+E2c,rep-n18,6,3,407.5,17,1066
+E2c,rep-n18,6,4,500.0,20,1017
+E2c,rep-n18,6,5,406.5,32,1057
+E2c,rep-n18,7,1,679.25,55,1046
+E2c,rep-n18,7,2,818.5,36,1057
+E2c,rep-n18,7,3,779.75,55,1112
+E2c,rep-n18,7,4,809.0,56,1063
+E2c,rep-n18,7,5,476.75,19,1060
+E2c,rep-n18,8,1,898.0,252,1077
+E2c,rep-n18,8,2,581.0,324,1063
+E2c,rep-n18,8,3,525.5,19,1076
+E2c,rep-n18,8,4,443.0,89,1007
+E2c,rep-n18,8,5,796.5,198,1102
+E2c,rep-n18,9,1,111.0,353,991
+E2c,rep-n18,9,2,18.0,670,1021
+E2c,rep-n18,9,3,366.0,20,1057
+E2c,rep-n18,9,4,257.5,363,1007
+E2c,rep-n18,9,5,161.0,371,1041
+E2c,rep-n18,10,1,293.5,660,1033
+E2c,rep-n18,10,2,161.75,433,1042
+E2c,rep-n18,10,3,591.75,457,1104
+E2c,rep-n18,10,4,257.0,627,1029
+E2c,rep-n18,10,5,217.5,655,1065
+E2c,rep-n18,11,1,408.0,38,1009
+E2c,rep-n18,11,2,675.0,59,1052
+E2c,rep-n18,11,3,1042.0,116,1124
+E2c,rep-n18,11,4,970.25,139,1075
+E2c,rep-n18,11,5,835.75,127,1101
+E2c,rep-n18,12,1,1083.5,89,1080
+E2c,rep-n18,12,2,1035.0,76,1097
+E2c,rep-n18,12,3,772.0,57,1114
+E2c,rep-n18,12,4,1118.5,82,1089
+E2c,rep-n18,12,5,833.5,63,1104
+E2c,rep+planner,2,1,848.5,96,1087
+E2c,rep+planner,2,2,941.0,78,1099
+E2c,rep+planner,2,3,1131.0,94,1151
+E2c,rep+planner,2,4,975.0,97,1104
+E2c,rep+planner,2,5,1115.0,100,1139
+E2c,rep+planner,3,1,98.0,455,991
+E2c,rep+planner,3,2,44.5,365,1021
+E2c,rep+planner,3,3,312.0,587,1073
+E2c,rep+planner,3,4,213.0,523,1025
+E2c,rep+planner,3,5,9.0,496,1041
+E2c,rep+planner,4,1,477.5,312,1043
+E2c,rep+planner,4,2,265.5,268,1070
+E2c,rep+planner,4,3,604.0,352,1128
+E2c,rep+planner,4,4,535.0,348,1077
+E2c,rep+planner,4,5,565.5,314,1112
+E2c,rep+planner,5,1,806.5,481,991
+E2c,rep+planner,5,2,742.0,547,1021
+E2c,rep+planner,5,3,856.0,487,1057
+E2c,rep+planner,5,4,644.5,338,1007
+E2c,rep+planner,5,5,704.5,413,1041
+E2c,rep+planner,6,1,381.0,57,1020
+E2c,rep+planner,6,2,374.0,55,1049
+E2c,rep+planner,6,3,514.5,54,1085
+E2c,rep+planner,6,4,372.0,51,1033
+E2c,rep+planner,6,5,390.5,57,1070
+E2c,rep+planner,7,1,857.75,91,1079
+E2c,rep+planner,7,2,996.5,86,1104
+E2c,rep+planner,7,3,1088.75,89,1146
+E2c,rep+planner,7,4,997.75,95,1102
+E2c,rep+planner,7,5,972.25,87,1124
+E2c,rep+planner,8,1,1103.0,118,1071
+E2c,rep+planner,8,2,478.5,426,1074
+E2c,rep+planner,8,3,1404.0,210,1162
+E2c,rep+planner,8,4,806.0,162,1060
+E2c,rep+planner,8,5,1586.0,210,1178
+E2c,rep+planner,9,1,121.0,379,991
+E2c,rep+planner,9,2,-29.0,486,1021
+E2c,rep+planner,9,3,203.0,397,1057
+E2c,rep+planner,9,4,85.5,379,1007
+E2c,rep+planner,9,5,39.0,409,1041
+E2c,rep+planner,10,1,291.25,404,1012
+E2c,rep+planner,10,2,89.0,276,1021
+E2c,rep+planner,10,3,397.5,435,1077
+E2c,rep+planner,10,4,265.5,384,1031
+E2c,rep+planner,10,5,68.0,402,1041
+E2c,rep+planner,11,1,592.5,114,1039
+E2c,rep+planner,11,2,565.0,108,1066
+E2c,rep+planner,11,3,651.0,92,1096
+E2c,rep+planner,11,4,563.5,102,1051
+E2c,rep+planner,11,5,420.5,78,1072
+E2c,rep+planner,12,1,1279.0,147,1136
+E2c,rep+planner,12,2,1383.0,149,1166
+E2c,rep+planner,12,3,1648.0,138,1195
+E2c,rep+planner,12,4,1238.5,133,1137
+E2c,rep+planner,12,5,1755.0,167,1208
+E2,rep-strict,2,1,380.5,48,1039
+E2,rep-strict,2,2,384.0,40,1061
+E2,rep-strict,2,3,107.5,17,1074
+E2,rep-strict,2,4,329.0,39,1046
+E2,rep-strict,2,5,324.5,40,1081
+E2,rep-strict,3,1,0.0,53,991
+E2,rep-strict,3,2,0.0,93,1021
+E2,rep-strict,3,3,0.0,68,1057
+E2,rep-strict,3,4,0.0,59,1007
+E2,rep-strict,3,5,0.0,79,1041
+E2,rep-strict,4,1,0.0,53,991
+E2,rep-strict,4,2,0.0,93,1021
+E2,rep-strict,4,3,0.0,68,1057
+E2,rep-strict,4,4,0.0,59,1007
+E2,rep-strict,4,5,0.0,79,1041
+E2,rep-strict,5,1,108.5,82,991
+E2,rep-strict,5,2,144.0,85,1021
+E2,rep-strict,5,3,71.5,60,1057
+E2,rep-strict,5,4,102.5,73,1007
+E2,rep-strict,5,5,120.5,81,1041
+E2,rep-strict,6,1,46.5,20,1001
+E2,rep-strict,6,2,179.5,18,1030
+E2,rep-strict,6,3,55.5,17,1066
+E2,rep-strict,6,4,49.5,20,1017
+E2,rep-strict,6,5,60.5,19,1051
+E2,rep-strict,7,1,368.5,48,1039
+E2,rep-strict,7,2,571.0,48,1069
+E2,rep-strict,7,3,355.75,47,1104
+E2,rep-strict,7,4,334.0,48,1055
+E2,rep-strict,7,5,314.5,40,1081
+E2,rep-strict,8,1,-6.5,66,991
+E2,rep-strict,8,2,34.5,74,1021
+E2,rep-strict,8,3,-6.5,81,1057
+E2,rep-strict,8,4,-2.5,64,1007
+E2,rep-strict,8,5,-12.0,73,1041
+E2,rep-strict,9,1,0.0,53,991
+E2,rep-strict,9,2,0.0,93,1021
+E2,rep-strict,9,3,17.0,17,1057
+E2,rep-strict,9,4,-17.5,75,1007
+E2,rep-strict,9,5,0.0,79,1041
+E2,rep-strict,10,1,0.0,53,991
+E2,rep-strict,10,2,0.0,93,1021
+E2,rep-strict,10,3,0.0,68,1057
+E2,rep-strict,10,4,0.0,59,1007
+E2,rep-strict,10,5,0.0,79,1041
+E2,rep-strict,11,1,173.0,48,1018
+E2,rep-strict,11,2,379.5,46,1050
+E2,rep-strict,11,3,84.0,40,1067
+E2,rep-strict,11,4,74.5,40,1017
+E2,rep-strict,11,5,56.25,25,1044
+E2,rep-strict,12,1,1142.0,116,1107
+E2,rep-strict,12,2,1036.0,100,1121
+E2,rep-strict,12,3,657.0,71,1128
+E2,rep-strict,12,4,668.0,82,1089
+E2,rep-strict,12,5,612.0,75,1116
+E2,rep-default,2,1,667.0,48,1039
+E2,rep-default,2,2,580.0,40,1061
+E2,rep-default,2,3,309.5,17,1074
+E2,rep-default,2,4,779.5,39,1046
+E2,rep-default,2,5,563.5,40,1081
+E2,rep-default,3,1,56.25,629,1012
+E2,rep-default,3,2,-36.5,741,1043
+E2,rep-default,3,3,143.5,478,1073
+E2,rep-default,3,4,320.25,735,1034
+E2,rep-default,3,5,6.25,678,1060
+E2,rep-default,4,1,248.5,157,995
+E2,rep-default,4,2,153.0,221,1027
+E2,rep-default,4,3,173.5,132,1058
+E2,rep-default,4,4,392.5,201,1010
+E2,rep-default,4,5,184.0,217,1045
+E2,rep-default,5,1,977.5,671,991
+E2,rep-default,5,2,727.0,490,1021
+E2,rep-default,5,3,677.5,528,1057
+E2,rep-default,5,4,983.0,503,1007
+E2,rep-default,5,5,936.5,673,1041
+E2,rep-default,6,1,333.0,20,1001
+E2,rep-default,6,2,375.5,18,1030
+E2,rep-default,6,3,257.5,17,1066
+E2,rep-default,6,4,500.0,20,1017
+E2,rep-default,6,5,299.5,19,1051
+E2,rep-default,7,1,655.0,48,1039
+E2,rep-default,7,2,767.0,48,1069
+E2,rep-default,7,3,557.75,47,1104
+E2,rep-default,7,4,784.5,48,1055
+E2,rep-default,7,5,553.5,40,1081
+E2,rep-default,8,1,866.5,415,1071
+E2,rep-default,8,2,580.0,191,1064
+E2,rep-default,8,3,617.0,210,1108
+E2,rep-default,8,4,443.0,89,1007
+E2,rep-default,8,5,774.0,264,1091
+E2,rep-default,9,1,231.0,138,991
+E2,rep-default,9,2,150.5,162,1021
+E2,rep-default,9,3,219.0,17,1057
+E2,rep-default,9,4,433.0,75,1007
+E2,rep-default,9,5,209.5,119,1041
+E2,rep-default,10,1,278.5,582,1029
+E2,rep-default,10,2,-54.0,570,1021
+E2,rep-default,10,3,-44.5,528,1057
+E2,rep-default,10,4,257.0,627,1029
+E2,rep-default,10,5,66.0,425,1041
+E2,rep-default,11,1,459.5,48,1018
+E2,rep-default,11,2,575.5,46,1050
+E2,rep-default,11,3,286.0,40,1067
+E2,rep-default,11,4,525.0,40,1017
+E2,rep-default,11,5,296.5,30,1044
+E2,rep-default,12,1,1428.5,116,1107
+E2,rep-default,12,2,1232.0,100,1121
+E2,rep-default,12,3,859.0,71,1128
+E2,rep-default,12,4,1118.5,82,1089
+E2,rep-default,12,5,851.0,75,1116
+E2,llm_selfcheck,2,1,1223.5,126,1117
+E2,llm_selfcheck,2,2,2277.5,215,1236
+E2,llm_selfcheck,2,3,2332.5,221,1278
+E2,llm_selfcheck,3,1,-4.0,406,991
+E2,llm_selfcheck,3,2,86.5,402,1021
+E2,llm_selfcheck,3,3,205.5,410,1073
+E2,llm_selfcheck,4,1,316.0,174,1038
+E2,llm_selfcheck,4,2,445.0,293,1080
+E2,llm_selfcheck,4,3,609.5,299,1129
+E2,llm_selfcheck,5,1,580.5,398,974
+E2,llm_selfcheck,5,2,747.0,432,1021
+E2,llm_selfcheck,5,3,622.5,381,1057
+E2,llm_selfcheck,6,1,217.0,18,1000
+E2,llm_selfcheck,6,2,342.5,20,1031
+E2,llm_selfcheck,6,3,259.0,0,1057
+E2,llm_selfcheck,7,1,1025.25,115,1106
+E2,llm_selfcheck,7,2,2264.75,205,1226
+E2,llm_selfcheck,7,3,1067.75,95,1152
+E2,llm_selfcheck,8,1,221.0,40,1003
+E2,llm_selfcheck,8,2,552.5,65,1043
+E2,llm_selfcheck,8,3,239.0,45,1057
+E2,llm_selfcheck,9,1,-3.0,365,991
+E2,llm_selfcheck,9,2,77.0,424,1021
+E2,llm_selfcheck,9,3,-10.0,423,1057
+E2,llm_selfcheck,10,1,354.0,268,1033
+E2,llm_selfcheck,10,2,154.5,286,1021
+E2,llm_selfcheck,10,3,9.5,381,1057
+E2,llm_selfcheck,11,1,199.0,0,991
+E2,llm_selfcheck,11,2,322.5,0,1021
+E2,llm_selfcheck,11,3,259.0,0,1057
+E2,llm_selfcheck,12,1,1596.5,198,1189
+E2,llm_selfcheck,12,2,3005.5,296,1297
+E2,llm_selfcheck,12,3,2851.0,283,1320
+E2,provenance,2,1,5316.0,502,1480
+E2,provenance,2,2,4101.0,431,1413
+E2,provenance,2,3,7270.0,607,1664
+E2,provenance,3,1,57.25,532,1012
+E2,provenance,3,2,111.0,376,1021
+E2,provenance,3,3,128.75,625,1078
+E2,provenance,4,1,1272.0,497,1153
+E2,provenance,4,2,990.5,588,1152
+E2,provenance,4,3,1047.5,478,1185
+E2,provenance,5,1,743.0,471,991
+E2,provenance,5,2,720.5,416,1021
+E2,provenance,5,3,609.5,301,1057
+E2,provenance,6,1,613.0,165,1075
+E2,provenance,6,2,823.5,186,1117
+E2,provenance,6,3,506.0,88,1102
+E2,provenance,7,1,4124.25,433,1408
+E2,provenance,7,2,4593.5,474,1475
+E2,provenance,7,3,4725.0,438,1495
+E2,provenance,8,1,341.5,60,1003
+E2,provenance,8,2,370.5,66,1033
+E2,provenance,8,3,628.5,101,1107
+E2,provenance,9,1,22.0,450,991
+E2,provenance,9,2,-4.0,570,1021
+E2,provenance,9,3,-0.5,493,1057
+E2,provenance,10,1,218.25,320,1012
+E2,provenance,10,2,228.5,402,1043
+E2,provenance,10,3,261.5,444,1075
+E2,provenance,11,1,383.25,61,1007
+E2,provenance,11,2,1111.0,136,1094
+E2,provenance,11,3,684.75,129,1116
+E2,provenance,12,1,4233.5,423,1385
+E2,provenance,12,2,3140.5,327,1305
+E2,provenance,12,3,5074.5,449,1506
+E2,none,2,1,7188.5,658,1649
+E2,none,2,2,6865.5,626,1607
+E2,none,2,3,7268.0,673,1696
+E2,none,3,1,100.75,527,1012
+E2,none,3,2,40.25,671,1038
+E2,none,3,3,32.0,565,1057
+E2,none,4,1,1391.0,611,1189
+E2,none,4,2,1827.5,708,1254
+E2,none,4,3,2118.0,842,1288
+E2,none,5,1,860.0,562,991
+E2,none,5,2,754.5,413,1021
+E2,none,5,3,811.5,522,1057
+E2,none,6,1,468.5,117,1051
+E2,none,6,2,777.0,104,1074
+E2,none,6,3,589.5,86,1101
+E2,none,7,1,5776.0,550,1528
+E2,none,7,2,5578.25,523,1544
+E2,none,7,3,5529.0,492,1549
+E2,none,8,1,893.5,113,1068
+E2,none,8,2,414.5,123,1057
+E2,none,8,3,590.0,86,1093
+E2,none,9,1,-6.0,571,991
+E2,none,9,2,-51.5,757,1021
+E2,none,9,3,-30.0,604,1057
+E2,none,9,4,-43.0,714,1007
+E2,none,9,5,-43.0,732,1041
+E2,none,10,1,167.0,469,1011
+E2,none,10,2,160.25,518,1042
+E2,none,10,3,253.0,583,1077
+E2,none,11,1,330.25,55,997
+E2,none,11,2,1373.5,206,1134
+E2,none,11,3,416.75,503,1057
+E2,none,12,1,6233.5,591,1582
+E2,none,12,2,9425.0,799,1820
+E2,none,12,3,7443.0,643,1686
+E5 Luna,obt+planner,2,1,238.0,25,990
+E5 Luna,obt+planner,2,2,267.0,25,1020
+E5 Luna,obt+planner,2,3,255.0,25,1056
+E5 Luna,obt+planner,3,1,105.75,171,991
+E5 Luna,obt+planner,3,2,159.75,171,1021
+E5 Luna,obt+planner,3,3,224.75,171,1057
+E5 Luna,obt+planner,4,1,208.0,40,990
+E5 Luna,obt+planner,4,2,207.0,40,1020
+E5 Luna,obt+planner,4,3,231.5,40,1056
+E5 Luna,obt+planner,5,1,130.5,25,991
+E5 Luna,obt+planner,5,2,147.0,25,1021
+E5 Luna,obt+planner,5,3,139.0,25,1057
+E5 Luna,obt+planner,6,1,156.0,0,991
+E5 Luna,obt+planner,6,2,180.0,0,1021
+E5 Luna,obt+planner,6,3,169.5,0,1057
+E5 Luna,obt+planner,7,1,156.0,0,991
+E5 Luna,obt+planner,7,2,180.0,0,1021
+E5 Luna,obt+planner,7,3,169.5,0,1057
+E5 Luna,obt+planner,8,1,151.0,10,991
+E5 Luna,obt+planner,8,2,160.0,10,1021
+E5 Luna,obt+planner,8,3,164.5,10,1057
+E5 Luna,obt+planner,9,1,68.5,152,981
+E5 Luna,obt+planner,9,2,53.5,199,1014
+E5 Luna,obt+planner,9,3,91.5,108,1033
+E5 Luna,obt+planner,10,1,147.0,121,991
+E5 Luna,obt+planner,10,2,183.5,121,1021
+E5 Luna,obt+planner,10,3,208.0,121,1057
+E5 Luna,obt+planner,11,1,155.5,1,991
+E5 Luna,obt+planner,11,2,179.5,1,1003
+E5 Luna,obt+planner,11,3,169.0,1,1057
+E5 Luna,obt+planner,12,1,243.5,26,990
+E5 Luna,obt+planner,12,2,275.0,26,1020
+E5 Luna,obt+planner,12,3,262.0,26,1056
+E5 Luna,none,2,1,1417.0,93,1084
+E5 Luna,none,2,2,1870.0,127,1133
+E5 Luna,none,2,3,2566.5,198,1255
+E5 Luna,none,3,1,200.75,670,1012
+E5 Luna,none,3,2,144.75,902,1044
+E5 Luna,none,3,3,196.0,801,1073
+E5 Luna,none,4,1,1676.0,816,1237
+E5 Luna,none,4,2,517.5,572,1089
+E5 Luna,none,4,3,726.0,652,1172
+E5 Luna,none,5,1,1392.5,921,991
+E5 Luna,none,5,2,1448.0,953,1021
+E5 Luna,none,5,3,1449.5,987,1057
+E5 Luna,none,6,1,816.0,166,1059
+E5 Luna,none,6,2,982.0,135,1069
+E5 Luna,none,6,3,920.5,131,1123
+E5 Luna,none,7,1,663.5,34,1025
+E5 Luna,none,7,2,1454.75,73,1094
+E5 Luna,none,7,3,1132.75,71,1128
+E5 Luna,none,8,1,998.0,426,1074
+E5 Luna,none,8,2,1841.0,543,1191
+E5 Luna,none,8,3,1904.5,520,1207
+E5 Luna,none,9,1,-14.0,900,991
+E5 Luna,none,9,2,9.5,966,1021
+E5 Luna,none,9,3,-9.0,853,1057
+E5 Luna,none,10,1,215.75,717,1026
+E5 Luna,none,10,2,236.25,902,1064
+E5 Luna,none,10,3,365.25,805,1106
+E5 Luna,none,11,1,590.25,91,1008
+E5 Luna,none,11,2,1702.0,458,1180
+E5 Luna,none,11,3,1479.25,327,1203
+E5 Luna,none,12,1,984.5,58,1049
+E5 Luna,none,12,2,1791.0,139,1145
+E5 Luna,none,12,3,1328.5,82,1139
+E5 Terra,obt+planner,2,1,236.0,25,990
+E5 Terra,obt+planner,2,2,267.0,25,1020
+E5 Terra,obt+planner,2,3,255.0,25,1056
+E5 Terra,obt+planner,3,1,103.75,171,991
+E5 Terra,obt+planner,3,2,159.75,171,1021
+E5 Terra,obt+planner,3,3,224.75,171,1057
+E5 Terra,obt+planner,4,1,206.0,40,990
+E5 Terra,obt+planner,4,2,207.0,40,1020
+E5 Terra,obt+planner,4,3,231.5,40,1056
+E5 Terra,obt+planner,5,1,128.5,25,991
+E5 Terra,obt+planner,5,2,147.0,25,1021
+E5 Terra,obt+planner,5,3,139.0,25,1057
+E5 Terra,obt+planner,6,1,154.0,0,991
+E5 Terra,obt+planner,6,2,180.0,0,1021
+E5 Terra,obt+planner,6,3,169.5,0,1057
+E5 Terra,obt+planner,7,1,154.0,0,991
+E5 Terra,obt+planner,7,2,180.0,0,1021
+E5 Terra,obt+planner,7,3,169.5,0,1057
+E5 Terra,obt+planner,8,1,149.0,10,991
+E5 Terra,obt+planner,8,2,160.0,10,1021
+E5 Terra,obt+planner,8,3,164.5,10,1057
+E5 Terra,obt+planner,9,1,66.5,152,981
+E5 Terra,obt+planner,9,2,55.5,195,1014
+E5 Terra,obt+planner,9,3,91.5,108,1033
+E5 Terra,obt+planner,10,1,145.0,121,991
+E5 Terra,obt+planner,10,2,183.5,121,1021
+E5 Terra,obt+planner,10,3,208.0,121,1057
+E5 Terra,obt+planner,11,1,153.5,1,991
+E5 Terra,obt+planner,11,2,179.5,1,1021
+E5 Terra,obt+planner,11,3,169.0,1,1057
+E5 Terra,obt+planner,12,1,241.5,26,990
+E5 Terra,obt+planner,12,2,275.0,26,1020
+E5 Terra,obt+planner,12,3,262.0,26,1056
+E5 Terra,none,2,1,1643.0,114,1105
+E5 Terra,none,2,2,4693.5,335,1356
+E5 Terra,none,2,3,1146.5,65,1122
+E5 Terra,none,3,1,49.25,949,1012
+E5 Terra,none,3,2,59.25,965,1044
+E5 Terra,none,3,3,-72.5,920,1073
+E5 Terra,none,4,1,2005.5,994,1271
+E5 Terra,none,4,2,2569.5,1114,1361
+E5 Terra,none,4,3,2637.5,1139,1397
+E5 Terra,none,5,1,1406.0,957,991
+E5 Terra,none,5,2,1447.5,969,1021
+E5 Terra,none,5,3,1472.5,991,1057
+E5 Terra,none,6,1,759.0,91,1037
+E5 Terra,none,6,2,1070.5,98,1071
+E5 Terra,none,6,3,842.0,101,1108
+E5 Terra,none,7,1,1136.5,72,1063
+E5 Terra,none,7,2,2392.0,154,1175
+E5 Terra,none,7,3,1327.0,82,1139
+E5 Terra,none,8,1,868.0,422,1054
+E5 Terra,none,8,2,751.5,440,1074
+E5 Terra,none,8,3,1316.0,488,1148
+E5 Terra,none,9,1,-31.0,908,991
+E5 Terra,none,9,2,-24.5,962,1021
+E5 Terra,none,9,3,-52.0,975,1057
+E5 Terra,none,10,1,103.75,939,1030
+E5 Terra,none,10,2,300.25,968,1084
+E5 Terra,none,10,3,160.25,982,1106
+E5 Terra,none,11,1,734.75,473,1034
+E5 Terra,none,11,2,2262.0,696,1221
+E5 Terra,none,11,3,1104.75,565,1129
+E5 Terra,none,12,1,1690.0,128,1119
+E5 Terra,none,12,2,1804.5,122,1128
+E5 Terra,none,12,3,1275.5,101,1137

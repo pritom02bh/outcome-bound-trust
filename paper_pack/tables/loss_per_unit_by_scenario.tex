@@ -1,0 +1,23 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Loss per 100 S\_main units by scenario, LLM buyer gpt-oss:20b (E2, E2c): 100 x sum of losses / sum of S\_main units over seeds (D40); n/a where no S\_main unit was bought.}
+\label{tab:loss_per_unit_by_scenario}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+scenario & obt & obt+planner & rep-n18 & rep+planner & rep-strict & rep-default & llm\_selfcheck & provenance & none \\
+\midrule
+always lie & 485.2 & 739.2 & 2,011.8 & 1,077.5 & 829.1 & 1,575.8 & 1,038.0 & 1,083.6 & 1,089.5 \\
+farm then lie & -0.8 & 92.7 & 18.3 & 27.9 & 0.0 & 15.0 & 23.6 & 19.4 & 9.8 \\
+slow drift & 298.4 & 493.7 & 113.9 & 153.5 & 0.0 & 124.1 & 178.9 & 211.8 & 246.9 \\
+price bait & -39.8 & 280.4 & 173.2 & 165.6 & 143.6 & 150.1 & 161.0 & 174.5 & 162.1 \\
+vague & n/a & n/a & 1,816.4 & 741.6 & 416.5 & 1,878.2 & 2,153.9 & 442.5 & 597.7 \\
+far deadlines & n/a & n/a & 1,612.3 & 1,096.7 & 841.5 & 1,436.3 & 1,050.1 & 999.5 & 1,078.8 \\
+claim splitting & 189.6 & 513.8 & 367.8 & 477.6 & 2.0 & 280.6 & 675.0 & 590.5 & 589.4 \\
+noisy honest & -5.5 & 65.8 & 51.4 & 20.5 & -0.2 & 243.2 & 5.3 & 1.2 & -5.1 \\
+farm fail refarm & 11.2 & 140.9 & 53.7 & 58.5 & 0.0 & 18.4 & 55.4 & 60.7 & 37.0 \\
+extraction attack & 3,600.0 & 10,020.0 & 820.7 & 565.3 & 385.6 & 1,050.2 & n/a & 668.4 & 277.6 \\
+sybil reentry & 483.5 & 731.2 & 1,319.5 & 995.0 & 926.8 & 1,236.3 & 959.2 & 1,038.2 & 1,136.3 \\
+\bottomrule
+\end{tabular}
+\end{table}

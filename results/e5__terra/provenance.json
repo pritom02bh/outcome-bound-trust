@@ -11,11 +11,33 @@
   "transport": "a2a"
  },
  {
+  "config_hash": "5385ac4f49730ed44e17263206bf7db12e19f6607a8b160e14a1f4d46c0d5d64",
+  "extractor_dataset_sha256": "20ceb2459af9cac98b28558818e42da3fee444184fde090749ba6dd02a24e242",
+  "extractor_prompt_sha256": "ac1afafb1d267420db808b221dc59618475ddd687bebcc5c3ce34bf0885ad061",
+  "git_commit": "f1795a1e2d46df5b482c0ff882a8a455219b7124",
+  "git_dirty": false,
+  "message_bank_sha256": "09ab70e4b611ba4305a5f55be5a4d42756264b705ea5ee4c9f5b91e1f5245e7c",
+  "model": "gpt-5.6-terra",
+  "model_digest": "gpt-5.6-terra",
+  "transport": "a2a"
+ },
+ {
   "config_hash": "e197ed012fa4a93cff7fe2308b8192197e2e94e0164c3aedfe3f353b0fc0b6e5",
   "extractor_dataset_sha256": "20ceb2459af9cac98b28558818e42da3fee444184fde090749ba6dd02a24e242",
   "extractor_prompt_sha256": "ac1afafb1d267420db808b221dc59618475ddd687bebcc5c3ce34bf0885ad061",
   "git_commit": "c706ade052373a9d06ad85eeec083855fb182e28",
   "git_dirty": true,
+  "message_bank_sha256": "09ab70e4b611ba4305a5f55be5a4d42756264b705ea5ee4c9f5b91e1f5245e7c",
+  "model": "gpt-5.6-terra",
+  "model_digest": "gpt-5.6-terra",
+  "transport": "a2a"
+ },
+ {
+  "config_hash": "e197ed012fa4a93cff7fe2308b8192197e2e94e0164c3aedfe3f353b0fc0b6e5",
+  "extractor_dataset_sha256": "20ceb2459af9cac98b28558818e42da3fee444184fde090749ba6dd02a24e242",
+  "extractor_prompt_sha256": "ac1afafb1d267420db808b221dc59618475ddd687bebcc5c3ce34bf0885ad061",
+  "git_commit": "f1795a1e2d46df5b482c0ff882a8a455219b7124",
+  "git_dirty": false,
   "message_bank_sha256": "09ab70e4b611ba4305a5f55be5a4d42756264b705ea5ee4c9f5b91e1f5245e7c",
   "model": "gpt-5.6-terra",
   "model_digest": "gpt-5.6-terra",

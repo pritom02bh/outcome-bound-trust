@@ -3,17 +3,17 @@
 | Scenario | none | obt+planner |
 |---|---|---|
 | 1_honest | 0.0 | 0.0 |
-| 2_always_lie | 1,417.0 | 238.0 |
-| 3_farm_then_lie | 200.8 | 105.8 |
-| 4_slow_drift | 1,676.0 | 208.0 |
-| 5_price_bait | 1,392.5 | 130.5 |
-| 6_vague | 816.0 | 156.0 |
-| 7_far_deadlines | 663.5 | 156.0 |
-| 8_claim_splitting | 998.0 | 151.0 |
-| 9_noisy_honest | -14.0 | 68.5 |
-| 10_farm_fail_refarm | 215.8 | 147.0 |
-| 11_extraction_attack | 590.2 | 155.5 |
-| 12_sybil_reentry | 984.5 | 243.5 |
+| 2_always_lie | 1,951.2 | 253.3 |
+| 3_farm_then_lie | 180.5 | 163.4 |
+| 4_slow_drift | 973.2 | 215.5 |
+| 5_price_bait | 1,430.0 | 138.8 |
+| 6_vague | 906.2 | 168.5 |
+| 7_far_deadlines | 1,083.7 | 168.5 |
+| 8_claim_splitting | 1,581.2 | 158.5 |
+| 9_noisy_honest | -4.5 | 71.2 |
+| 10_farm_fail_refarm | 272.4 | 179.5 |
+| 11_extraction_attack | 1,257.2 | 168.0 |
+| 12_sybil_reentry | 1,368.0 | 260.2 |
 
 ## Loss decomposition and bound (DESIGN §6)
 
@@ -23,28 +23,28 @@ loss_from_lies = damage + reroute_cost_diff + resid, every term relative to the 
 |---|---|---|---|---|---|---|---|---|
 | 1_honest | none | 0.0 | - | - | - | 0.0 | - | 0.0 |
 | 1_honest | obt+planner | 0.0 | 0.0 | 0.0 | yes | 0.0 | 0.0 | 0.0 |
-| 2_always_lie | none | 1,417.0 | - | - | - | 0.0 | - | 0.0 |
-| 2_always_lie | obt+planner | 238.0 | 118.5 | 336.0 | yes | 0.0 | 119.5 | 24.0 |
-| 3_farm_then_lie | none | 200.8 | - | - | - | 0.0 | - | 0.0 |
-| 3_farm_then_lie | obt+planner | 105.8 | 67.5 | 210.0 | yes | 0.0 | 38.2 | 1.0 |
-| 4_slow_drift | none | 1,676.0 | - | - | - | 0.0 | - | 0.0 |
-| 4_slow_drift | obt+planner | 208.0 | 93.5 | 266.0 | yes | 0.0 | 114.5 | 19.0 |
-| 5_price_bait | none | 1,392.5 | - | - | - | 0.0 | - | 0.0 |
-| 5_price_bait | obt+planner | 130.5 | 0.0 | 0.0 | yes | 0.0 | 130.5 | 0.0 |
-| 6_vague | none | 816.0 | - | - | - | 0.0 | - | 0.0 |
-| 6_vague | obt+planner | 156.0 | 0.0 | 0.0 | yes | 0.0 | 156.0 | 0.0 |
-| 7_far_deadlines | none | 663.5 | - | - | - | 0.0 | - | 0.0 |
-| 7_far_deadlines | obt+planner | 156.0 | 0.0 | 0.0 | yes | 0.0 | 156.0 | 0.0 |
-| 8_claim_splitting | none | 998.0 | - | - | - | 0.0 | - | 0.0 |
-| 8_claim_splitting | obt+planner | 151.0 | 0.0 | 0.0 | yes | 0.0 | 151.0 | 0.0 |
-| 9_noisy_honest | none | -14.0 | - | - | - | 0.0 | - | 0.0 |
-| 9_noisy_honest | obt+planner | 68.5 | 161.0 | 306.0 | yes | 0.0 | -92.5 | 2.0 |
-| 10_farm_fail_refarm | none | 215.8 | - | - | - | 0.0 | - | 0.0 |
-| 10_farm_fail_refarm | obt+planner | 147.0 | 90.0 | 280.0 | yes | 0.0 | 57.0 | 2.0 |
-| 11_extraction_attack | none | 590.2 | - | - | - | 0.0 | - | 0.0 |
-| 11_extraction_attack | obt+planner | 155.5 | 0.0 | 0.0 | yes | 0.0 | 155.5 | 0.0 |
-| 12_sybil_reentry | none | 984.5 | - | - | - | 0.0 | - | 0.0 |
-| 12_sybil_reentry | obt+planner | 243.5 | 123.0 | 350.0 | yes | 0.0 | 120.5 | 25.0 |
+| 2_always_lie | none | 1,951.2 | - | - | - | 0.0 | - | 0.0 |
+| 2_always_lie | obt+planner | 253.3 | 124.2 | 336.0 | yes | 0.0 | 129.2 | 24.0 |
+| 3_farm_then_lie | none | 180.5 | - | - | - | 0.0 | - | 0.0 |
+| 3_farm_then_lie | obt+planner | 163.4 | 89.2 | 210.0 | yes | 0.0 | 74.2 | 1.0 |
+| 4_slow_drift | none | 973.2 | - | - | - | 0.0 | - | 0.0 |
+| 4_slow_drift | obt+planner | 215.5 | 93.5 | 266.0 | yes | 0.0 | 122.0 | 19.0 |
+| 5_price_bait | none | 1,430.0 | - | - | - | 0.0 | - | 0.0 |
+| 5_price_bait | obt+planner | 138.8 | 0.0 | 0.0 | yes | 0.0 | 138.8 | 0.0 |
+| 6_vague | none | 906.2 | - | - | - | 0.0 | - | 0.0 |
+| 6_vague | obt+planner | 168.5 | 0.0 | 0.0 | yes | 0.0 | 168.5 | 0.0 |
+| 7_far_deadlines | none | 1,083.7 | - | - | - | 0.0 | - | 0.0 |
+| 7_far_deadlines | obt+planner | 168.5 | 0.0 | 0.0 | yes | 0.0 | 168.5 | 0.0 |
+| 8_claim_splitting | none | 1,581.2 | - | - | - | 0.0 | - | 0.0 |
+| 8_claim_splitting | obt+planner | 158.5 | 0.0 | 0.0 | yes | 0.0 | 158.5 | 0.0 |
+| 9_noisy_honest | none | -4.5 | - | - | - | 0.0 | - | 0.0 |
+| 9_noisy_honest | obt+planner | 71.2 | 109.7 | 352.0 | yes | 0.0 | -38.5 | 2.3 |
+| 10_farm_fail_refarm | none | 272.4 | - | - | - | 0.0 | - | 0.0 |
+| 10_farm_fail_refarm | obt+planner | 179.5 | 102.5 | 280.0 | yes | 0.0 | 77.0 | 2.0 |
+| 11_extraction_attack | none | 1,257.2 | - | - | - | 0.0 | - | 0.0 |
+| 11_extraction_attack | obt+planner | 168.0 | 0.0 | 0.0 | yes | 0.0 | 168.0 | 0.0 |
+| 12_sybil_reentry | none | 1,368.0 | - | - | - | 0.0 | - | 0.0 |
+| 12_sybil_reentry | obt+planner | 260.2 | 131.3 | 350.0 | yes | 0.0 | 128.8 | 25.0 |
 
 ## Reroute premium (honest S_main)
 
@@ -59,17 +59,17 @@ Absolute backup premium the defense's own reroutes cost in the honest scenario (
 
 | Scenario | Defense | Cost | Extra vs none | Blocked S_main orders |
 |---|---|---|---|---|
-| 1_honest | none | 5,703.0 | 0.0 | 0.0 |
-| 1_honest | obt+planner | 6,025.0 | 322.0 | 0.0 |
-| 9_noisy_honest | none | 5,689.0 | 0.0 | 0.0 |
-| 9_noisy_honest | obt+planner | 6,093.5 | 404.5 | 0.0 |
+| 1_honest | none | 5,831.0 | 0.0 | 0.0 |
+| 1_honest | obt+planner | 6,173.2 | 342.2 | 0.0 |
+| 9_noisy_honest | none | 5,826.5 | 0.0 | 0.0 |
+| 9_noisy_honest | obt+planner | 6,244.3 | 417.8 | 0.0 |
 
 ## Overhead per round
 
 | Defense | Tokens | Latency (s) | Added tokens vs none | Added latency vs none |
 |---|---|---|---|---|
-| none | 1392.07 | 3.8 | 0.0 | 0.0 |
-| obt+planner | 1709.96 | 3.03 | 317.89 | -0.77 |
+| none | 1399.43 | 3.74 | 0.0 | 0.0 |
+| obt+planner | 1732.83 | 2.79 | 333.4 | -0.95 |
 
 ## Extractor accuracy (frozen test set, F10)
 

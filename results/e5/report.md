@@ -1,6 +1,17 @@
-# E5: paid buyers (GPT-5.6 Luna, Terra), seed 1
+# E5: paid buyers (GPT-5.6 Luna, Terra)
 
-DECISIONS D37, D37a. The buyer is the paid model with `reasoning_effort=low`, and the extractor is the frozen local gpt-oss:20b (D24). OBT default (b0 5%, W 0, δ 0), k = 1, 50 rounds, A2A. One seed, so no CIs.
+DECISIONS D37, D37a, D41. The buyer is the paid model with `reasoning_effort=low`, and the extractor is the frozen local gpt-oss:20b (D24). OBT default (b0 5%, W 0, δ 0), k = 1, 50 rounds, A2A.
+
+## v2 over every seed (mean [95% bootstrap CI over seeds])
+
+| run | seeds | loss from lies | damage | reroute premium | resid | utility cost | % of cost | S_main share | loss per 100 S_main units | max damage/bound |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Luna obt+planner | 1, 2, 3 | 176.9 [160.0, 189.5] | 59.1 | 0.0 | 117.7 | 342.2 [322.0, 359.0] | 5.87% | 0.295 | 342.0 [308.2, 395.5] | 0.653 |
+| Luna none | 1, 2, 3 | 999.9 [812.8, 1,096.3] | n/a | 0.0 | 999.9 | 0.0 [0.0, 0.0] | 0.00% | 0.932 | 204.3 [182.8, 222.2] | n/a |
+| Terra obt+planner | 1, 2, 3 | 176.2 [158.0, 189.5] | 59.1 | 0.0 | 117.1 | 335.8 [312.0, 364.5] | 5.75% | 0.293 | 341.5 [304.3, 395.5] | 0.653 |
+| Terra none | 1, 2, 3 | 1,177.2 [942.2, 1,575.1] | n/a | 0.0 | 1,177.2 | 0.0 [0.0, 0.0] | 0.00% | 0.935 | 199.8 [171.4, 253.9] | n/a |
+
+## Seed 1: v2 next to v1 (superseded) and the gpt-oss reference
 
 - **v2** (current): every buyer call sampled fresh; the reply cache is scoped to one run and call index (resume only). Terra has its own `none` baseline.
 - **v1** (superseded: cross-run reply reuse): byte-identical prompts in another run reused an earlier paid reply (134/1,200 Luna and 70/600 Terra buyer calls). Terra's utility there was against Luna's `none`.
@@ -71,8 +82,8 @@ DECISIONS D37, D37a. The buyer is the paid model with `reasoning_effort=low`, an
 | v1 | gpt-5.6-luna | extractor eval | 223 | 121,538 | 13,074 | 1,315 | 0.0400 |
 | v1 | gpt-5.6-terra | eval runs (buyer) | 530 | 860,751 | 50,672 | 14,553 | 2.3296 |
 | v1 | gpt-5.6-terra | extractor eval | 223 | 121,538 | 12,458 | 291 | 0.3926 |
-| v2 | gpt-5.6-luna | eval runs (buyer) | 1,200 | 1,675,450 | 185,765 | 108,030 | 0.5580 |
-| v2 | gpt-5.6-terra | eval runs (buyer) | 1,200 | 1,730,207 | 158,282 | 73,313 | 5.3598 |
+| v2 | gpt-5.6-luna | eval runs (buyer) | 3,600 | 5,045,548 | 569,743 | 334,448 | 1.6928 |
+| v2 | gpt-5.6-terra | eval runs (buyer) | 3,600 | 5,191,467 | 465,275 | 211,245 | 15.9662 |
 | **v1 total** | | | | | | | **3.2659** |
-| **v2 total** | | | | | | | **5.9178** |
-| **total (ledger)** | | | 4,442 | | | | **9.1837** |
+| **v2 total** | | | | | | | **17.6590** |
+| **total (ledger)** | | | 9,242 | | | | **20.9249** |

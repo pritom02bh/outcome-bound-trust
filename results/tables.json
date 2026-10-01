@@ -55,21 +55,21 @@
    [
     "E5 v2 (Luna)",
     "obt+planner",
-    6,
-    73,
-    "653.5",
-    "1,748.0",
-    "0.526",
+    18,
+    220,
+    "1,951.0",
+    "5,382.0",
+    "0.653",
     "yes"
    ],
    [
     "E5 v2 (Terra)",
     "obt+planner",
-    6,
-    73,
-    "653.5",
-    "1,748.0",
-    "0.526",
+    18,
+    220,
+    "1,951.0",
+    "5,382.0",
+    "0.653",
     "yes"
    ],
    [
@@ -241,10 +241,11 @@
   ]
  },
  "e5": {
-  "caption": "Paid buyer models (E5 v2; reasoning effort low; frozen gpt-oss extractor; OBT default; seed 1; every buyer call sampled fresh): loss from lies (mean of scenarios 2-12) = damage + reroute premium + resid, utility cost against the same model's none run, $ per run.",
+  "caption": "Paid buyer models (E5 v2; reasoning effort low; frozen gpt-oss extractor; OBT default; every buyer call sampled fresh): loss from lies (mean of scenarios 2-12) and utility cost against the same model's none run, mean [95% bootstrap CI over seeds]; damage + reroute premium + resid are means over all attack runs; loss per 100 S_main units as in D40; $ per run.",
   "columns": [
    "buyer",
    "defense",
+   "seeds",
    "loss from lies",
    "damage",
    "reroute premium",
@@ -252,56 +253,154 @@
    "utility cost",
    "utility (% of cost)",
    "S_main share",
+   "loss per 100 S_main units",
    "max damage/bound"
   ],
   "rows": [
    [
     "GPT-5.6 Luna",
     "obt+planner",
-    "160.0",
-    "59.4",
+    3,
+    "176.9 [160.0, 189.5]",
+    "59.1",
     "0.0",
-    "100.6",
-    "322.0",
-    "5.65",
-    "0.304",
-    "0.526"
+    "117.7",
+    "342.2 [322.0, 359.0]",
+    "5.87",
+    "0.295",
+    "342.0 [308.2, 395.5]",
+    "0.653"
    ],
    [
     "GPT-5.6 Luna",
     "none",
-    "812.8",
+    3,
+    "999.9 [812.8, 1,096.3]",
     "n/a",
     "0.0",
-    "812.8",
-    "0.0",
+    "999.9",
+    "0.0 [0.0, 0.0]",
     "0.00",
-    "0.952",
+    "0.932",
+    "204.3 [182.8, 222.2]",
     "-"
    ],
    [
     "GPT-5.6 Terra",
     "obt+planner",
-    "158.0",
-    "59.4",
+    3,
+    "176.2 [158.0, 189.5]",
+    "59.1",
     "0.0",
-    "98.6",
-    "312.0",
-    "5.46",
-    "0.298",
-    "0.526"
+    "117.1",
+    "335.8 [312.0, 364.5]",
+    "5.75",
+    "0.293",
+    "341.5 [304.3, 395.5]",
+    "0.653"
    ],
    [
     "GPT-5.6 Terra",
     "none",
-    "942.2",
+    3,
+    "1,177.2 [942.2, 1,575.1]",
     "n/a",
     "0.0",
-    "942.2",
-    "0.0",
+    "1,177.2",
+    "0.0 [0.0, 0.0]",
     "0.00",
-    "0.940",
+    "0.935",
+    "199.8 [171.4, 253.9]",
     "-"
+   ]
+  ]
+ },
+ "e5_loss_per_unit_by_scenario": {
+  "caption": "Loss per 100 S_main units by scenario, paid buyers (E5 v2): 100 x sum of losses / sum of S_main units over seeds (D40); n/a where no S_main unit was bought.",
+  "columns": [
+   "scenario",
+   "Luna obt+planner",
+   "Luna none",
+   "Terra obt+planner",
+   "Terra none"
+  ],
+  "rows": [
+   [
+    "always lie",
+    "1,013.3",
+    "1,400.4",
+    "1,010.7",
+    "1,455.8"
+   ],
+   [
+    "farm then lie",
+    "95.6",
+    "22.8",
+    "95.2",
+    "1.3"
+   ],
+   [
+    "slow drift",
+    "538.8",
+    "143.1",
+    "537.1",
+    "222.1"
+   ],
+   [
+    "price bait",
+    "555.3",
+    "149.9",
+    "552.7",
+    "148.3"
+   ],
+   [
+    "vague",
+    "n/a",
+    "629.3",
+    "n/a",
+    "921.2"
+   ],
+   [
+    "far deadlines",
+    "n/a",
+    "1,826.4",
+    "n/a",
+    "1,576.5"
+   ],
+   [
+    "claim splitting",
+    "1,585.0",
+    "318.6",
+    "1,578.3",
+    "217.4"
+   ],
+   [
+    "noisy honest",
+    "46.5",
+    "-0.5",
+    "46.9",
+    "-3.8"
+   ],
+   [
+    "farm fail refarm",
+    "148.3",
+    "33.7",
+    "147.8",
+    "19.5"
+   ],
+   [
+    "extraction attack",
+    "16,800.0",
+    "430.5",
+    "16,733.3",
+    "236.5"
+   ],
+   [
+    "sybil reentry",
+    "1,000.6",
+    "1,471.0",
+    "998.1",
+    "1,359.0"
    ]
   ]
  },
@@ -611,15 +710,296 @@
    ]
   ]
  },
+ "loss_per_unit": {
+  "caption": "Loss from lies per 100 units bought from S_main in the attack runs (D40): 100 x sum of losses / sum of S_main units over scenarios 2-12 within a seed, mean [95% bootstrap CI over seeds], $ per 100 units. It compares defenses per unit actually traded, so one that avoids S_main is not credited for it.",
+  "columns": [
+   "eval",
+   "defense",
+   "seeds",
+   "loss from lies",
+   "S_main units per attack run",
+   "S_main share (attack runs)",
+   "loss per 100 S_main units"
+  ],
+  "rows": [
+   [
+    "E2",
+    "obt",
+    5,
+    "43.1 [37.0, 50.5]",
+    "29.7",
+    "0.029",
+    "145.6 [126.0, 165.0]"
+   ],
+   [
+    "E2c",
+    "obt+planner",
+    5,
+    "111.4 [104.6, 118.2]",
+    "33.1",
+    "0.032",
+    "338.4 [302.8, 373.9]"
+   ],
+   [
+    "E2c",
+    "rep-n18",
+    5,
+    "551.8 [511.8, 600.4]",
+    "256.7",
+    "0.244",
+    "219.7 [188.6, 262.8]"
+   ],
+   [
+    "E2c",
+    "rep+planner",
+    5,
+    "651.6 [579.5, 736.3]",
+    "250.5",
+    "0.233",
+    "259.9 [230.5, 287.2]"
+   ],
+   [
+    "E2",
+    "rep-strict",
+    5,
+    "169.0 [130.4, 215.9]",
+    "59.3",
+    "0.057",
+    "281.2 [234.9, 327.4]"
+   ],
+   [
+    "E2",
+    "rep-default",
+    5,
+    "483.3 [411.7, 555.5]",
+    "229.5",
+    "0.219",
+    "210.4 [189.3, 239.4]"
+   ],
+   [
+    "E2",
+    "llm_selfcheck",
+    3,
+    "740.8 [520.5, 934.1]",
+    "220.7",
+    "0.204",
+    "331.3 [271.6, 389.5]"
+   ],
+   [
+    "E2",
+    "provenance",
+    3,
+    "1,649.9 [1,471.5, 1,903.2]",
+    "364.8",
+    "0.311",
+    "451.4 [407.5, 504.1]"
+   ],
+   [
+    "E2",
+    "none",
+    3,
+    "2,290.6 [2,127.5, 2,469.5]",
+    "480.9",
+    "0.393",
+    "476.9 [446.9, 498.6]"
+   ],
+   [
+    "E5 Luna",
+    "obt+planner",
+    3,
+    "176.9 [160.0, 189.5]",
+    "52.0",
+    "0.051",
+    "342.0 [308.2, 395.5]"
+   ],
+   [
+    "E5 Luna",
+    "none",
+    3,
+    "999.9 [812.8, 1,096.3]",
+    "487.5",
+    "0.445",
+    "204.3 [182.8, 222.2]"
+   ],
+   [
+    "E5 Terra",
+    "obt+planner",
+    3,
+    "176.2 [158.0, 189.5]",
+    "51.9",
+    "0.051",
+    "341.5 [304.3, 395.5]"
+   ],
+   [
+    "E5 Terra",
+    "none",
+    3,
+    "1,177.2 [942.2, 1,575.1]",
+    "584.2",
+    "0.525",
+    "199.8 [171.4, 253.9]"
+   ]
+  ]
+ },
+ "loss_per_unit_by_scenario": {
+  "caption": "Loss per 100 S_main units by scenario, LLM buyer gpt-oss:20b (E2, E2c): 100 x sum of losses / sum of S_main units over seeds (D40); n/a where no S_main unit was bought.",
+  "columns": [
+   "scenario",
+   "obt",
+   "obt+planner",
+   "rep-n18",
+   "rep+planner",
+   "rep-strict",
+   "rep-default",
+   "llm_selfcheck",
+   "provenance",
+   "none"
+  ],
+  "rows": [
+   [
+    "always lie",
+    "485.2",
+    "739.2",
+    "2,011.8",
+    "1,077.5",
+    "829.1",
+    "1,575.8",
+    "1,038.0",
+    "1,083.6",
+    "1,089.5"
+   ],
+   [
+    "farm then lie",
+    "-0.8",
+    "92.7",
+    "18.3",
+    "27.9",
+    "0.0",
+    "15.0",
+    "23.6",
+    "19.4",
+    "9.8"
+   ],
+   [
+    "slow drift",
+    "298.4",
+    "493.7",
+    "113.9",
+    "153.5",
+    "0.0",
+    "124.1",
+    "178.9",
+    "211.8",
+    "246.9"
+   ],
+   [
+    "price bait",
+    "-39.8",
+    "280.4",
+    "173.2",
+    "165.6",
+    "143.6",
+    "150.1",
+    "161.0",
+    "174.5",
+    "162.1"
+   ],
+   [
+    "vague",
+    "n/a",
+    "n/a",
+    "1,816.4",
+    "741.6",
+    "416.5",
+    "1,878.2",
+    "2,153.9",
+    "442.5",
+    "597.7"
+   ],
+   [
+    "far deadlines",
+    "n/a",
+    "n/a",
+    "1,612.3",
+    "1,096.7",
+    "841.5",
+    "1,436.3",
+    "1,050.1",
+    "999.5",
+    "1,078.8"
+   ],
+   [
+    "claim splitting",
+    "189.6",
+    "513.8",
+    "367.8",
+    "477.6",
+    "2.0",
+    "280.6",
+    "675.0",
+    "590.5",
+    "589.4"
+   ],
+   [
+    "noisy honest",
+    "-5.5",
+    "65.8",
+    "51.4",
+    "20.5",
+    "-0.2",
+    "243.2",
+    "5.3",
+    "1.2",
+    "-5.1"
+   ],
+   [
+    "farm fail refarm",
+    "11.2",
+    "140.9",
+    "53.7",
+    "58.5",
+    "0.0",
+    "18.4",
+    "55.4",
+    "60.7",
+    "37.0"
+   ],
+   [
+    "extraction attack",
+    "3,600.0",
+    "10,020.0",
+    "820.7",
+    "565.3",
+    "385.6",
+    "1,050.2",
+    "n/a",
+    "668.4",
+    "277.6"
+   ],
+   [
+    "sybil reentry",
+    "483.5",
+    "731.2",
+    "1,319.5",
+    "995.0",
+    "926.8",
+    "1,236.3",
+    "959.2",
+    "1,038.2",
+    "1,136.3"
+   ]
+  ]
+ },
  "main": {
-  "caption": "LLM buyer (gpt-oss:20b): loss from lies (mean of scenarios 2-12) and utility cost with an honest supplier, mean [95% bootstrap CI over seeds], $ per run.",
+  "caption": "LLM buyer (gpt-oss:20b): loss from lies (mean of scenarios 2-12) and utility cost with an honest supplier, mean [95% bootstrap CI over seeds], $ per run. Loss per 100 S_main units = 100 x loss from lies / units bought from S_main in the attack runs (D40).",
   "columns": [
    "defense",
    "seeds",
    "loss from lies",
    "utility cost",
    "utility (% of cost)",
-   "S_main share"
+   "S_main share",
+   "loss per 100 S_main units"
   ],
   "rows": [
    [
@@ -628,7 +1008,8 @@
     "43.1 [37.0, 50.5]",
     "324.6 [288.5, 363.1]",
     "5.43",
-    "0.055"
+    "0.055",
+    "145.6 [126.0, 165.0]"
    ],
    [
     "obt+planner",
@@ -636,7 +1017,8 @@
     "111.4 [104.6, 118.2]",
     "261.0 [230.4, 296.8]",
     "4.36",
-    "0.168"
+    "0.168",
+    "338.4 [302.8, 373.9]"
    ],
    [
     "rep-n18",
@@ -644,7 +1026,8 @@
     "551.8 [511.8, 600.4]",
     "-20.5 [-72.8, 26.9]",
     "-0.35",
-    "0.672"
+    "0.672",
+    "219.7 [188.6, 262.8]"
    ],
    [
     "rep+planner",
@@ -652,7 +1035,8 @@
     "651.6 [579.5, 736.3]",
     "35.4 [-45.9, 116.7]",
     "0.60",
-    "0.602"
+    "0.602",
+    "259.9 [230.5, 287.2]"
    ],
    [
     "rep-strict",
@@ -660,7 +1044,8 @@
     "169.0 [130.4, 215.9]",
     "320.9 [288.2, 358.9]",
     "5.36",
-    "0.069"
+    "0.069",
+    "281.2 [234.9, 327.4]"
    ],
    [
     "rep-default",
@@ -668,7 +1053,8 @@
     "483.3 [411.7, 555.5]",
     "46.1 [-51.4, 124.8]",
     "0.75",
-    "0.556"
+    "0.556",
+    "210.4 [189.3, 239.4]"
    ],
    [
     "llm_selfcheck",
@@ -676,7 +1062,8 @@
     "740.8 [520.5, 934.1]",
     "75.3 [44.0, 99.0]",
     "1.26",
-    "0.475"
+    "0.475",
+    "331.3 [271.6, 389.5]"
    ],
    [
     "provenance",
@@ -684,7 +1071,8 @@
     "1,649.9 [1,471.5, 1,903.2]",
     "39.7 [26.0, 55.0]",
     "0.66",
-    "0.534"
+    "0.534",
+    "451.4 [407.5, 504.1]"
    ],
    [
     "none",
@@ -692,7 +1080,8 @@
     "2,290.6 [2,127.5, 2,469.5]",
     "0.0 [0.0, 0.0]",
     "0.00",
-    "0.663"
+    "0.663",
+    "476.9 [446.9, 498.6]"
    ]
   ]
  },
