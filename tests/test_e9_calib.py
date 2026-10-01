@@ -33,3 +33,12 @@ def test_transferred_points_reproduce_e9_runs(tmp_path):
     assert s["points"]["obt_b0.05_k1"]["bound_held"]
     rows = e9_calib.calibrated_rows(tmp_path / "cal", tmp_path / "e9")
     assert {r["defense"] for r in rows} == {"none", "obt", "rep-strict"}
+
+
+def test_extended_grid_adds_only_obt_points():
+    base, ext = e9_calib.grid(), e9_calib.grid(ext=True)
+    new = [x for x in ext if x not in base]
+    assert {x[0] for x in base} <= {x[0] for x in ext} and all(d == "obt" for _, d, _ in new)
+    assert {(s["b0_frac"], s["budget_k"]) for _, _, s in new} == \
+        {(b, k) for b in (0.40, 0.80) for k in (1, 2, 4)} | {(b, 4) for b in (0.025, 0.05, 0.10, 0.20)}
+    assert len([x for x in ext if x[1] == "obt"]) == 18

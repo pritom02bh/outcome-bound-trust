@@ -827,3 +827,10 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - Pareto fronts: OBT obt_b0.05_k1, obt_b0.1_k1, obt_b0.1_k2, obt_b0.2_k1, obt_b0.2_k2; reputation (never-trading excluded) rep_n3_th0.85_cap200, rep_n3_th0.9_cap200, rep_n8_th0.8_cap200.
   - Bound over every OBT grid run: 168 runs, 586 failure events, max damage/bound 1.000, held yes; invariant violations 0; transferred points reproduce E9 yes.
 <!-- /D45 outcome -->
+
+### D45a. E9 calibration: OBT grid extended (user request)
+- **Why.** v1.7's OBT pick (b0 20%, k 1) sat on the grid's b0 edge, so the grid is extended to see whether the chosen point moves.
+- **Extension** (`eval/e9_calib.py`, `grid(ext=True)`; `python -m eval.e9_calib run-ext`). b0 ∈ {40%, 80%} × k ∈ {1, 2, 4}, plus k = 4 at every original b0. The extended OBT grid is the full product b0 ∈ {2.5, 5, 10, 20, 40, 80}% × k ∈ {1, 2, 4}: 18 points, 10 of them new (210 new runs). Same scenarios, seeds 1–3, 50 rounds; any violation stops it.
+- **Rule unchanged** (D45, E1's rule). Re-selected over the extended OBT grid; reputation's grid and pick are not changed.
+- **Edge rule, fixed now, before any extension data.** If the new pick is again on an edge of the grid (b0 80% or k 4), that is reported explicitly and the grid is **not** extended further.
+- **Reporting.** D45's v1.7 tables stay as published (the original grid). The extension gets its own tables (`e9_calibration_ext`, `e9_calibration_ext_grid`, `e9_calibration_ext_bound`), NUMBERS.md rows and a workbook sheet, so every v1.7 number can be checked as unchanged.

@@ -33,6 +33,10 @@ SCENARIOS = tuple(range(1, 8))
 SEEDS = (1, 2, 3)
 B0 = (0.025, 0.05, 0.10, 0.20)
 KS = (1, 2)
+# D45a extension (user request after v1.7, whose pick sat on the b0 edge): b0 ∈ {40%, 80%} × k ∈ {1, 2, 4}, plus k = 4
+# at every original b0. The extended OBT grid is the full product B0_EXT x KS_EXT (18 points). Same rule, scenarios, seeds.
+B0_EXT = B0 + (0.40, 0.80)
+KS_EXT = KS + (4,)
 N0 = (3, 8, 18)
 THETAS = (0.8, 0.85, 0.9)
 CAPS = (100.0, 200.0, 400.0)
@@ -41,8 +45,9 @@ BASE = {"window": 0, "grace": 0}
 TRANSFERRED = {"obt": "obt_b0.05_k1", "rep-strict": "rep_n3_th0.9_cap200"}
 
 
-def grid() -> list[tuple[str, str, dict]]:
-    g = [(f"obt_b{b}_k{k}", "obt", {"b0_frac": b, "budget_k": k, **BASE}) for b in B0 for k in KS]
+def grid(ext: bool = False) -> list[tuple[str, str, dict]]:
+    b0s, ks = (B0_EXT, KS_EXT) if ext else (B0, KS)
+    g = [(f"obt_b{b}_k{k}", "obt", {"b0_frac": b, "budget_k": k, **BASE}) for b in b0s for k in ks]
     g += [(f"rep_n{n0}_th{t}_cap{int(c)}", "reputation", {"b0_frac": 0.05, **BASE, "rep_n0": n0, "rep_theta": t,
                                                            "rep_cap": c})
           for n0 in N0 for t in THETAS for c in CAPS]
@@ -114,10 +119,10 @@ def choose(points: dict, defense: str) -> tuple[list[str], str | None]:
     return (pareto_front(ok), pick_default(ok)) if ok else ([], None)
 
 
-def summarize(root: Path = ROOT, e9_dir: Path = RUNS / "e9") -> dict:
+def summarize(root: Path = ROOT, e9_dir: Path = RUNS / "e9", ext: bool = False) -> dict:
     none = {(r["scenario"], r["seed"]): r["total_cost"] for r in load_rows(e9_dir) if r["defense"] == "none"}
     points, rows = {}, {}
-    for name, defense, sim in grid():
+    for name, defense, sim in grid(ext):
         rs = load_rows(root / name)
         if not rs:
             continue
@@ -132,12 +137,18 @@ def summarize(root: Path = ROOT, e9_dir: Path = RUNS / "e9") -> dict:
         d: sorted((r["scenario"], r["seed"], r["total_cost"]) for r in e9 if r["defense"] == d)
         == sorted((r["scenario"], r["seed"], r["total_cost"]) for r in rows.get(p, []))
         for d, p in TRANSFERRED.items()}
+    # Whether OBT's pick sits on an edge of the grid it was chosen from (D45a: reported, not extended further).
+    pk = points.get(out["picks"]["obt"]) if out["picks"]["obt"] else None
+    b0s, ks = (B0_EXT, KS_EXT) if ext else (B0, KS)
+    out["obt_pick_edges"] = [] if pk is None else \
+        [e for e, hit in (("b0 max", pk["b0_frac"] == max(b0s)), ("b0 min", pk["b0_frac"] == min(b0s)),
+                          ("k max", pk["budget_k"] == max(ks)), ("k min", pk["budget_k"] == min(ks))) if hit]
     return out
 
 
-def calibrated_rows(root: Path = ROOT, e9_dir: Path = RUNS / "e9") -> list[dict]:
+def calibrated_rows(root: Path = ROOT, e9_dir: Path = RUNS / "e9", ext: bool = False) -> list[dict]:
     """E9's none plus each defense's calibrated point, relabeled as that defense (for eval.e9.summary)."""
-    s = summarize(root, e9_dir)
+    s = summarize(root, e9_dir, ext)
     rows = [r for r in load_rows(e9_dir) if r["defense"] == "none"]
     for label, p in s["picks"].items():
         if p:
@@ -198,11 +209,12 @@ def main(argv: list[str] | None = None) -> None:
         release_notes()
         print("INDEX.md E9-calibration row and DECISIONS D45 outcome updated")
         return
-    if stage == "run":
-        run()
-    s = summarize()
-    (ROOT / "summary.json").write_text(json.dumps(s, indent=1) + "\n")
-    print(json.dumps({k: s[k] for k in ("fronts", "picks", "transferred", "reproduces_e9")}, indent=1))
+    ext = stage.endswith("-ext")
+    if stage in ("run", "run-ext"):
+        run(points=[x for x in grid(ext) if x[1] == "obt"] if ext else None)
+    s = summarize(ext=ext)
+    (ROOT / ("summary_ext.json" if ext else "summary.json")).write_text(json.dumps(s, indent=1) + "\n")
+    print(json.dumps({k: s[k] for k in ("fronts", "picks", "obt_pick_edges", "reproduces_e9")}, indent=1))
 
 
 if __name__ == "__main__":
