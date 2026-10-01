@@ -158,4 +158,6 @@ def test_e9_runner_and_summary(tmp_path):
     assert len(rows) == 4 and all(r["domain"] == "cloud" for r in rows)
     s = e9.summary(rows)
     assert set(s["defenses"]) == {"obt", "none"} and s["bound"]["all"]["held"]
+    b = s["bound"]["all"]
+    assert b["max_apriori_ratio"] is None or b["max_apriori_ratio"] <= (b["max_ratio"] or 0) + 1e-9   # a-priori >= bound
     assert e9.run(tmp_path, scenarios=(1, 2), defenses=("obt", "none"), seeds=(1,), rounds=20) == rows   # resumable

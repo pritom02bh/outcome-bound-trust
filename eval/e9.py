@@ -102,8 +102,10 @@ def summary(rows: list[dict]) -> dict:
                               "sum_bound": sum(e["bound"] for _, e in ev)}
     ratios = [r["metrics"]["loss_bound"]["damage"] / r["metrics"]["loss_bound"]["sum_bound"] for r in obt
               if r["metrics"]["loss_bound"]["events"] and r["metrics"]["loss_bound"]["sum_bound"]]
-    apri = [r["metrics"]["loss_bound"]["damage"] / e["apriori"] for r in obt
-            for e in r["metrics"]["loss_bound"]["events"] if e["apriori"]]
+    # Per run: damage against the sum of its events' a-priori (budget-form) bounds, as E7 reports it.
+    apri = [r["metrics"]["loss_bound"]["damage"] / sum(e["apriori"] for e in r["metrics"]["loss_bound"]["events"])
+            for r in obt if r["metrics"]["loss_bound"]["events"]
+            and sum(e["apriori"] for e in r["metrics"]["loss_bound"]["events"])]
     out["bound"]["all"] = {"runs_with_events": len(ratios),
                            "damage": sum(r["metrics"]["loss_bound"]["damage"] for r in obt
                                          if r["metrics"]["loss_bound"]["events"]),
