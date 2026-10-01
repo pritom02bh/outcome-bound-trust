@@ -17,12 +17,16 @@ step() { log "== $1"; shift; "$@" || fail "step failed (exit $?): $*"; }
 log "e9 armed at $(git rev-parse --short HEAD)"
 [ -d "$OLD" ] || git worktree add --detach "$OLD" v1.4.1-results || fail "old worktree"
 mkdir -p results/e9_equivalence
-step "equivalence: dump under v1.4.1-results" env PYTHONPATH="$OLD" $PY eval/e9_equivalence.py dump \
-     results/e9_equivalence/old.json "$(pwd)/runs/cache/extract"
-step "equivalence: dump under the E9 code" $PY eval/e9_equivalence.py dump results/e9_equivalence/new.json \
-     "$(pwd)/runs/cache/extract"
-step "equivalence: byte-identical ledgers, costs, verdicts and gate differential" $PY eval/e9_equivalence.py compare \
-     results/e9_equivalence/old.json results/e9_equivalence/new.json results/e9_equivalence/report.json
+# Run the script from a neutral directory: from eval/ its sibling eval/numbers.py would shadow the stdlib module, and
+# from the repo root the new code would shadow the old. Only the code root on PYTHONPATH is then importable.
+EQ="$(mktemp -d)"; cp eval/e9_equivalence.py "$EQ/"; ROOT="$(pwd)"; PYA="$ROOT/.venv/bin/python"
+step "equivalence: dump under v1.4.1-results" bash -c "cd '$EQ' && PYTHONPATH='$OLD' '$PYA' e9_equivalence.py dump \
+     '$ROOT/results/e9_equivalence/old.json' '$ROOT/runs/cache/extract'"
+step "equivalence: dump under the E9 code" bash -c "cd '$EQ' && PYTHONPATH='$ROOT' '$PYA' e9_equivalence.py dump \
+     '$ROOT/results/e9_equivalence/new.json' '$ROOT/runs/cache/extract'"
+step "equivalence: byte-identical ledgers, costs, verdicts and gate differential" bash -c "cd '$EQ' && '$PYA' \
+     e9_equivalence.py compare '$ROOT/results/e9_equivalence/old.json' '$ROOT/results/e9_equivalence/new.json' \
+     '$ROOT/results/e9_equivalence/report.json'"
 step "tests (default)" $PY -m pytest -q
 step "tests (slow: TLC)" $PY -m pytest -q -m slow
 step "tests (local LLM)" $PY -m pytest -q -m llm
