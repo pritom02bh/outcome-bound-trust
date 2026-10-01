@@ -51,3 +51,6 @@ Summary of `docs/DECISIONS.md` (the full file has the reasoning).
 - **D39**: Paper structure and terminology (user decision; documentation and labels only)
 - **D40**: Loss per 100 S_main units (user request) — EXPLORED, REJECTED for the paper (v1.4.1)
 - **D41**: Overnight batch: E5 seeds 2–3, per-unit metric, refresh (user decision)
+- **D42**: Annotator package for an independent second labeling (user request)
+- **D43**: E8: an LLM-powered adversarial supplier (user request)
+- **D43a**: E8 stopped on an A2A timeout, not a violation; transport timeouts raised

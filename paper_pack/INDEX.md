@@ -1,4 +1,4 @@
-# Results index (tags `v1.0-results`, `v1.1-results`: + Enron, `v1.4-results`: E5 seeds 1-3, `v1.4.1-results`: paper-facing cleanup)
+# Results index (tags `v1.0-results`, `v1.1-results`: + Enron, `v1.4-results`: E5 seeds 1-3, `v1.4.1-results`: paper-facing cleanup, `v1.5-results`: + E8)
 
 One row per experiment. **Runs @** is the commit the runs were produced on (from each run's provenance); **report @** is the commit that last changed the report. Loss from lies = mean over attack scenarios 2–12 of cost − cost of the honest run (same defense, seed). Utility cost = cost(defense) − cost(`none`) on the honest scenario, same seed. All runs: 0 invariant violations, and the loss bound (damage ≤ Σ L_e) held in every OBT run. Decisions: `docs/DECISIONS.md`. The generated per-eval listing is `results/evals.md` (rebuilt by `make results`).
 
@@ -16,6 +16,7 @@ One row per experiment. **Runs @** is the commit the runs were produced on (from
 | E5 v1 (superseded) | as E5, with cross-run reply reuse (D37a) | `91acfd3` | `results/e5_v1/` (`c706ade`) | Superseded by v2; OBT rows identical, `none` rows moved |
 | **E6** adaptive attacker | 10,000-evaluation search over attacker parameters against OBT | `b4c13bb` | `results/e6.md` (`ee550bc`) | Max damage / Σ bound **0.857** (< 1: the bound holds) |
 | **E7** budget growth k | scripted buyer, k ∈ {1, 2, 4} × T ∈ {50, 100}, 12 scenarios × 3 seeds | `5d935e8` | `docs/DECISIONS.md` D36; `results/tables.json` `budget_k` (`f5a9121`) | k = 2 cuts utility cost **5.89% → 4.54%** (T 50) and raises loss $137 → $195; k = 4 adds almost nothing |
+| **E8** LLM adversarial supplier | gpt-oss:20b attacker (black-/white-box) vs 7 defenses, gpt-oss buyer, seeds 1-3 (D43) | `10d5c60`, `62297f4` | `results/e8/report.md` (`v1.5-results`) | OBT loss **5.2 [-48.8, 34.1]** (white-box) vs none 15,970.8 [9,780.5, 23,688.0]; max damage/bound - |
 | Horizon check | scripted buyer, T = 100 vs T = 50, 12 scenarios × 3 seeds | `b23cb69` | `results/horizon__t100__*/`; `results/tables.json` `horizon` (`f5a9121`) | OBT utility cost **5.89% → 5.01%** as the horizon doubles (partly cold start) |
 | TLA+ model check | `spec/OBT.tla`, TLC exhaustive + 8 guard mutants | `e8b9618` | `spec/results/README.md` (`e8b9618`) | k = 1 exhaustively verified at **5 bounds**, every mutant caught; k > 1 not model-checked (D36b) |
 | Paper assets | figures (PDF) and booktabs tables from `results/` only | `f5a9121` | `paper/` (`f5a9121`) | 4 figures, 10 tables, text ≥ 7 pt |
