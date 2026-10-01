@@ -803,3 +803,18 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - `obt`: loss from lies 42.6 [34.8, 53.2] (damage 20.3, reroute premium 19.6, resid 2.7), utility cost 327.3 [310.0, 346.0] (22.57%), provider share 0.111.
   - OBT damage vs bound: 366.0 vs 1,252.0, max ratio 1.000, max a-priori ratio 0.357, held yes; QUOTA events 54, SLA events 41.
 <!-- /D44 outcome -->
+
+## D45. E9 calibration: the cloud domain's own configs, chosen by E1's rule (user request)
+- **Why.** E9 (D44) ran OBT and `rep-strict` with configs transferred from the supply domain. They were not calibrated for the cloud domain, so E9 is also reported with each defense calibrated on the cloud domain itself.
+- **Grid** (`eval/e9_calib.py`, `runs/e9_calib/<point>/`). Scripted buyer and providers, structured intents, in-process, no model calls; all 7 E9 scenarios, seeds 1–3, 50 rounds.
+  - **OBT:** b0 ∈ {2.5%, 5%, 10%, 20%} of expected per-round spend × k ∈ {1, 2}; W 0, δ 0 (8 points).
+  - **Reputation:** the D33 grid, n0 ∈ {3, 8, 18} × θ ∈ {0.8, 0.85, 0.9} × cap ∈ {$100, $200, $400} (27 points).
+  - The utility reference is E9's own `none` runs. 735 runs; any invariant or loss-bound violation stops the grid.
+- **Rule, fixed before any E9 data.** E1's rule (D22, `eval.e1.pick_default`) with D33's exclusion, unchanged:
+  - drop never-trading points (0 main-provider orders executed in every honest-scenario run; D33);
+  - take the defense's Pareto front in (utility cost, attack loss), both $ per run;
+  - pick the front point with the smallest utility cost + attack loss (ties by name).
+  - The same rule is applied to both defenses. For reputation this replaces D22/D33's "front point nearest OBT's utility cost", which needs an OBT reference; the user asked for E1's OBT rule for both.
+  - Both pieces were written before E9 existed: `pick_default` in E1 (D22) and the never-trade exclusion in D33. Nothing in the rule was chosen after seeing E9 results; the grids are the user's.
+- **Harness check.** The transferred configs are grid points (`obt_b0.05_k1`, `rep_n3_th0.9_cap200`); their runs must reproduce E9's runs exactly (checked in `summary.json` → `reproduces_e9`).
+- **Reported.** Transferred-default results (as in D44) and calibrated results side by side, both Pareto fronts with every grid point, and the bound check over every OBT grid run. E9's D44 numbers are unchanged.
