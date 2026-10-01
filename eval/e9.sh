@@ -35,8 +35,7 @@ step "verify: every prior number identical to v1.5-results" $PY -m eval.verify_r
      --tables=e9,e9_damage_vs_bound --sheets=E9 --marker='e9'
 step "tests (default, after refresh)" $PY -m pytest -q
 step "commit" git add results paper paper_pack paper_pack_v1.6.zip docs
-git commit -q -m "v1.6-results: E9 second domain (cloud/API capacity, D44): supply domain proven byte-identical to v1.4.1-results; 84 scripted runs; refreshed NUMBERS.md (RQ5), tables, workbook, paper pack; every prior number identical to v1.5-results
+git commit -q -m "v1.6-results: E9 second domain (cloud/API capacity, D44): supply domain proven byte-identical to v1.4.1-results; 84 scripted runs; refreshed NUMBERS.md (RQ5), tables, workbook, paper pack; every prior number identical to v1.5-results" || fail "commit"
 
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" || fail "commit"
 step "tag" git tag -a v1.6-results -m "v1.6-results: + E9 (second domain: cloud/API capacity, SLA and QUOTA templates)"
 log "DONE at $(git rev-parse --short HEAD) (not pushed)"
