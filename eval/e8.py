@@ -134,7 +134,7 @@ def per_run(rows: list[dict] | None = None, honest: dict | None = None) -> list[
                     "profit": round(paid - UNIT_COST * delivered, 4), "payments": round(paid, 4),
                     "delivered": delivered,
                     "utility_cost": None if hn is None else round(h[0]["total_cost"] - hn[0]["total_cost"], 4),
-                    "share": main_share(r), "honest_source": h[1],
+                    "share": None if main_share(r) is None else round(main_share(r), 6), "honest_source": h[1],
                     "fallback_rounds": r["adversary"]["fallback_rounds"], **strategies(r)})
     return out
 
