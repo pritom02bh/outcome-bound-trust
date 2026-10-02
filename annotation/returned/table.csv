@@ -1,0 +1,101 @@
+Row,is_commitment,has_delivery_claim,qty,deadline,has_price_claim,price,valid_until,notes
+1,no,,,,,,,
+2,no,,,,,,,borderline; payment promise / calculation
+3,no,,,,,,,borderline; deal record
+4,no,,,,,,,
+5,no,,,,,,,
+6,no,,,,,,,borderline; plan or expectation
+7,no,,,,,,,
+8,no,,,,,,,
+9,yes,no,,,yes,174,2001-12-27,
+10,no,,,,,,,
+11,no,,,,,,,
+12,no,,,,,,,
+13,no,,,,,,,
+14,no,,,,,,,borderline; deal record
+15,yes,no,,,yes,464,2001-11-30,
+16,yes,no,,,yes,229,2000-04-21,borderline; hotel rates with cut-off
+17,no,,,,,,,borderline; assumption
+18,no,,,,,,,
+19,no,,,,,,,
+20,no,,,,,,,
+21,no,,,,,,,borderline; deal record
+22,no,,,,,,,
+23,no,,,,,,,borderline; deal record
+24,yes,no,,,yes,192,2002-03-14,
+25,no,,,,,,,
+26,no,,,,,,,borderline; marketing price without end date
+27,no,,,,,,,
+28,no,,,,,,,
+29,no,,,,,,,borderline; deal record
+30,no,,,,,,,
+31,no,,,,,,,
+32,no,,,,,,,borderline; plan or expectation
+33,no,,,,,,,
+34,no,,,,,,,
+35,no,,,,,,,borderline; marketing price without end date
+36,no,,,,,,,
+37,no,,,,,,,
+38,no,,,,,,,borderline; guarantee expiration not price/delivery claim
+39,no,,,,,,,
+40,no,,,,,,,
+41,no,,,,,,,
+42,no,,,,,,,borderline; payment promise
+43,no,,,,,,,
+44,no,,,,,,,
+45,no,,,,,,,
+46,no,,,,,,,borderline; plan or expectation
+47,no,,,,,,,borderline; deal record / payment
+48,no,,,,,,,borderline; deal record
+49,no,,,,,,,
+50,no,,,,,,,borderline; plan or expectation
+51,no,,,,,,,borderline; plan or expectation
+52,no,,,,,,,
+53,no,,,,,,,
+54,no,,,,,,,borderline; deal record
+55,yes,no,,,yes,328,2001-06-15,
+56,no,,,,,,,
+57,no,,,,,,,
+58,yes,no,,,yes,44.95,2002-01-04,
+59,no,,,,,,,
+60,no,,,,,,,borderline; plan or expectation / schedule
+61,no,,,,,,,borderline; plan or expectation
+62,no,,,,,,,
+63,no,,,,,,,borderline; plan or expectation
+64,no,,,,,,,
+65,no,,,,,,,borderline; deal record
+66,no,,,,,,,borderline; deal record
+67,no,,,,,,,borderline; plan or expectation
+68,no,,,,,,,borderline; assumption
+69,no,,,,,,,
+70,no,,,,,,,
+71,no,,,,,,,borderline; price not held (event date not validity end)
+72,no,,,,,,,
+73,no,,,,,,,
+74,no,,,,,,,
+75,no,,,,,,,
+76,no,,,,,,,borderline; marketing price without end date
+77,no,,,,,,,
+78,no,,,,,,,
+79,no,,,,,,,
+80,no,,,,,,,borderline; deal record
+81,no,,,,,,,
+82,no,,,,,,,
+83,yes,no,,,yes,up to $300 off,2002-06-30,
+84,yes,no,,,yes,132,2002-03-20 / 2001-12-15,
+85,no,,,,,,,borderline; deal record
+86,no,,,,,,,
+87,yes,no,,,yes,404,2002-03-14,
+88,no,,,,,,,borderline; deal record
+89,no,,,,,,,
+90,no,,,,,,,borderline; deal record
+91,no,,,,,,,
+92,no,,,,,,,
+93,no,,,,,,,borderline; plan or expectation
+94,no,,,,,,,
+95,no,,,,,,,
+96,no,,,,,,,
+97,no,,,,,,,borderline; deal record
+98,no,,,,,,,borderline; refund deadline not price validity
+99,no,,,,,,,
+100,no,,,,,,,borderline; plan or expectation

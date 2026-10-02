@@ -22,7 +22,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PACK = ROOT / "paper_pack"
-VERSION = "v1.8"                 # the release this pack belongs to (tag v1.8-results)
+VERSION = "v1.9"                 # the release this pack belongs to
+TAG = "v1.9-final"
 ZIP = ROOT / f"paper_pack_{VERSION}.zip"
 TJ = "results/tables.json"
 NUMERIC = re.compile(r"^-?[\d,]*\d(\.\d+)?$")
@@ -75,6 +76,10 @@ COLUMNS = {
     "provider share": "share of reserved capacity units bought from the main provider, honest scenario (E9)",
     "events": "failure-event type (QUOTA, SLA, all)", "runs with events": "OBT runs with at least one event",
     "setting": "E9 config source: transferred from the supply domain (D44) or calibrated on the cloud domain (D45)",
+    "set": "label set compared (D42a)", "raw agreement": "share of rows with the same label",
+    "kappa": "Cohen's kappa (None when undefined)", "kappa degenerate": "one side gives every row the same label",
+    "detection rate": "seeded errors the annotator marked no", "disagreements": "rows labeled differently",
+    "slot": "Enron slot column", "agree": "rows where both give the same slot value",
     "point": "E9 calibration grid point", "b0": "OBT b0 as a fraction of expected per-round spend",
     "new in D45a": "grid point added by the D45a extension", "pick moved": "the rule's OBT pick differs from D45's",
     "pick on grid edge": "edges of the extended grid the OBT pick sits on (b0/k min or max)", "front": "on the defense's Pareto front (never-trading points excluded)",
@@ -186,6 +191,8 @@ def sheets() -> list[tuple[str, list[tuple]]]:
                      *csvs("horizon__t100__rep-n18")]),
         ("reputation grid", [tblock("reputation_grid")]),
         ("Enron", [tblock("enron")]),
+        *([("Annotator agreement", [tblock("annotator_agreement"), tblock("annotator_slots")])]
+          if "annotator_agreement" in _tables() else []),
         *([("E8", [tblock("e8"), tblock("e8_strategies"), cblock("results/e8/runs.csv")])] if "e8" in _tables() else []),
         *([("E9", [tblock("e9"), tblock("e9_damage_vs_bound")])] if "e9" in _tables() else []),
         *([("E9 calibration", [tblock("e9_calibration"), tblock("e9_calibration_bound"),
@@ -206,7 +213,7 @@ def workbook(path: Path, sh: list) -> None:
     wb = Workbook()
     readme = wb.active
     readme.title = "README"
-    readme.append([f"Outcome-Bound Trust: all results (tag {VERSION}-results). Built from results/ and spec/results/ "
+    readme.append([f"Outcome-Bound Trust: all results (tag {TAG}). Built from results/ and spec/results/ "
                    "only by `python -m eval.pack`; numbers are as printed in the paper tables and NUMBERS.md."])
     readme.append([])
     readme.append(["sheet", "block", "source (file → key)", "column", "meaning"])

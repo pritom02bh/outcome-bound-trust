@@ -844,3 +844,20 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - OBT front (extended grid): obt_b0.05_k1, obt_b0.1_k1, obt_b0.1_k2, obt_b0.2_k1, obt_b0.2_k2, obt_b0.4_k2, obt_b0.8_k1, obt_b0.8_k2.
   - Bound over every extended-grid run: 378 runs, 1500 failure events, max damage/bound 1.000, held yes; invariant violations 0.
 <!-- /D45a outcome -->
+
+### D42a. Independent annotator: agreement with our labels (user request)
+- **Annotator.** A professor, independent and not involved in the project, labeled both blind files without seeing our labels.
+- **Returned files** (`annotation/returned/`): `table.csv` (Enron, 100 rows) and `table__1_.csv` (spot-check, 50 rows). They came back as `~/Downloads/table.csv` and `table (1).csv` and were copied unchanged (same sha1).
+  - They carry a 1-based `Row` column and the label columns, not the message columns. `eval/agreement.py` (`read_returned`) lines each `Row` up with the blind file's row of the same position. Row must run 1..n in the blind file's order with no gap, duplicate or reordering, or it refuses (tested). Nothing was reordered.
+- **Note categories in `INSTRUCTIONS.md`** (checked before scoring): *deal record, assumption, price not held, payment promise, plan or expectation, marketing price without end date*, or the annotator's own words.
+  - The annotator used all six listed categories and added some in their own words: "hotel rates with cut-off", "guarantee expiration not price/delivery claim", "refund deadline not price validity", "price not held (event date not validity end)" and combined forms such as "deal record / payment".
+- **Spot-check** (scored through the private key `data/annotation_spotcheck_key.csv`):
+  - **All 50 rows:** raw agreement 0.98, κ 0.935, 1 disagreement.
+  - **40 v2 rows:** raw agreement 1.00, 0 disagreements. κ is degenerate: our labels are all yes, and the annotator's were too.
+  - **10 seeded errors:** detection rate 0.90 (9 of 10 marked no). κ is degenerate because our labels are all no.
+  - **The one miss:** row 8 (`test015`, v1): "We will have the 23 widgets available no later than round 26…", recorded as a DELIVERY by round 26. Our v1 review marked it no because "available" is not arrival wording; the annotator marked it yes. The wording sits on the line between "you will have" (counts) and "ready" (does not).
+- **Enron `is_commitment`:**
+  - Raw agreement 0.99, κ 0.942, 1 disagreement.
+  - **The one disagreement:** row 60, "…will schedule the full 7 mw's for 1/1/01…". We said yes (delivery of 7 MW by 2001-01-01, marked borderline); the annotator said no ("borderline; plan or expectation / schedule"). Both marked it borderline.
+  - **Slots** on the 9 rows both mark yes: every slot agrees on all 9 (delivery and price flags, qty, deadline, price, valid_until).
+- **Reported.** `results/annotation.md` (every disagreement), the `annotator_agreement` and `annotator_slots` tables, RQ6 rows in `NUMBERS.md`, and an "Annotator agreement" workbook sheet. Raw output is in `runs/agreement/agreement.json`. Released as `v1.9-final`.

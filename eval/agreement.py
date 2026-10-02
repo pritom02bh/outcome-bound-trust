@@ -1,7 +1,11 @@
 """Inter-annotator agreement (DECISIONS D42): an independent annotator's labels against ours.
 
-    python -m eval.agreement annotation/returned/spotcheck_blind.csv annotation/returned/enron_blind.csv
-        -> runs/agreement/agreement.json and a printed report (not run until the annotator's files are back)
+    python -m eval.agreement annotation/returned/table__1_.csv annotation/returned/table.csv
+        -> runs/agreement/agreement.json and a printed report (spot-check file first, then Enron)
+
+A returned file may carry only a 1-based `Row` column and the label columns (D42a). It is then lined up with its
+blind file (annotation/spotcheck_blind.csv, annotation/enron_blind.csv): Row must run 1..n in the blind file's order,
+with no gap, duplicate or reordering, and the blind file's columns fill in the rest. Nothing is reordered.
 
 Spot-check: `looks_correct` (yes/no) on the 50-row blind sheet (40 v2 rows + 10 seeded v1 errors), joined on `row`
 through the private key data/annotation_spotcheck_key.csv; reported on all 50, the 40 v2 rows, and the 10 seeded
@@ -62,12 +66,27 @@ def _date(v: str):
     return tuple(sorted(p.lower() for p in parts)) or None
 
 
-def spotcheck(theirs: Path, key: Path = ROOT / "data" / "annotation_spotcheck_key.csv") -> dict:
+def read_returned(theirs: Path, blind: Path) -> list[dict]:
+    """The annotator's rows, each lined up with the blind file's row of the same position (D42a)."""
+    t = list(csv.DictReader(theirs.open(newline="", encoding="utf-8-sig")))
+    if not t or "Row" not in t[0] or "row" in t[0]:
+        return t
+    b = list(csv.DictReader(blind.open(newline="", encoding="utf-8-sig")))
+    got = [str(r["Row"]).strip() for r in t]
+    if len(t) != len(b) or got != [str(i) for i in range(1, len(b) + 1)] or got != [r["row"] for r in b]:
+        raise ValueError(f"{theirs.name}: Row must run 1..{len(b)} in {blind.name}'s order (got {len(t)} rows)")
+    return [{**rb, **{k: v for k, v in rt.items() if k != "Row"}} for rb, rt in zip(b, t)]
+
+
+def spotcheck(theirs: Path, key: Path = ROOT / "data" / "annotation_spotcheck_key.csv",
+              blind: Path = ROOT / "annotation" / "spotcheck_blind.csv") -> dict:
     """The 50-row blind sheet: 40 v2 rows (ours: all "yes") shuffled with 10 v1 rows the author marked "no"
     (seeded errors). Joined on `row` through the private key (data/, outside annotation/). Reported on all 50, on
     the 40 v2 rows, and on the 10 seeded rows, where the detection rate is the share the annotator marks "no"."""
     k = {r["row"]: r for r in csv.DictReader(key.open(newline=""))}
-    t = {r["row"]: yn(r["looks_correct"]) for r in csv.DictReader(theirs.open(newline=""))}
+    ret = read_returned(theirs, blind)
+    t = {r["row"]: yn(r["looks_correct"]) for r in ret}
+    msg = {r["row"]: (r.get("message", ""), r.get("template", ""), r.get("slots", "")) for r in ret}
     if set(t) != set(k):
         raise ValueError("the returned sheet's rows do not match the key")
     missing = sorted((i for i in k if t[i] is None), key=int)
@@ -79,7 +98,9 @@ def spotcheck(theirs: Path, key: Path = ROOT / "data" / "annotation_spotcheck_ke
         ids = [i for i in rows if sel(k[i])]
         out = kappa([k[i]["our_label"] for i in ids], [t[i] for i in ids])
         out["disagreements"] = [{"row": int(i), "source": k[i]["source"], "id": k[i]["id"],
-                                 "ours": k[i]["our_label"], "theirs": t[i]} for i in ids if k[i]["our_label"] != t[i]]
+                                 "ours": k[i]["our_label"], "theirs": t[i], "message": msg[i][0],
+                                 "recorded": f"{msg[i][1]} {msg[i][2]}".strip()}
+                                for i in ids if k[i]["our_label"] != t[i]]
         return out
     seeded = part(lambda r: r["source"] == "v1_seeded")
     seeded["detection_rate"] = round(sum(t[i] == NO for i in rows if k[i]["source"] == "v1_seeded")
@@ -87,9 +108,10 @@ def spotcheck(theirs: Path, key: Path = ROOT / "data" / "annotation_spotcheck_ke
     return {"all": part(lambda r: True), "v2": part(lambda r: r["source"] == "v2"), "seeded": seeded}
 
 
-def enron(theirs: Path, ours: Path = ROOT / "data" / "enron_candidates.csv") -> dict:
+def enron(theirs: Path, ours: Path = ROOT / "data" / "enron_candidates.csv",
+          blind: Path = ROOT / "annotation" / "enron_blind.csv") -> dict:
     o = list(csv.DictReader(ours.open(newline="")))
-    t = list(csv.DictReader(theirs.open(newline="")))
+    t = read_returned(theirs, blind)
     if len(o) != len(t):
         raise ValueError(f"row count differs: ours {len(o)}, theirs {len(t)}")
     for i, (a, b) in enumerate(zip(o, t), 1):

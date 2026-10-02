@@ -924,6 +924,40 @@ def _paper_data(runs: Path, out: Path) -> str | None:
                       f"{x['commitment_claims_untestable']}/{x['commitment_claims']}", x["recorded_claims"],
                       x["wrong_claims_recorded"], x["recorded_from_non_commitments"]]
                      for name in sorted(en) for st in sorted(en[name]) for x in [en[name][st]]]}
+    # Independent annotator (D42, D42a): agreement with our labels, from runs/agreement/agreement.json.
+    af = runs / "agreement" / "agreement.json"
+    if af.exists():
+        ag = json.loads(af.read_text())
+        f4 = lambda x: "-" if x is None else f"{x:.3f}"   # noqa: E731
+        sets = [("spot-check, all", ag["spotcheck"]["all"]), ("spot-check, v2 rows", ag["spotcheck"]["v2"]),
+                ("spot-check, seeded errors", ag["spotcheck"]["seeded"]), ("Enron is_commitment", ag["enron"])]
+        tables["annotator_agreement"] = {
+            "caption": "Independent annotator (a professor not involved in the project) vs our labels (D42, D42a). "
+                       "Kappa is marked degenerate when one side gives every row the same label (our v2 spot-check "
+                       "labels are all yes; the seeded rows are all no); raw agreement and the disagreements then "
+                       "carry the information. Detection rate: seeded errors the annotator marked no.",
+            "columns": ["set", "rows", "raw agreement", "kappa", "kappa degenerate", "detection rate",
+                        "disagreements"],
+            "rows": [[name, x["n"], f4(x["raw_agreement"]), f4(x["kappa"]), "yes" if x["degenerate"] else "no",
+                      f4(x.get("detection_rate")), len(x["disagreements"])] for name, x in sets]}
+        tables["annotator_slots"] = {
+            "caption": "Enron slot agreement on the rows both we and the annotator mark is_commitment = yes (D42a).",
+            "columns": ["slot", "rows", "agree"],
+            "rows": [[s, v["rows"], v["agree"]] for s, v in ag["enron"]["slot_agreement_on_rows_both_yes"].items()]}
+        L = ["# Independent annotator agreement (D42, D42a)", ""]
+        for name in ("annotator_agreement", "annotator_slots"):
+            t = tables[name]
+            L += [t["caption"], "", "| " + " | ".join(t["columns"]) + " |", "|" + "---|" * len(t["columns"])]
+            L += ["| " + " | ".join(str(c) for c in r) + " |" for r in t["rows"]] + [""]
+        L += ["## Every disagreement", ""]
+        L += [f"- Spot-check row {d['row']} ({d['source']}, {d['id']}): ours {d['ours']}, annotator {d['theirs']}. "
+              f"\"{d.get('message', '')}\" Recorded: {d.get('recorded', '')}."
+              for d in ag["spotcheck"]["all"]["disagreements"]]
+        L += [f"- Enron row {d['row']}: ours {d['ours']}, annotator {d['theirs']}. \"{d['message']}…\" Our note: "
+              f"{d['our_notes']}. Annotator's note: {d['their_notes']}." for d in ag["enron"]["disagreements"]]
+        L += [f"- Enron row {d['row']}, slot {d['slot']}: ours {d['ours']!r}, annotator {d['theirs']!r}."
+              for d in ag["enron"]["slot_disagreements"]]
+        (out / "annotation.md").write_text("\n".join(L) + "\n")
     # Bound tightness: the largest per-run damage / sum of per-event bounds in every OBT eval (DESIGN §6).
     tight = []
     for label, rs, d in (("E2 (gpt-oss)", e2, "obt"), ("E2c (gpt-oss)", e2c, "obt+planner"),

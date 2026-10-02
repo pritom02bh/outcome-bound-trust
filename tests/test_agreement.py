@@ -41,7 +41,7 @@ def test_spotcheck_and_enron_against_our_files(tmp_path):
     assert s["v2"]["n"] == 2 and s["v2"]["degenerate"] and [d["row"] for d in s["v2"]["disagreements"]] == [3]
     assert s["seeded"]["n"] == 2 and s["seeded"]["detection_rate"] == 0.5
     assert s["seeded"]["disagreements"] == [{"row": 4, "source": "v1_seeded", "id": "test030", "ours": "no",
-                                             "theirs": "yes"}]
+                                             "theirs": "yes", "message": "m", "recorded": ""}]
     cols = ["is_commitment", "has_delivery_claim", "qty", "deadline", "has_price_claim", "price", "valid_until", "notes"]
     ours_e, theirs_e = tmp_path / "e.csv", tmp_path / "e_t.csv"
     _write(ours_e, ["message", "stratum", *cols],
@@ -83,3 +83,18 @@ def test_the_blind_files_match_our_order_and_hide_our_labels():
     assert sum(r["source"] == "v1_seeded" for r in key) == 10 and {r["our_label"] for r in key if r["source"] == "v2"} == {"yes"}
     v2 = {r["message"] for r in csv.DictReader(open(ag.ROOT / "data" / "spotcheck.csv", newline=""))}
     assert sum(r["message"] in v2 for r in spot) == 40
+
+
+def test_returned_row_only_file_is_lined_up_with_the_blind_file_and_never_reordered(tmp_path):
+    blind = tmp_path / "blind.csv"
+    _write(blind, ["row", "message", "looks_correct"], [[1, "a", ""], [2, "b", ""], [3, "c", ""]])
+    ok = tmp_path / "ok.csv"
+    _write(ok, ["Row", "looks_correct"], [[1, "yes"], [2, "no"], [3, "yes"]])
+    rows = ag.read_returned(ok, blind)
+    assert [(r["row"], r["message"], r["looks_correct"]) for r in rows] == [("1", "a", "yes"), ("2", "b", "no"),
+                                                                            ("3", "c", "yes")]
+    for bad in ([[2, "no"], [1, "yes"], [3, "yes"]], [[1, "yes"], [2, "no"]], [[1, "yes"], [1, "no"], [3, "yes"]]):
+        f = tmp_path / "bad.csv"
+        _write(f, ["Row", "looks_correct"], bad)
+        with pytest.raises(ValueError):
+            ag.read_returned(f, blind)
