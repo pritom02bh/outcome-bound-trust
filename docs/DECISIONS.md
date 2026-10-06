@@ -861,3 +861,17 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - **The one disagreement:** row 60, "…will schedule the full 7 mw's for 1/1/01…". We said yes (delivery of 7 MW by 2001-01-01, marked borderline); the annotator said no ("borderline; plan or expectation / schedule"). Both marked it borderline.
   - **Slots** on the 9 rows both mark yes: every slot agrees on all 9 (delivery and price flags, qty, deadline, price, valid_until).
 - **Reported.** `results/annotation.md` (every disagreement), the `annotator_agreement` and `annotator_slots` tables, RQ6 rows in `NUMBERS.md`, and an "Annotator agreement" workbook sheet. Raw output is in `runs/agreement/agreement.json`. Released as `v1.9-final`.
+
+## D46. Paper walkthrough figure, from existing logs only (user request)
+- **Run.** E2, scenario 3 (farm-then-lie), seed 1, gpt-oss:20b buyer and extractor: `obt`, `none` and `rep-default`, each against its honest run (same defense and seed). Read from `runs/e2/results.jsonl` (lines 1/3, 25/27, 49/51; commit `2d1cfa0`). No new runs, no model calls.
+- **Code.**
+  - `eval/walkthrough.py` extracts the per-round claims, verdicts, B(c), P(c), orders with gate status and reason, remediation, reroutes, deliveries and cumulative loss from lies. It writes `results/figdata/walkthrough.json` and `results/walkthrough/rounds.csv`.
+  - It finds the key events by rule (first claim, first PASSED, P reaching B, the round the scenario labels a lie, its FAILED verdict, B's recovery, the final round). Each event carries its file:line and trace field.
+  - `eval/paper.py` draws `paper/figures/walkthrough.{pdf,png}` (single column, Okabe–Ito colors with distinct line styles, ≥ 7 pt) and writes `paper/walkthrough.md`. Both come from `results/` only and rebuild byte-identically.
+- **What the run shows, as logged.**
+  - The OBT buyer sized every S_main order to 1 unit, inside B − P. The gate approved all of them, so **no order was blocked or clipped**: there is no "big order" in this OBT run.
+  - On the lie (round 25: 4 units by round 27 at $4.25), OBT's buyer ordered 1 unit within B = $10, while `none` and `rep-default` ordered 21 units ($105) on the same message.
+  - The claim FAILED at round 27 with damage $4.50 against Σ L_e = $14.00. Loss from lies: `obt` $3.25, `rep-default` $56.25, `none` $100.75.
+  - The figure says "blocked/clipped (0 in this run)", not omitting the category.
+- **The bound applies to damage, not to loss from lies.** The figure draws OBT's Σ L_e next to the loss curves as asked; walkthrough.md and the caption data state the distinction.
+- **Reported.** Three derived rows in `NUMBERS.md` (RQ1 ×2, RQ3), the figure in `paper/figures/` and the pack, and `walkthrough.md` in the pack. Released as `v1.9.1-paper`.

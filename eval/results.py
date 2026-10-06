@@ -924,6 +924,18 @@ def _paper_data(runs: Path, out: Path) -> str | None:
                       f"{x['commitment_claims_untestable']}/{x['commitment_claims']}", x["recorded_claims"],
                       x["wrong_claims_recorded"], x["recorded_from_non_commitments"]]
                      for name in sorted(en) for st in sorted(en[name]) for x in [en[name][st]]]}
+    # Paper walkthrough (D46): E2 farm-then-lie seed 1, obt / none / rep-default, from the run logs only.
+    if (runs / "e2" / "results.jsonl").exists():
+        from eval import walkthrough as wt
+        try:
+            w = wt.extract(runs)
+        except ValueError:
+            w = None
+        if w:
+            w["key_events"] = wt.key_events(w)
+            (fd / "walkthrough.json").write_text(json.dumps(w, indent=1, sort_keys=True) + "\n")
+            (out / "walkthrough").mkdir(parents=True, exist_ok=True)
+            (out / "walkthrough" / "rounds.csv").write_text(_csv(wt.rounds_csv(w)))
     # Independent annotator (D42, D42a): agreement with our labels, from runs/agreement/agreement.json.
     af = runs / "agreement" / "agreement.json"
     if af.exists():

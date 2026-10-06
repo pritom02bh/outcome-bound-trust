@@ -22,8 +22,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PACK = ROOT / "paper_pack"
-VERSION = "v1.9"                 # the release this pack belongs to
-TAG = "v1.9-final"
+VERSION = "v1.9.1"               # the release this pack belongs to
+TAG = "v1.9.1-paper"
 ZIP = ROOT / f"paper_pack_{VERSION}.zip"
 TJ = "results/tables.json"
 NUMERIC = re.compile(r"^-?[\d,]*\d(\.\d+)?$")
@@ -333,6 +333,8 @@ def build() -> dict:
     (PACK / "spec" / "results").mkdir(parents=True)
     shutil.copy(ROOT / "paper" / "NUMBERS.md", PACK / "NUMBERS.md")
     shutil.copy(ROOT / "results" / "INDEX.md", PACK / "INDEX.md")
+    if (ROOT / "paper" / "walkthrough.md").exists():
+        shutil.copy(ROOT / "paper" / "walkthrough.md", PACK / "walkthrough.md")
     shutil.copy(ROOT / "docs" / "DESIGN.md", PACK / "DESIGN.md")
     shutil.copy(ROOT / "spec" / "results" / "README.md", PACK / "spec" / "results" / "README.md")
     (PACK / "DECISIONS_SUMMARY.md").write_text(_decisions_summary())

@@ -239,7 +239,8 @@ def check_drop_per_unit(tag: str) -> dict:
 
 # ------------------------------------------------------------------ v1.5: E8 added, nothing else may change
 
-def check_additive(tag: str, new_tables=("e8", "e8_strategies"), new_sheets=("E8",), marker="e8[") -> dict:
+def check_additive(tag: str, new_tables=("e8", "e8_strategies"), new_sheets=("E8",), marker="e8[",
+                   new_csvs=()) -> dict:
     """Against `tag`: every table, .tex, NUMBERS.md row, per-eval CSV and workbook sheet that existed is identical;
     the only additions are the listed new tables, sheets and NUMBERS rows (sources containing `marker`)."""
     bad: dict = {k: [] for k in ("tables", "tex", "numbers", "csvs", "workbook")}
@@ -274,7 +275,7 @@ def check_additive(tag: str, new_tables=("e8", "e8_strategies"), new_sheets=("E8
                 bad["numbers"].append(("unexpected new row", r[0]))
     for f in sorted((ROOT / "results").glob("*/*.csv")):
         rel = str(f.relative_to(ROOT))
-        if rel.startswith(("results/e8/", "results/e9/")):
+        if rel.startswith(("results/e8/", "results/e9/", *new_csvs)):
             continue
         try:
             if _old(tag, rel) != f.read_text():
@@ -302,7 +303,9 @@ def main(argv: list[str] | None = None) -> None:
         tag = [a for a in argv if not a.startswith("--")][0]
         opt = lambda k, d: next((a.split("=", 1)[1] for a in argv if a.startswith(f"--{k}=")), d)  # noqa: E731
         report = check_additive(tag, new_tables=tuple(opt("tables", "e8,e8_strategies").split(",")),
-                                new_sheets=tuple(opt("sheets", "E8").split(",")), marker=opt("marker", "e8["))
+                                new_sheets=tuple(x for x in opt("sheets", "E8").split(",") if x),
+                                marker=opt("marker", "e8["),
+                                new_csvs=tuple(x for x in opt("csvs", "").split(",") if x))
         for k, v in report.items():
             print(f"{k}: {'identical' if not v else f'{len(v)} DIFFERENCES'}")
             for d in v:

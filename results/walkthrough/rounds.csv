@@ -1,0 +1,151 @@
+defense,round,log line,claims (id type qty deadline price valid_until),resolved,B,P,S_main orders (qty value status reason cited),backup orders,remediation (backup),rerouted after block (orders),arrived,cost,honest cost,cumulative loss from lies
+obt,1,3,S_main#1.1 DELIVERY 20 3 None None; S_main#1.2 PRICE None None 5.0 3,,5.0,5.0,1 5.0 EXECUTED OK S_main#1.1+S_main#1.2,33 198.0 EXECUTED,,0,,19.0,19.0,0.0
+obt,2,3,S_main#2.1 DELIVERY 1 4 None None; S_main#2.2 PRICE None None 5.0 4,,5.0,5.0,,20 120.0 EXECUTED,,0,,231.0,231.0,0.0
+obt,3,3,S_main#3.1 DELIVERY 1 5 None None; S_main#3.2 PRICE None None 5.0 5,S_main#1.1 PASSED; S_main#1.2 PASSED,10.0,5.0,1 5.0 EXECUTED OK S_main#3.1+S_main#3.2,17 102.0 EXECUTED,,0,S_main 1,351.5,351.5,0.0
+obt,4,3,S_main#4.1 DELIVERY 2 6 None None; S_main#4.2 PRICE None None 5.0 6,S_main#2.1 LAPSED; S_main#2.2 LAPSED,10.0,10.0,1 5.0 EXECUTED OK S_main#4.1+S_main#4.2,14 84.0 EXECUTED,,0,S_backup 33,468.0,468.0,0.0
+obt,5,3,S_main#5.1 DELIVERY 2 7 None None; S_main#5.2 PRICE None None 5.0 7,S_main#3.1 PASSED; S_main#3.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#5.1+S_main#5.2,12 72.0 EXECUTED,,0,S_backup 20; S_main 1,570.5,570.5,0.0
+obt,6,3,S_main#6.1 DELIVERY 2 8 None None; S_main#6.2 PRICE None None 5.0 8,S_main#4.1 PASSED; S_main#4.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#6.1+S_main#6.2,23 138.0 EXECUTED,,0,S_backup 17; S_main 1,658.0,658.0,0.0
+obt,7,3,S_main#7.1 DELIVERY 2 9 None None; S_main#7.2 PRICE None None 5.0 9,S_main#5.1 PASSED; S_main#5.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#7.1+S_main#7.2,19 114.0 EXECUTED,,0,S_backup 14; S_main 1,809.0,809.0,0.0
+obt,8,3,S_main#8.1 DELIVERY 2 10 None None; S_main#8.2 PRICE None None 5.0 10,S_main#6.1 PASSED; S_main#6.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#8.1+S_main#8.2,18 108.0 EXECUTED,,0,S_backup 12; S_main 1,933.0,933.0,0.0
+obt,9,3,S_main#9.1 DELIVERY 2 11 None None; S_main#9.2 PRICE None None 5.0 11,S_main#7.1 PASSED; S_main#7.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#9.1+S_main#9.2,22 132.0 EXECUTED,,0,S_backup 23; S_main 1,1051.5,1051.5,0.0
+obt,10,3,S_main#10.1 DELIVERY 2 12 None None; S_main#10.2 PRICE None None 5.0 12,S_main#8.1 PASSED; S_main#8.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#10.1+S_main#10.2,25 150.0 EXECUTED,,0,S_backup 19; S_main 1,1191.0,1191.0,0.0
+obt,11,3,S_main#11.1 DELIVERY 2 13 None None; S_main#11.2 PRICE None None 5.0 13,S_main#9.1 PASSED; S_main#9.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#11.1+S_main#11.2,17 102.0 EXECUTED,,0,S_backup 18; S_main 1,1349.0,1349.0,0.0
+obt,12,3,S_main#12.1 DELIVERY 2 14 None None; S_main#12.2 PRICE None None 5.0 14,S_main#10.1 PASSED; S_main#10.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#12.1+S_main#12.2,27 162.0 EXECUTED,,0,S_backup 22; S_main 1,1456.5,1456.5,0.0
+obt,13,3,S_main#13.1 DELIVERY 2 15 None None; S_main#13.2 PRICE None None 5.0 15,S_main#11.1 PASSED; S_main#11.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#13.1+S_main#13.2,16 96.0 EXECUTED,,0,S_backup 25; S_main 1,1628.5,1628.5,0.0
+obt,14,3,S_main#14.1 DELIVERY 2 16 None None; S_main#14.2 PRICE None None 5.0 16,S_main#12.1 PASSED; S_main#12.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#14.1+S_main#14.2,16 96.0 EXECUTED,,0,S_backup 17; S_main 1,1735.0,1735.0,0.0
+obt,15,3,S_main#15.1 DELIVERY 1 17 None None; S_main#15.2 PRICE None None 5.0 17,S_main#13.1 PASSED; S_main#13.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#15.1+S_main#15.2,16 96.0 EXECUTED,,0,S_backup 27; S_main 1,1847.0,1847.0,0.0
+obt,16,3,S_main#16.1 DELIVERY 2 18 None None; S_main#16.2 PRICE None None 5.0 18,S_main#14.1 PASSED; S_main#14.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#16.1+S_main#16.2,20 120.0 EXECUTED,,0,S_backup 16; S_main 1,1957.0,1957.0,0.0
+obt,17,3,S_main#17.1 DELIVERY 2 19 None None; S_main#17.2 PRICE None None 5.0 19,S_main#15.1 PASSED; S_main#15.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#17.1+S_main#17.2,16 96.0 EXECUTED,,0,S_backup 16; S_main 1,2091.0,2091.0,0.0
+obt,18,3,S_main#18.1 DELIVERY 2 20 None None; S_main#18.2 PRICE None None 5.0 20,S_main#16.1 PASSED; S_main#16.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#18.1+S_main#18.2,19 114.0 EXECUTED,,0,S_backup 16; S_main 1,2199.5,2199.5,0.0
+obt,19,3,S_main#19.1 DELIVERY 1 21 None None; S_main#19.2 PRICE None None 5.0 21,S_main#17.1 PASSED; S_main#17.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#19.1+S_main#19.2,17 102.0 EXECUTED,,0,S_backup 20; S_main 1,2327.5,2327.5,0.0
+obt,20,3,S_main#20.1 DELIVERY 1 22 None None; S_main#20.2 PRICE None None 5.0 22,S_main#18.1 PASSED; S_main#18.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#20.1+S_main#20.2,24 144.0 EXECUTED,,0,S_backup 16; S_main 1,2439.5,2439.5,0.0
+obt,21,3,S_main#21.1 DELIVERY 2 23 None None; S_main#21.2 PRICE None None 5.0 23,S_main#19.1 PASSED; S_main#19.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#21.1+S_main#21.2,17 102.0 EXECUTED,,0,S_backup 19; S_main 1,2594.5,2594.5,0.0
+obt,22,3,S_main#22.1 DELIVERY 1 24 None None; S_main#22.2 PRICE None None 5.0 24,S_main#20.1 PASSED; S_main#20.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#22.1+S_main#22.2,19 114.0 EXECUTED,,0,S_backup 17; S_main 1,2706.5,2706.5,0.0
+obt,23,3,S_main#23.1 DELIVERY 2 25 None None; S_main#23.2 PRICE None None 5.0 25,S_main#21.1 PASSED; S_main#21.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#23.1+S_main#23.2,18 108.0 EXECUTED,,0,S_backup 24; S_main 1,2833.5,2833.5,0.0
+obt,24,3,S_main#24.1 DELIVERY 2 26 None None; S_main#24.2 PRICE None None 5.0 26,S_main#22.1 PASSED; S_main#22.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#24.1+S_main#24.2,14 84.0 EXECUTED,,0,S_backup 17; S_main 1,2956.0,2956.0,0.0
+obt,25,3,S_main#25.1 DELIVERY 4 27 None None; S_main#25.2 PRICE None None 4.25 27,S_main#23.1 PASSED; S_main#23.2 PASSED,10.0,9.25,1 4.25 EXECUTED OK S_main#25.1+S_main#25.2,20 120.0 EXECUTED,,0,S_backup 19; S_main 1,3054.0,3054.0,0.0
+obt,26,3,S_main#26.1 DELIVERY 2 28 None None; S_main#26.2 PRICE None None 5.0 28,S_main#24.1 PASSED; S_main#24.2 PASSED,10.0,9.25,1 5.0 EXECUTED OK S_main#26.1+S_main#26.2,19 114.0 EXECUTED,,0,S_backup 18; S_main 1,3186.75,3187.5,-0.75
+obt,27,3,S_main#27.1 DELIVERY 1 29 None None; S_main#27.2 PRICE None None 5.0 29,S_main#25.1 FAILED; S_main#25.2 FAILED,5.0,5.0,,16 96.0 EXECUTED,1 6.0 EXECUTED,0,S_backup 14,3312.75,3314.0,-1.25
+obt,28,3,S_main#28.1 DELIVERY 1 30 None None; S_main#28.2 PRICE None None 5.0 30,S_main#26.1 PASSED; S_main#26.2 PASSED,10.0,5.0,1 5.0 EXECUTED OK S_main#28.1+S_main#28.2,19 114.0 EXECUTED,,0,S_backup 20; S_main 1,3422.25,3423.0,-0.75
+obt,29,3,S_main#29.1 DELIVERY 2 31 None None; S_main#29.2 PRICE None None 5.0 31,S_main#27.1 LAPSED; S_main#27.2 LAPSED,10.0,10.0,1 5.0 EXECUTED OK S_main#29.1+S_main#29.2,13 78.0 EXECUTED,,0,S_backup 19,3551.75,3553.5,-1.75
+obt,30,3,S_main#30.1 DELIVERY 2 32 None None; S_main#30.2 PRICE None None 5.0 32,S_main#28.1 PASSED; S_main#28.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#30.1+S_main#30.2,17 102.0 EXECUTED,,0,S_backup 17; S_main 1,3645.25,3641.5,3.75
+obt,31,3,S_main#31.1 DELIVERY 2 33 None None; S_main#31.2 PRICE None None 5.0 33,S_main#29.1 PASSED; S_main#29.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#31.1+S_main#31.2,19 114.0 EXECUTED,,0,S_backup 19; S_main 1,3762.75,3759.5,3.25
+obt,32,3,S_main#32.1 DELIVERY 2 34 None None; S_main#32.2 PRICE None None 5.0 34,S_main#30.1 PASSED; S_main#30.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#32.1+S_main#32.2,20 120.0 EXECUTED,,0,S_backup 13; S_main 1,3888.75,3885.5,3.25
+obt,33,3,S_main#33.1 DELIVERY 2 35 None None; S_main#33.2 PRICE None None 5.0 35,S_main#31.1 PASSED; S_main#31.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#33.1+S_main#33.2,16 96.0 EXECUTED,,0,S_backup 17; S_main 1,4021.25,4018.0,3.25
+obt,34,3,S_main#34.1 DELIVERY 2 36 None None; S_main#34.2 PRICE None None 5.0 36,S_main#32.1 PASSED; S_main#32.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#34.1+S_main#34.2,22 132.0 EXECUTED,,0,S_backup 19; S_main 1,4128.25,4125.0,3.25
+obt,35,3,S_main#35.1 DELIVERY 2 37 None None; S_main#35.2 PRICE None None 5.0 37,S_main#33.1 PASSED; S_main#33.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#35.1+S_main#35.2,21 126.0 EXECUTED,,0,S_backup 20; S_main 1,4270.75,4267.5,3.25
+obt,36,3,S_main#36.1 DELIVERY 2 38 None None; S_main#36.2 PRICE None None 5.0 38,S_main#34.1 PASSED; S_main#34.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#36.1+S_main#36.2,20 120.0 EXECUTED,,0,S_backup 16; S_main 1,4405.25,4402.0,3.25
+obt,37,3,S_main#37.1 DELIVERY 2 39 None None; S_main#37.2 PRICE None None 5.0 39,S_main#35.1 PASSED; S_main#35.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#37.1+S_main#37.2,20 120.0 EXECUTED,,0,S_backup 22; S_main 1,4534.75,4531.5,3.25
+obt,38,3,S_main#38.1 DELIVERY 2 40 None None; S_main#38.2 PRICE None None 5.0 40,S_main#36.1 PASSED; S_main#36.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#38.1+S_main#38.2,18 108.0 EXECUTED,,0,S_backup 21; S_main 1,4665.75,4662.5,3.25
+obt,39,3,S_main#39.1 DELIVERY 2 41 None None; S_main#39.2 PRICE None None 5.0 41,S_main#37.1 PASSED; S_main#37.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#39.1+S_main#39.2,18 108.0 EXECUTED,,0,S_backup 20; S_main 1,4785.75,4782.5,3.25
+obt,40,3,S_main#40.1 DELIVERY 2 42 None None; S_main#40.2 PRICE None None 5.0 42,S_main#38.1 PASSED; S_main#38.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#40.1+S_main#40.2,21 126.0 EXECUTED,,0,S_backup 20; S_main 1,4905.25,4902.0,3.25
+obt,41,3,S_main#41.1 DELIVERY 2 43 None None; S_main#41.2 PRICE None None 5.0 43,S_main#39.1 PASSED; S_main#39.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#41.1+S_main#41.2,19 114.0 EXECUTED,,0,S_backup 18; S_main 1,5042.25,5039.0,3.25
+obt,42,3,S_main#42.1 DELIVERY 2 44 None None; S_main#42.2 PRICE None None 5.0 44,S_main#40.1 PASSED; S_main#40.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#42.1+S_main#42.2,25 150.0 EXECUTED,,0,S_backup 18; S_main 1,5163.75,5160.5,3.25
+obt,43,3,S_main#43.1 DELIVERY 2 45 None None; S_main#43.2 PRICE None None 5.0 45,S_main#41.1 PASSED; S_main#41.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#43.1+S_main#43.2,25 150.0 EXECUTED,,0,S_backup 21; S_main 1,5319.25,5316.0,3.25
+obt,44,3,S_main#44.1 DELIVERY 2 46 None None; S_main#44.2 PRICE None None 5.0 46,S_main#42.1 PASSED; S_main#42.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#44.1+S_main#44.2,19 114.0 EXECUTED,,0,S_backup 19; S_main 1,5474.75,5471.5,3.25
+obt,45,3,S_main#45.1 DELIVERY 2 47 None None; S_main#45.2 PRICE None None 5.0 47,S_main#43.1 PASSED; S_main#43.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#45.1+S_main#45.2,21 126.0 EXECUTED,,0,S_backup 25; S_main 1,5596.25,5593.0,3.25
+obt,46,3,S_main#46.1 DELIVERY 2 48 None None; S_main#46.2 PRICE None None 5.0 48,S_main#44.1 PASSED; S_main#44.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#46.1+S_main#46.2,19 114.0 EXECUTED,,0,S_backup 25; S_main 1,5732.75,5729.5,3.25
+obt,47,3,S_main#47.1 DELIVERY 2 49 None None; S_main#47.2 PRICE None None 5.0 49,S_main#45.1 PASSED; S_main#45.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#47.1+S_main#47.2,15 90.0 EXECUTED,,0,S_backup 19; S_main 1,5859.25,5856.0,3.25
+obt,48,3,S_main#48.1 DELIVERY 2 50 None None; S_main#48.2 PRICE None None 5.0 50,S_main#46.1 PASSED; S_main#46.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#48.1+S_main#48.2,14 84.0 EXECUTED,,0,S_backup 21; S_main 1,5965.25,5962.0,3.25
+obt,49,3,S_main#49.1 DELIVERY 2 51 None None; S_main#49.2 PRICE None None 5.0 51,S_main#47.1 PASSED; S_main#47.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#49.1+S_main#49.2,12 72.0 EXECUTED,,0,S_backup 19; S_main 1,6068.75,6065.5,3.25
+obt,50,3,S_main#50.1 DELIVERY 2 52 None None; S_main#50.2 PRICE None None 5.0 52,S_main#48.1 PASSED; S_main#48.2 PASSED,10.0,10.0,1 5.0 EXECUTED OK S_main#50.1+S_main#50.2,16 96.0 EXECUTED,,0,S_backup 15; S_main 1,6159.75,6156.5,3.25
+none,1,27,S_main#1.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,14 84.0 EXECUTED,,0,,19.0,19.0,0.0
+none,2,27,S_main#2.1 None None None None None,,5.0,0.0,,20 120.0 EXECUTED,,0,,212.0,212.0,0.0
+none,3,27,S_main#3.1 None None None None None,,5.0,0.0,18 90.0 EXECUTED UNGATED ,,,0,S_main 20,342.0,342.0,0.0
+none,4,27,S_main#4.1 None None None None None,,5.0,0.0,15 75.0 EXECUTED UNGATED ,,,0,S_backup 14,441.5,441.5,0.0
+none,5,27,S_main#5.1 None None None None None,,5.0,0.0,,13 78.0 EXECUTED,,0,S_backup 20; S_main 18,538.5,538.5,0.0
+none,6,27,S_main#6.1 None None None None None,,5.0,0.0,,24 144.0 EXECUTED,,0,S_main 15,634.0,634.0,0.0
+none,7,27,S_main#7.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,,,0,,785.5,785.5,0.0
+none,8,27,S_main#8.1 None None None None None,,5.0,0.0,19 95.0 EXECUTED UNGATED ,,,0,S_backup 13,890.0,890.0,0.0
+none,9,27,S_main#9.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,3 18.0 EXECUTED,,0,S_backup 24; S_main 20,1000.0,1000.0,0.0
+none,10,27,S_main#10.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,6 36.0 EXECUTED,,0,S_main 19,1129.5,1129.5,0.0
+none,11,27,S_main#11.1 None None None None None,,5.0,0.0,,18 108.0 EXECUTED,,0,S_main 20,1278.0,1278.0,0.0
+none,12,27,S_main#12.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,8 48.0 EXECUTED,,0,S_backup 3; S_main 20,1396.0,1396.0,0.0
+none,13,27,S_main#13.1 None None None None None,,5.0,0.0,17 85.0 EXECUTED UNGATED ,,,0,S_backup 6,1548.5,1548.5,0.0
+none,14,27,S_main#14.1 None None None None None,,5.0,0.0,,17 102.0 EXECUTED,,0,S_backup 18; S_main 20,1648.5,1648.5,0.0
+none,15,27,S_main#15.1 None None None None None,,5.0,0.0,,17 102.0 EXECUTED,,0,S_backup 8; S_main 17,1769.5,1769.5,0.0
+none,16,27,S_main#16.1 None None None None None,,5.0,0.0,21 105.0 EXECUTED UNGATED ,,,0,,1880.0,1880.0,0.0
+none,17,27,S_main#17.1 None None None None None,,5.0,0.0,17 85.0 EXECUTED UNGATED ,,,0,S_backup 17,1993.5,1993.5,0.0
+none,18,27,S_main#18.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,,,0,S_backup 17; S_main 21,2096.0,2096.0,0.0
+none,19,27,S_main#19.1 None None None None None,,5.0,0.0,,18 108.0 EXECUTED,,0,S_main 17,2213.0,2213.0,0.0
+none,20,27,S_main#20.1 None None None None None,,5.0,0.0,,25 150.0 EXECUTED,,0,S_main 20,2335.5,2335.5,0.0
+none,21,27,S_main#21.1 None None None None None,,5.0,0.0,,18 108.0 EXECUTED,,0,,2491.0,2491.0,0.0
+none,22,27,S_main#22.1 None None None None None,,5.0,0.0,,20 120.0 EXECUTED,,0,S_backup 18,2603.5,2603.5,0.0
+none,23,27,S_main#23.1 None None None None None,,5.0,0.0,19 95.0 EXECUTED UNGATED ,,,0,S_backup 25,2731.0,2731.0,0.0
+none,24,27,S_main#24.1 None None None None None,,5.0,0.0,,15 90.0 EXECUTED,,0,S_backup 18,2835.0,2835.0,0.0
+none,25,27,S_main#25.1 None None None None None,,5.0,0.0,21 105.0 EXECUTED UNGATED ,,,0,S_backup 20; S_main 19,2943.0,2943.0,0.0
+none,26,27,S_main#26.1 None None None None None,,5.0,0.0,,20 120.0 EXECUTED,,0,,3040.25,3057.0,-16.75
+none,27,27,S_main#27.1 None None None None None,,5.0,0.0,17 85.0 EXECUTED UNGATED ,,,0,S_backup 15,3167.25,3174.0,-6.75
+none,28,27,S_main#28.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,,,0,,3264.25,3276.5,-12.25
+none,29,27,S_main#29.1 None None None None None,,5.0,0.0,,34 204.0 EXECUTED,,0,S_backup 20; S_main 17,3373.25,3396.0,-22.75
+none,30,27,S_main#30.1 None None None None None,,5.0,0.0,,18 108.0 EXECUTED,,0,S_main 20,3587.25,3481.5,105.75
+none,31,27,S_main#31.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,,,0,,3695.25,3606.5,88.75
+none,32,27,S_main#32.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,1 6.0 EXECUTED,,0,S_backup 34,3801.75,3713.0,88.75
+none,33,27,S_main#33.1 None None None None None,,5.0,0.0,,17 102.0 EXECUTED,,0,S_backup 18; S_main 20,3924.75,3836.0,88.75
+none,34,27,S_main#34.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,3 18.0 EXECUTED,,0,S_main 20,4042.25,3936.5,105.75
+none,35,27,S_main#35.1 None None None None None,,5.0,0.0,,22 132.0 EXECUTED,,0,S_backup 1,4165.25,3975.0,190.25
+none,36,27,S_main#36.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,1 6.0 EXECUTED,,0,S_backup 17; S_main 20,4310.25,4200.5,109.75
+none,37,27,S_main#37.1 None None None None None,,5.0,0.0,,21 126.0 EXECUTED,,0,S_backup 3,4420.25,4331.5,88.75
+none,38,27,S_main#38.1 None None None None None,,5.0,0.0,,19 114.0 EXECUTED,,0,S_backup 22; S_main 20,4561.75,4443.0,118.75
+none,39,27,S_main#39.1 None None None None None,,5.0,0.0,19 95.0 EXECUTED UNGATED ,,,0,S_backup 1,4682.25,4554.5,127.75
+none,40,27,S_main#40.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,2 12.0 EXECUTED,,0,S_backup 21,4783.25,4665.0,118.25
+none,41,27,S_main#41.1 None None None None None,,5.0,0.0,,20 120.0 EXECUTED,,0,S_backup 19; S_main 19,4910.25,4792.0,118.25
+none,42,27,S_main#42.1 None None None None None,,5.0,0.0,,26 156.0 EXECUTED,,0,S_main 20,5042.25,4904.0,138.25
+none,43,27,S_main#43.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,6 36.0 EXECUTED,,0,S_backup 2,5198.25,5070.0,128.25
+none,44,27,S_main#44.1 None None None None None,,5.0,0.0,,20 120.0 EXECUTED,,0,S_backup 20,5334.25,5226.0,108.25
+none,45,27,S_main#45.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,2 12.0 EXECUTED,,0,S_backup 26; S_main 20,5466.25,5348.0,118.25
+none,46,27,S_main#46.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,,,0,S_backup 6,5583.25,5465.0,118.25
+none,47,27,S_main#47.1 None None None None None,,5.0,0.0,16 80.0 EXECUTED UNGATED ,,,0,S_backup 20; S_main 20,5700.25,5602.0,98.25
+none,48,27,S_main#48.1 None None None None None,,5.0,0.0,15 75.0 EXECUTED UNGATED ,,,0,S_backup 2; S_main 20,5800.75,5692.5,108.25
+none,49,27,S_main#49.1 None None None None None,,5.0,0.0,13 65.0 EXECUTED UNGATED ,,,0,S_main 16,5897.75,5804.5,93.25
+none,50,27,S_main#50.1 None None None None None,,5.0,0.0,,17 102.0 EXECUTED,,0,S_main 15,5983.75,5883.0,100.75
+rep-default,1,51,S_main#1.1 None None None None None,,5.0,0.0,,34 204.0 EXECUTED,,0,,19.0,19.0,0.0
+rep-default,2,51,S_main#2.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,,,0,,232.0,232.0,0.0
+rep-default,3,51,S_main#3.1 None None None None None,,5.0,0.0,18 90.0 EXECUTED UNGATED ,,,0,,332.0,332.0,0.0
+rep-default,4,51,S_main#4.1 None None None None None,,5.0,0.0,15 75.0 EXECUTED UNGATED ,,,0,S_backup 34; S_main 20,441.5,441.5,0.0
+rep-default,5,51,S_main#5.1 None None None None None,,5.0,0.0,,13 78.0 EXECUTED,,0,S_main 18,538.5,538.5,0.0
+rep-default,6,51,S_main#6.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,4 24.0 EXECUTED,,0,S_main 15,634.0,634.0,0.0
+rep-default,7,51,S_main#7.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,,,0,,765.5,765.5,0.0
+rep-default,8,51,S_main#8.1 None None None None None,,5.0,0.0,19 95.0 EXECUTED UNGATED ,,,0,S_backup 13; S_main 20,880.0,880.0,0.0
+rep-default,9,51,S_main#9.1 None None None None None,,5.0,0.0,,23 138.0 EXECUTED,,0,S_backup 4; S_main 20,990.0,990.0,0.0
+rep-default,10,51,S_main#10.1 None None None None None,,5.0,0.0,,26 156.0 EXECUTED,,0,S_main 19,1139.5,1139.5,0.0
+rep-default,11,51,S_main#11.1 None None None None None,,5.0,0.0,,18 108.0 EXECUTED,,0,,1298.0,1298.0,0.0
+rep-default,12,51,S_main#12.1 None None None None None,,5.0,0.0,28 140.0 EXECUTED UNGATED ,,,0,S_backup 23,1406.0,1406.0,0.0
+rep-default,13,51,S_main#13.1 None None None None None,,5.0,0.0,17 85.0 EXECUTED UNGATED ,,,0,S_backup 26,1550.5,1550.5,0.0
+rep-default,14,51,S_main#14.1 None None None None None,,5.0,0.0,17 85.0 EXECUTED UNGATED ,,,0,S_backup 18; S_main 28,1654.5,1654.5,0.0
+rep-default,15,51,S_main#15.1 None None None None None,,5.0,0.0,17 85.0 EXECUTED UNGATED ,,,0,S_main 17,1758.5,1758.5,0.0
+rep-default,16,51,S_main#16.1 None None None None None,,5.0,0.0,,21 126.0 EXECUTED,,0,S_main 17,1860.5,1860.5,0.0
+rep-default,17,51,S_main#17.1 None None None None None,,5.0,0.0,17 85.0 EXECUTED UNGATED ,,,0,S_main 17,2003.5,2003.5,0.0
+rep-default,18,51,S_main#18.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,,,0,,2095.5,2095.5,0.0
+rep-default,19,51,S_main#19.1 None None None None None,,5.0,0.0,18 90.0 EXECUTED UNGATED ,,,0,S_backup 21; S_main 17,2212.5,2212.5,0.0
+rep-default,20,51,S_main#20.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,5 30.0 EXECUTED,,0,S_main 20,2317.0,2317.0,0.0
+rep-default,21,51,S_main#21.1 None None None None None,,5.0,0.0,,18 108.0 EXECUTED,,0,S_main 18,2461.5,2461.5,0.0
+rep-default,22,51,S_main#22.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,,,0,S_main 20,2584.0,2584.0,0.0
+rep-default,23,51,S_main#23.1 None None None None None,,5.0,0.0,19 95.0 EXECUTED UNGATED ,,,0,S_backup 5,2691.5,2691.5,0.0
+rep-default,24,51,S_main#24.1 None None None None None,,5.0,0.0,,15 90.0 EXECUTED,,0,S_backup 18; S_main 20,2805.5,2805.5,0.0
+rep-default,25,51,S_main#25.1 None None None None None,,5.0,0.0,21 105.0 EXECUTED UNGATED ,,,0,S_main 19,2913.5,2913.5,0.0
+rep-default,26,51,S_main#26.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,,,0,,3010.75,3026.5,-15.75
+rep-default,27,51,S_main#27.1 None None None None None,,5.0,0.0,17 85.0 EXECUTED UNGATED ,,,0,S_backup 15,3117.75,3144.0,-26.25
+rep-default,28,51,S_main#28.1 None None None None None,,5.0,0.0,,20 120.0 EXECUTED,,0,S_main 20,3209.75,3246.5,-36.75
+rep-default,29,51,S_main#29.1 None None None None None,,5.0,0.0,34 170.0 EXECUTED UNGATED ,,,0,S_main 17,3338.75,3366.0,-27.25
+rep-default,30,51,S_main#30.1 None None None None None,,5.0,0.0,,18 108.0 EXECUTED,,0,,3508.75,3464.5,44.25
+rep-default,31,51,S_main#31.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,,,0,S_backup 20; S_main 34,3633.75,3565.0,68.75
+rep-default,32,51,S_main#32.1 None None None None None,,5.0,0.0,21 105.0 EXECUTED UNGATED ,,,0,,3740.25,3680.5,59.75
+rep-default,33,51,S_main#33.1 None None None None None,,5.0,0.0,17 85.0 EXECUTED UNGATED ,,,0,S_backup 18; S_main 20,3862.25,3802.5,59.75
+rep-default,34,51,S_main#34.1 None None None None None,,5.0,0.0,,23 138.0 EXECUTED,,0,S_main 21,3963.25,3920.5,42.75
+rep-default,35,51,S_main#35.1 None None None None None,,5.0,0.0,22 110.0 EXECUTED UNGATED ,,,0,S_main 17,4114.75,4063.5,51.25
+rep-default,36,51,S_main#36.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,1 6.0 EXECUTED,,0,,4227.75,4176.5,51.25
+rep-default,37,51,S_main#37.1 None None None None None,,5.0,0.0,,21 126.0 EXECUTED,,0,S_backup 23; S_main 22,4348.75,4296.5,52.25
+rep-default,38,51,S_main#38.1 None None None None None,,5.0,0.0,,19 114.0 EXECUTED,,0,S_main 20,4490.25,4438.5,51.75
+rep-default,39,51,S_main#39.1 None None None None None,,5.0,0.0,,19 114.0 EXECUTED,,0,S_backup 1,4610.75,4540.0,70.75
+rep-default,40,51,S_main#40.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,2 12.0 EXECUTED,,0,S_backup 21,4730.75,4669.5,61.25
+rep-default,41,51,S_main#41.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,,,0,S_backup 19,4848.25,4787.0,61.25
+rep-default,42,51,S_main#42.1 None None None None None,,5.0,0.0,26 130.0 EXECUTED UNGATED ,,,0,S_backup 19; S_main 20,4960.25,4899.0,61.25
+rep-default,43,51,S_main#43.1 None None None None None,,5.0,0.0,26 130.0 EXECUTED UNGATED ,,,0,S_backup 2; S_main 20,5100.25,5039.0,61.25
+rep-default,44,51,S_main#44.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,,,0,S_main 26,5243.25,5208.0,35.25
+rep-default,45,51,S_main#45.1 None None None None None,,5.0,0.0,20 100.0 EXECUTED UNGATED ,2 12.0 EXECUTED,,0,S_main 26,5358.25,5310.0,48.25
+rep-default,46,51,S_main#46.1 None None None None None,,5.0,0.0,,20 120.0 EXECUTED,,0,S_main 20,5485.25,5457.0,28.25
+rep-default,47,51,S_main#47.1 None None None None None,,5.0,0.0,,16 96.0 EXECUTED,,0,S_main 20,5622.25,5564.0,58.25
+rep-default,48,51,S_main#48.1 None None None None None,,5.0,0.0,,15 90.0 EXECUTED,,0,S_backup 2,5728.75,5664.5,64.25
+rep-default,49,51,S_main#49.1 None None None None None,,5.0,0.0,,13 78.0 EXECUTED,,0,S_backup 20,5832.75,5776.5,56.25
+rep-default,50,51,S_main#50.1 None None None None None,,5.0,0.0,,17 102.0 EXECUTED,,0,S_backup 16,5924.25,5868.0,56.25
