@@ -896,3 +896,21 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - **Run counts:** E1 1,944; reputation grid 972; E2 292; E2b 30; E2c 180; E3 24; E3b 24; E5 144; E7 288; horizon 108; E8 42; E9 84; E9 calibration 945. E4 is the extractor evaluation; E6 is 10,000 attacker evaluations.
   - **Data:** message bank 183 run templates + 6 injection templates; extractor dataset dev 49 / test 199 (29 injection) / hard 30; Enron 100; annotation 50 + 100.
   - **NUMBERS.md:** the glance rows sit in a new "Setup" group (not an RQ), and the main walkthrough's rows are derived rows.
+
+## D47. Gate activity report, from existing logs only (user request)
+- **Scope.** Every `obt` and `obt+planner` run with an LLM buyer: E2, E2b, E2c, E3, E3b, E5 and E8 (243 runs). E8's honest runs are reused from E2/E2c and are not counted twice. No new runs.
+- **Counting** (`eval/gate_activity.py`, from `trace[*].actions`, the gate's record of every decision):
+  - proposed = the buyer's orders to S_main (any identity);
+  - approved = EXECUTED; blocked = BLOCKED, by the gate's reason code (`obt/gate.py`);
+  - every blocked order's quantity is rerouted to S_backup by code (`obt/sim.py`). Rerouted units are checked against each run's `metrics.rerouted_units` and must match.
+  - Remediation orders after a FAILED claim are code's, not proposals, and are not counted. Blocked payments are reported separately.
+- **Outputs.**
+  - `results/gate_activity.md`, with the reason-code glossary and the per-experiment and per-scenario tables.
+  - `results/gate_activity/{runs,gate_activity,gate_activity_by_scenario}.csv`; `runs.csv` gives each run with its log line.
+  - `paper/tables/gate_activity{,_by_scenario}.{tex,csv}`.
+  - A "Gate activity" workbook sheet, and RQ1 rows in `NUMBERS.md`.
+- **What the logs show.**
+  - **Overall:** 5,452 S_main orders proposed, 469 blocked (8.6%); 50 of 243 runs (20.6%) have at least one block.
+  - **Plain `obt`** (gpt-oss and qwen3 buyers) blocks 464 of 2,901 orders, in 47 of 93 runs. Mostly CLAIM_MISMATCH 239 and OVER_BUDGET 129.
+  - **`obt+planner`** blocks 5 of 2,551 orders, all in E8's white-box attacker runs (CLAIM_MISMATCH), and 0 in E2c, E3b and E5. The D32 planner sizes orders inside the headroom and cites a valid claim, so the gate rarely has to act.
+  - This complements D46a: the LLM buyers' blocks are not on the farm-then-lie lie.

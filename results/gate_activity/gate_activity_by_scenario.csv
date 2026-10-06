@@ -1,0 +1,16 @@
+scenario,runs,runs with ≥1 block,share of runs with a block (%),S_main orders proposed,approved,blocked,blocked (%),NO_CITATION,UNKNOWN_CLAIM,BAD_CLAIM,CLAIM_MISMATCH,PRICE_MISMATCH,OVER_CLAIM,OVER_BUDGET,units rerouted to backup,blocked payments
+1_honest,21,4,19.0,733,703,30,4.1,0,0,0,4,0,3,23,292,0
+2_always_lie,21,3,14.3,511,506,5,1.0,0,1,0,2,0,0,2,5,0
+3_farm_then_lie,21,5,23.8,711,679,32,4.5,0,0,0,4,0,6,22,183,3
+4_slow_drift,18,4,22.2,493,467,26,5.3,0,0,0,4,0,12,10,75,1
+5_price_bait,18,1,5.6,571,567,4,0.7,0,0,0,3,0,0,1,4,0
+6_vague,18,1,5.6,1,0,1,100.0,1,0,0,0,0,0,0,1,0
+7_far_deadlines,18,6,33.3,148,0,148,100.0,0,1,6,141,0,0,0,156,0
+8_claim_splitting,18,6,33.3,233,173,60,25.8,0,2,0,56,0,0,2,132,0
+9_noisy_honest,21,2,9.5,688,664,24,3.5,0,0,0,5,0,5,14,108,3
+10_farm_fail_refarm,18,4,22.2,570,543,27,4.7,0,0,0,5,0,5,17,108,1
+11_extraction_attack,18,6,33.3,75,17,58,77.3,4,3,10,8,32,1,0,84,0
+12_sybil_reentry,21,2,9.5,543,537,6,1.1,0,0,0,0,0,0,6,6,0
+13_llm_adversary_blackbox,6,0,0.0,0,0,0,-,0,0,0,0,0,0,0,0,0
+14_llm_adversary_whitebox,6,6,100.0,175,127,48,27.4,0,0,0,7,0,9,32,255,2
+all,243,50,20.6,5452,4983,469,8.6,5,7,16,239,32,41,129,1409,10

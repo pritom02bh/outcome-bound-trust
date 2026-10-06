@@ -924,6 +924,17 @@ def _paper_data(runs: Path, out: Path) -> str | None:
                       f"{x['commitment_claims_untestable']}/{x['commitment_claims']}", x["recorded_claims"],
                       x["wrong_claims_recorded"], x["recorded_from_non_commitments"]]
                      for name in sorted(en) for st in sorted(en[name]) for x in [en[name][st]]]}
+    # Gate activity (D47): every gate decision in the OBT / obt+planner LLM-buyer runs, from the run logs.
+    from eval import gate_activity as ga
+    gt = ga.tables(runs.parent)
+    if gt:
+        for name in ("gate_activity", "gate_activity_by_scenario"):
+            tables[name] = gt[name]
+        (out / "gate_activity.md").write_text(ga.report_md(gt))
+        (out / "gate_activity").mkdir(parents=True, exist_ok=True)
+        (out / "gate_activity" / "runs.csv").write_text(_csv(ga.runs_csv(gt)))
+        for name in ("gate_activity", "gate_activity_by_scenario"):
+            (out / "gate_activity" / f"{name}.csv").write_text(_csv([gt[name]["columns"], *gt[name]["rows"]]))
     # Simulation and data at a glance (D46a): counts read from the run logs and data files.
     from eval import glance
     tables["sim_glance"] = glance.table(runs.parent)

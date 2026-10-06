@@ -22,8 +22,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PACK = ROOT / "paper_pack"
-VERSION = "v1.9.2"               # the release this pack belongs to
-TAG = "v1.9.2-paper"
+VERSION = "v1.9.3"               # the release this pack belongs to
+TAG = "v1.9.3-paper"
 ZIP = ROOT / f"paper_pack_{VERSION}.zip"
 TJ = "results/tables.json"
 NUMERIC = re.compile(r"^-?[\d,]*\d(\.\d+)?$")
@@ -76,6 +76,15 @@ COLUMNS = {
     "provider share": "share of reserved capacity units bought from the main provider, honest scenario (E9)",
     "events": "failure-event type (QUOTA, SLA, all)", "runs with events": "OBT runs with at least one event",
     "setting": "E9 config source: transferred from the supply domain (D44) or calibrated on the cloud domain (D45)",
+    "buyer model": "LLM buyer model(s)", "runs with ≥1 block": "runs with at least one blocked S_main order",
+    "share of runs with a block (%)": "runs with ≥1 block / runs", "S_main orders proposed": "buyer orders to S_main",
+    "approved": "orders the gate executed", "blocked": "orders the gate blocked", "blocked (%)": "blocked / proposed",
+    "units rerouted to backup": "blocked quantity code sent to S_backup (= metrics.rerouted_units)",
+    "blocked payments": "payments the gate blocked", "NO_CITATION": "blocks: no claim cited",
+    "UNKNOWN_CLAIM": "blocks: cited claim not in the ledger", "BAD_CLAIM": "blocks: cited claim FAILED/UNTESTABLE/LAPSED",
+    "CLAIM_MISMATCH": "blocks: no pending DELIVERY claim for the item or deadline inside the lead time",
+    "PRICE_MISMATCH": "blocks: no single valid matching PRICE claim", "OVER_CLAIM": "blocks: quantity above claim capacity",
+    "OVER_BUDGET": "blocks: P(c) + value > B(c)",
     "group": "simulation, runs or data", "item": "what the row describes",
     "value": "the count or setting, as computed from the source", "source": "file (and key) the value is read from",
     "set": "label set compared (D42a)", "raw agreement": "share of rows with the same label",
@@ -194,6 +203,8 @@ def sheets() -> list[tuple[str, list[tuple]]]:
         ("reputation grid", [tblock("reputation_grid")]),
         ("Enron", [tblock("enron")]),
         *([("Simulation at a glance", [tblock("sim_glance")])] if "sim_glance" in _tables() else []),
+        *([("Gate activity", [tblock("gate_activity"), tblock("gate_activity_by_scenario")])]
+          if "gate_activity" in _tables() else []),
         *([("Annotator agreement", [tblock("annotator_agreement"), tblock("annotator_slots")])]
           if "annotator_agreement" in _tables() else []),
         *([("E8", [tblock("e8"), tblock("e8_strategies"), cblock("results/e8/runs.csv")])] if "e8" in _tables() else []),

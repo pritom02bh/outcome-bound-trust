@@ -366,7 +366,11 @@ def tex_escape(s: str) -> str:
 
 # Text-heavy tables: full width, wrapped columns (env, size, column spec). Every other table keeps l + r columns.
 LAYOUT = {"sim_glance": ("table*", r"\footnotesize",
-                         r"p{0.07\linewidth}p{0.16\linewidth}p{0.47\linewidth}p{0.24\linewidth}")}
+                         r"p{0.07\linewidth}p{0.16\linewidth}p{0.47\linewidth}p{0.24\linewidth}"),
+          "gate_activity": ("table*", r"\scriptsize", "llll" + "r" * 16),
+          "gate_activity_by_scenario": ("table*", r"\scriptsize", "l" + "r" * 16)}
+# Tables also written as .csv next to their .tex in paper/tables/ (D47).
+CSV_TABLES = ("gate_activity", "gate_activity_by_scenario")
 
 
 def table_tex(name: str, t: dict) -> str:
@@ -400,6 +404,12 @@ def build(results: Path, out: Path) -> dict:
     (out / "tables").mkdir(parents=True, exist_ok=True)
     for name, t in tables.items():
         (out / "tables" / f"{name}.tex").write_text(table_tex(name, t))
+        if name in CSV_TABLES:
+            import csv
+            import io
+            buf = io.StringIO()
+            csv.writer(buf, lineterminator="\n").writerows([t["columns"], *t["rows"]])
+            (out / "tables" / f"{name}.csv").write_text(buf.getvalue())
     numbers = None
     from eval import numbers as nb
     if set(nb.REQUIRED) <= set(tables) and (results / "figdata" / "pareto.json").exists():
