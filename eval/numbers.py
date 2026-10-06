@@ -15,7 +15,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 # The paper's research questions (DESIGN §10), plus the verification group, which is not an RQ (Section 6).
-RQS = [("RQ1", "Security: does OBT cut the loss from lies?"),
+RQS = [("Setup", "Simulation and data at a glance (not an RQ)"),
+       ("RQ1", "Security: does OBT cut the loss from lies?"),
        ("RQ2", "Utility cost: what does OBT cost honest trade?"),
        ("RQ3", "Tightness under adaptive attack: how close does damage come to the per-event bound?"),
        ("RQ4", "Earning trust: the order planner, trust over time, and the budget growth multiplier k"),
@@ -239,12 +240,12 @@ def entries(results: Path = ROOT / "results", spec_results: Path = ROOT / "spec"
         add("RQ6", "Independent annotator: Enron slot agreement on rows both mark is_commitment = yes",
             "; ".join(f"{r[0]} {r[2]}/{r[1]}" for r in sl), "rows", "1 annotator", f"{J} → annotator_slots")
 
-    # Paper walkthrough (D46): one E2 run, from the run logs (results/figdata/walkthrough.json).
-    wf = results / "figdata" / "walkthrough.json"
+    # Paper walkthrough appendix (D46): the E2 run, unchanged rows, now read from walkthrough_appendix.json (D46a).
+    wf = results / "figdata" / "walkthrough_appendix.json"
     if wf.exists():
         w = json.loads(wf.read_text())
         d = w["defenses"]
-        WJ = "results/figdata/walkthrough.json"
+        WJ = "results/figdata/walkthrough_appendix.json"
         lie = next(e for e in w["key_events"] if e["event"].startswith("The lie"))["round"]
         q = {k: sum(o["qty"] for o in x["rounds"][lie - 1]["orders"] if o["supplier"] != "S_backup")
              for k, x in d.items()}
@@ -260,6 +261,48 @@ def entries(results: Path = ROOT / "results", spec_results: Path = ROOT / "spec"
         add("RQ3", "Walkthrough: OBT damage vs Σ L_e; blocked S_main orders (derived)",
             f"{d['obt']['damage']:.2f} vs {d['obt']['sum_bound']:.2f}; {d['obt']['main_orders_blocked']} blocked",
             "$; orders", "seed 1", f"{WJ} → defenses[obt].damage, sum_bound, main_orders_blocked")
+    # Paper walkthrough (D46a): the run where the gate blocks orders on the lie (results/figdata/walkthrough.json).
+    wf = results / "figdata" / "walkthrough.json"
+    if wf.exists():
+        w = json.loads(wf.read_text())
+        d, o = w["defenses"], w["defenses"]["obt"]
+        WJ = "results/figdata/walkthrough.json"
+        lies = [r for r in o["rounds"] if r["intent"] and r["intent"].get("truth") is False]
+        ids = {c["id"] for r in lies for c in r["claims"]}
+        bl = [(r, x) for r in o["rounds"] for x in r["orders"]
+              if x["supplier"] != "S_backup" and x["status"] != "EXECUTED" and set(x["cited"]) & ids]
+        r0, x0 = bl[0]
+        lie = lies[0]["round"]
+        q = {k: sum(x["qty"] for x in v["rounds"][lie - 1]["orders"] if x["supplier"] != "S_backup")
+             for k, v in d.items()}
+        add("RQ1", "Walkthrough (E1 scripted buyer, default config, farm-then-lie, seed 1): loss from lies, `obt` / "
+            "`rep-default` / `none` (derived)", f"{o['loss_from_lies']:.2f} / {d['rep-default']['loss_from_lies']:.2f}"
+            f" / {d['none']['loss_from_lies']:.2f}", "$ per run", "seed 1",
+            f"{WJ} → defenses[*].loss_from_lies (cost − honest cost; "
+            + "; ".join(f"{x['log']} lines {x['line']}−{x['honest_line']}" for x in d.values()) + ")")
+        add("RQ1", f"Walkthrough: S_main units ordered on the first lie (round {lie}), `obt` / `rep-default` / `none`; "
+            f"OBT orders citing lie claims blocked, units rerouted; first block: value vs B − P (derived)",
+            f"{q['obt']} / {q['rep-default']} / {q['none']} units; {len(bl)} blocked, "
+            f"{sum(x['qty'] for _, x in bl)} units rerouted; round {r0['round']}: {x0['value']:.2f} > "
+            f"{r0['B']:.2f} − {r0['P']:.2f}", "units; orders; $", "seed 1",
+            f"{WJ} → defenses[*].rounds[{lie - 1}].orders; defenses[obt].rounds[*].orders (status BLOCKED, citing "
+            f"lie claims); defenses[obt].rounds[{r0['round'] - 1}].B, P")
+        add("RQ3", "Walkthrough (E1 scripted): OBT damage vs Σ L_e; failure events (derived)",
+            f"{o['damage']:.2f} vs {o['sum_bound']:.2f}; {len(o['events'])} events", "$; events", "seed 1",
+            f"{WJ} → defenses[obt].damage, sum_bound, events")
+    # Simulation and data at a glance (D46a).
+    if "sim_glance" in T.t:
+        g = {r[1]: r[2] for r in T.t["sim_glance"]["rows"]}
+        runs = [(k, v.split(" runs;")[0]) for k, v in g.items() if " runs;" in v]
+        add("Setup", "Runs per experiment (record counts in the run logs)", "; ".join(f"{k} {v}" for k, v in runs),
+            "runs", "as listed", f"{J} → sim_glance[group=runs].value")
+        add("Setup", "Message bank (runs): templates and injection templates", g["message bank (runs)"].split(";")[0],
+            "templates", "frozen", f"{J} → sim_glance[item=message bank (runs)]")
+        add("Setup", "Extractor dataset: dev / test (injections) / hard subset", g["extractor dataset"].split("; frozen")[0],
+            "items", "frozen", f"{J} → sim_glance[item=extractor dataset]")
+        add("Setup", "Enron sentences; independent annotation rows", f"{g['Enron real text']}; "
+            f"{g['independent annotation']}", "rows", "-", f"{J} → sim_glance[item=Enron real text, independent "
+            "annotation]")
 
     # ---- Section 6 verification (not an RQ). States and depth only: runtimes are wall-clock and host-dependent.
     for name, label in (("quick", "quick"), ("fallbackA2", "A′"), ("fallbackB", "B"),
@@ -281,7 +324,7 @@ def entries(results: Path = ROOT / "results", spec_results: Path = ROOT / "spec"
 def render(out: dict) -> str:
     L = ["# NUMBERS: every headline number the paper cites", "",
          "Generated by `python -m eval.numbers` from `results/` (and the TLC summaries in `spec/results/`) only: "
-         "no simulation, no run records, no model calls. Tag `v1.9.1-paper`. Values are as printed in the "
+         "no simulation, no run records, no model calls. Tag `v1.9.2-paper`. Values are as printed in the "
          "exported tables; *derived* rows name the values they were computed from.", "",
          "Definitions (DESIGN §10): **loss from lies** = mean over attack scenarios 2-12 of cost − cost of the "
          "honest run (same defense, seed). **Utility cost** = cost(defense) − cost(`none`), honest scenario, same "

@@ -875,3 +875,24 @@ F9 specifies `score = (s+1)/(s+f+2)` over past delivery outcomes, with orders al
   - The figure says "blocked/clipped (0 in this run)", not omitting the category.
 - **The bound applies to damage, not to loss from lies.** The figure draws OBT's Σ L_e next to the loss curves as asked; walkthrough.md and the caption data state the distinction.
 - **Reported.** Three derived rows in `NUMBERS.md` (RQ1 ×2, RQ3), the figure in `paper/figures/` and the pack, and `walkthrough.md` in the pack. Released as `v1.9.1-paper`.
+
+### D46a. Walkthrough on a run where the gate blocks, round-loop figure, at-a-glance table (user request)
+- **Search** (`eval/walkthrough.py` → `search`, `choose`; no new runs). Every OBT farm-then-lie log was scanned for a run where the gate blocked an S_main order in a lie round. The counts are in `results/figdata/walkthrough.json` → `search` and in `paper/walkthrough.md`.
+  - **LLM-buyer experiments: none qualifies.** E2 5 runs, E2b 3, E2c 5, E3 1, E3b 1 and E5 6 had 0 blocked orders on the lie: those buyers sized their S_main orders inside the headroom B − P.
+  - **E1 scripted buyer:** 90 of 108 runs qualify (E9 and its calibration have more, but on the cloud domain).
+  - **Rule:** the request's fallback, E1's scripted buyer at the chosen default config (`obt_b0.05_W0_d0`), seed 1, with `none` and `rep-default` (E1's `rep_cap200_th0.8`, the D22 default) from the same E1 grid.
+- **The main walkthrough** (`paper/walkthrough.md`, `paper/figures/walkthrough.{pdf,png}`, `results/walkthrough/rounds.csv`; same format and rules as D46):
+  - The supplier lies in rounds 25–28: 24 units by round 27 at $4.25.
+  - OBT's scripted buyer proposes 20, 17 and 20 units on the lie (rounds 26–28), at most $85.00 against B $65.00 − P $0.00. Each is **BLOCKED (OVER_BUDGET)** and its 57 units are rerouted to S_backup. Nothing executes on a lie claim, so all four lie DELIVERY claims LAPSE: no failure event, damage $0.00 = Σ L_e $0.00.
+  - Loss from lies: `obt` $6.50, `none` $53.75, `rep-default` $53.75. `rep-default` never blocks here, so its run is identical to `none`. OBT's $6.50 splits into damage $0.00 + extra reroute premium $99.75 + resid −$93.25.
+  - **The gate blocks; it does not clip.** An order passes the gate table or is blocked whole, and code then reroutes the blocked quantity to S_backup. The trace logs the reroute count per round. The walkthrough takes the quantity from the blocked order and checks that it sums to `metrics.rerouted_units`.
+  - **OBT's loss curve alternates after round 28.** After the lie, the buyer's S_main orders fall one round out of phase with its honest run, and purchases are charged when paid. That is payment timing, not loss; walkthrough.md says so.
+- **Appendix.** D46's E2 run is kept as `walkthrough_appendix` (figure, md, `rounds_appendix.csv`), rebuilt by the same code.
+  - Its three `NUMBERS.md` rows are unchanged in claim and value. Their source is now `results/figdata/walkthrough_appendix.json`, since `walkthrough.json` holds the main run. The release check applies that one declared rename and still requires identical values.
+- **Round-loop figure** (`paper/figures/round_loop.{pdf,png}`). One round's steps in order (message → extractor → claim ledger → buyer proposal citing a claim → gate (approve or block, reroute to backup) → deliveries and invoices → verifier → trust budget), with LLM, code and environment parts marked.
+  - It gives the message source per experiment: message bank in E1–E7 and the horizon check, LLM attacker in E8, structured intents in E9.
+  - Where step 2 is code (rule extractor in E6 and E7, parser in E9) and where step 4 is a scripted buyer (E1, E6, E7, E9) is stated on the figure.
+- **Table "Simulation and data at a glance"** (`eval/glance.py` → `tables.json` → `sim_glance`; `.tex` and `.csv`). Every count is read from the run logs and data files, and every row names its source.
+  - **Run counts:** E1 1,944; reputation grid 972; E2 292; E2b 30; E2c 180; E3 24; E3b 24; E5 144; E7 288; horizon 108; E8 42; E9 84; E9 calibration 945. E4 is the extractor evaluation; E6 is 10,000 attacker evaluations.
+  - **Data:** message bank 183 run templates + 6 injection templates; extractor dataset dev 49 / test 199 (29 injection) / hard 30; Enron 100; annotation 50 + 100.
+  - **NUMBERS.md:** the glance rows sit in a new "Setup" group (not an RQ), and the main walkthrough's rows are derived rows.

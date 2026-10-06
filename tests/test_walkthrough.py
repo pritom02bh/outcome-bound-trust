@@ -56,3 +56,54 @@ def test_extract_refuses_duplicate_or_missing_runs(tmp_path):
     (tmp_path / "e2" / "results.jsonl").write_text(r + "\n" + r + "\n")
     with pytest.raises(ValueError):
         wt.extract(tmp_path)
+
+
+def _write_log(path, recs):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(json.dumps(r) for r in recs) + "\n")
+
+
+def _blocked(trace, rnd):
+    t = trace[rnd - 1]
+    t["actions"] = [["ORDER", "S_main", 20, 85.0, "BLOCKED", "OVER_BUDGET", [f"S_main#{rnd}.1"]]]
+    t["rerouted_orders"] = 1
+    return trace
+
+
+def test_choose_prefers_llm_buyer_runs_then_the_e1_default(tmp_path):
+    runs = tmp_path / "runs"
+    e1 = _rec(3, "obt", _blocked(_trace(10, 5), 5), 0)
+    _write_log(runs / "e1" / "obt_b0.05_W0_d0" / "results.jsonl", [e1])
+    _write_log(runs / "e2" / "results.jsonl", [{**_rec(3, "obt", _trace(10, 5), 0), "buyer": "llm"}])
+    found = wt.search(runs)
+    assert found["e1 (None buyer, obt)"]["blocked_on_lie"][0]["seed"] == 1
+    assert wt.choose(found) is wt.E1_MAIN                          # no LLM-buyer run blocked on the lie
+    _write_log(runs / "e2" / "results.jsonl", [{**_rec(3, "obt", _blocked(_trace(10, 5), 5), 0), "buyer": "llm"}])
+    with pytest.raises(NotImplementedError):
+        wt.choose(wt.search(runs))                                 # an LLM-buyer run would be preferred
+    with pytest.raises(ValueError):
+        wt.choose({})
+
+
+def test_reroutes_must_match_blocked_orders(tmp_path):
+    tr = _trace(4)
+    tr[1]["rerouted_orders"] = 1                                   # a reroute with no blocked order
+    with pytest.raises(ValueError):
+        wt._round(tr[1], tr[1])
+
+
+def test_glance_counts_the_data_files(tmp_path):
+    from pathlib import Path
+
+    from eval import glance
+    root = Path(__file__).resolve().parent.parent
+    for d in ("data", "annotation"):
+        (tmp_path / d).symlink_to(root / d)
+    t = glance.table(tmp_path)                                    # no runs/: only the simulation and data rows
+    rows = {r[1]: r for r in t["rows"]}
+    assert not [r for r in t["rows"] if r[0] == "runs"]
+    assert rows["extractor dataset"][2].startswith("dev 49 (prompt tuning), test 199 (incl. 29 injection), hard "
+                                                   "subset 30")
+    assert rows["Enron real text"][2].startswith("100 sentences") and "50 rows (40 v2 + 10 seeded" in \
+        rows["independent annotation"][2]
+    assert all(r[3] for r in t["rows"])                            # every row names its source

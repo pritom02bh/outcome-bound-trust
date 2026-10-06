@@ -924,18 +924,31 @@ def _paper_data(runs: Path, out: Path) -> str | None:
                       f"{x['commitment_claims_untestable']}/{x['commitment_claims']}", x["recorded_claims"],
                       x["wrong_claims_recorded"], x["recorded_from_non_commitments"]]
                      for name in sorted(en) for st in sorted(en[name]) for x in [en[name][st]]]}
+    # Simulation and data at a glance (D46a): counts read from the run logs and data files.
+    from eval import glance
+    tables["sim_glance"] = glance.table(runs.parent)
     # Paper walkthrough (D46): E2 farm-then-lie seed 1, obt / none / rep-default, from the run logs only.
     if (runs / "e2" / "results.jsonl").exists():
         from eval import walkthrough as wt
+        # D46a: the main walkthrough is a run where the gate blocked an order on the lie (chosen by rule from a search
+        # of every OBT farm-then-lie log); D46's E2 run, where nothing was blocked, is kept as the appendix.
         try:
-            w = wt.extract(runs)
+            found = wt.search(runs)
+            specs = {"": wt.choose(found), "_appendix": wt.APPENDIX}
         except ValueError:
-            w = None
-        if w:
+            found, specs = None, {}
+        for suffix, spec in specs.items():
+            try:
+                w = wt.extract(runs, spec)
+            except ValueError:
+                continue
             w["key_events"] = wt.key_events(w)
-            (fd / "walkthrough.json").write_text(json.dumps(w, indent=1, sort_keys=True) + "\n")
+            if suffix == "":
+                w["search"] = {k: {"runs": v["runs"], "blocked_on_lie": len(v["blocked_on_lie"])}
+                               for k, v in found.items()}
+            (fd / f"walkthrough{suffix}.json").write_text(json.dumps(w, indent=1, sort_keys=True) + "\n")
             (out / "walkthrough").mkdir(parents=True, exist_ok=True)
-            (out / "walkthrough" / "rounds.csv").write_text(_csv(wt.rounds_csv(w)))
+            (out / "walkthrough" / f"rounds{suffix}.csv").write_text(_csv(wt.rounds_csv(w)))
     # Independent annotator (D42, D42a): agreement with our labels, from runs/agreement/agreement.json.
     af = runs / "agreement" / "agreement.json"
     if af.exists():

@@ -240,7 +240,7 @@ def check_drop_per_unit(tag: str) -> dict:
 # ------------------------------------------------------------------ v1.5: E8 added, nothing else may change
 
 def check_additive(tag: str, new_tables=("e8", "e8_strategies"), new_sheets=("E8",), marker="e8[",
-                   new_csvs=()) -> dict:
+                   new_csvs=(), renames=()) -> dict:
     """Against `tag`: every table, .tex, NUMBERS.md row, per-eval CSV and workbook sheet that existed is identical;
     the only additions are the listed new tables, sheets and NUMBERS rows (sources containing `marker`)."""
     bad: dict = {k: [] for k in ("tables", "tex", "numbers", "csvs", "workbook")}
@@ -265,13 +265,17 @@ def check_additive(tag: str, new_tables=("e8", "e8_strategies"), new_sheets=("E8
     for r in _rows((ROOT / "paper" / "NUMBERS.md").read_text()):
         newrows[r[4]].append(r)
     oldrows = _rows(_old(tag, "paper/NUMBERS.md"))
+    # A declared source rename (old file → new file, same values) is applied to the old rows before comparing.
+    for a, b in renames:
+        oldrows = [r[:4] + [r[4].replace(a, b)] + r[5:] for r in oldrows]
+    markers = [m for m in marker.split("|") if m]
     for r in oldrows:
         if not any((c[1], c[2], c[3]) == (r[1], r[2], r[3]) for c in newrows.get(r[4], [])):
             bad["numbers"].append(("changed or missing", r[0], r[1]))
     oldkeys = {(o[0], o[1], o[4]) for o in oldrows}
     for rs in newrows.values():
         for r in rs:
-            if (r[0], r[1], r[4]) not in oldkeys and marker not in r[4]:
+            if (r[0], r[1], r[4]) not in oldkeys and not any(m in r[4] for m in markers):
                 bad["numbers"].append(("unexpected new row", r[0]))
     for f in sorted((ROOT / "results").glob("*/*.csv")):
         rel = str(f.relative_to(ROOT))
@@ -305,7 +309,8 @@ def main(argv: list[str] | None = None) -> None:
         report = check_additive(tag, new_tables=tuple(opt("tables", "e8,e8_strategies").split(",")),
                                 new_sheets=tuple(x for x in opt("sheets", "E8").split(",") if x),
                                 marker=opt("marker", "e8["),
-                                new_csvs=tuple(x for x in opt("csvs", "").split(",") if x))
+                                new_csvs=tuple(x for x in opt("csvs", "").split(",") if x),
+                                renames=tuple(tuple(x.split("=>", 1)) for x in opt("rename", "").split(",") if x))
         for k, v in report.items():
             print(f"{k}: {'identical' if not v else f'{len(v)} DIFFERENCES'}")
             for d in v:

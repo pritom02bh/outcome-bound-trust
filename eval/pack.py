@@ -22,8 +22,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PACK = ROOT / "paper_pack"
-VERSION = "v1.9.1"               # the release this pack belongs to
-TAG = "v1.9.1-paper"
+VERSION = "v1.9.2"               # the release this pack belongs to
+TAG = "v1.9.2-paper"
 ZIP = ROOT / f"paper_pack_{VERSION}.zip"
 TJ = "results/tables.json"
 NUMERIC = re.compile(r"^-?[\d,]*\d(\.\d+)?$")
@@ -76,6 +76,8 @@ COLUMNS = {
     "provider share": "share of reserved capacity units bought from the main provider, honest scenario (E9)",
     "events": "failure-event type (QUOTA, SLA, all)", "runs with events": "OBT runs with at least one event",
     "setting": "E9 config source: transferred from the supply domain (D44) or calibrated on the cloud domain (D45)",
+    "group": "simulation, runs or data", "item": "what the row describes",
+    "value": "the count or setting, as computed from the source", "source": "file (and key) the value is read from",
     "set": "label set compared (D42a)", "raw agreement": "share of rows with the same label",
     "kappa": "Cohen's kappa (None when undefined)", "kappa degenerate": "one side gives every row the same label",
     "detection rate": "seeded errors the annotator marked no", "disagreements": "rows labeled differently",
@@ -191,6 +193,7 @@ def sheets() -> list[tuple[str, list[tuple]]]:
                      *csvs("horizon__t100__rep-n18")]),
         ("reputation grid", [tblock("reputation_grid")]),
         ("Enron", [tblock("enron")]),
+        *([("Simulation at a glance", [tblock("sim_glance")])] if "sim_glance" in _tables() else []),
         *([("Annotator agreement", [tblock("annotator_agreement"), tblock("annotator_slots")])]
           if "annotator_agreement" in _tables() else []),
         *([("E8", [tblock("e8"), tblock("e8_strategies"), cblock("results/e8/runs.csv")])] if "e8" in _tables() else []),
@@ -333,8 +336,9 @@ def build() -> dict:
     (PACK / "spec" / "results").mkdir(parents=True)
     shutil.copy(ROOT / "paper" / "NUMBERS.md", PACK / "NUMBERS.md")
     shutil.copy(ROOT / "results" / "INDEX.md", PACK / "INDEX.md")
-    if (ROOT / "paper" / "walkthrough.md").exists():
-        shutil.copy(ROOT / "paper" / "walkthrough.md", PACK / "walkthrough.md")
+    for md in ("walkthrough.md", "walkthrough_appendix.md"):
+        if (ROOT / "paper" / md).exists():
+            shutil.copy(ROOT / "paper" / md, PACK / md)
     shutil.copy(ROOT / "docs" / "DESIGN.md", PACK / "DESIGN.md")
     shutil.copy(ROOT / "spec" / "results" / "README.md", PACK / "spec" / "results" / "README.md")
     (PACK / "DECISIONS_SUMMARY.md").write_text(_decisions_summary())

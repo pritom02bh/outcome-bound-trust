@@ -59,3 +59,4 @@ Summary of `docs/DECISIONS.md` (the full file has the reasoning).
 - **D45a**: E9 calibration: OBT grid extended (user request)
 - **D42a**: Independent annotator: agreement with our labels (user request)
 - **D46**: Paper walkthrough figure, from existing logs only (user request)
+- **D46a**: Walkthrough on a run where the gate blocks, round-loop figure, at-a-glance table (user request)
