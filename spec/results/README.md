@@ -2,6 +2,8 @@
 
 Everything here was produced by the committed spec and scripts. Nothing was edited by hand except the three N/A rows in `fallbackA2_summary.txt` (see config A′ below).
 
+**What is in the repository.** The per-config summaries (`*_summary.txt`), coverage and non-vacuity reports, configs and replay results below. The raw TLC logs (`*.out`, `*.log`) and the superseded attempts (`aborted/`) are not committed; `spec/run_mutants.sh <config>` (and the other `spec/run_*.sh` scripts) regenerate them, writing `<config>_<mutant>.out` next to the summary.
+
 **Environment.**
 - TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802); `tla2tools.jar` sha256 `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`.
 - OpenJDK 21.0.12.1 (Temurin, portable), `-XX:+UseParallelGC -Xmx12g`, `-workers auto` (10).

@@ -1,7 +1,7 @@
 """Buyer agents: scripted policies and the LLM buyer.
 
 The LLM buyer sees only `render(view)`. It proposes; code derives order values
-and the gate decides (CLAUDE.md rule 1).
+and the gate decides (DESIGN §3: every security property lives in code).
 """
 from __future__ import annotations
 

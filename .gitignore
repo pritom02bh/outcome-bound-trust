@@ -8,3 +8,21 @@ spec/tla2tools.jar
 spec/states/
 spec/*.out
 states/
+
+# Assistant instruction files (local only)
+CLAUDE.md
+AUTOPILOT.md
+.claude/
+
+# Test and tool caches
+.hypothesis/
+.pytest_cache/
+*.egg-info/
+
+# Local backups
+*.bundle
+
+# Raw TLC logs (regenerate with spec/run_mutants.sh; summaries are tracked)
+spec/results/**/*.out
+spec/results/**/*.log
+spec/results/aborted/

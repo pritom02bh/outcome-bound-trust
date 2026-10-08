@@ -15,7 +15,7 @@
    LAPSED, gated capped payments with inflated invoices (PRICE claims fail),
    phase-4 shortfall remediation + flags, phase-8 reroute of blocked orders.
 
-   Invariants (identical wording in CLAUDE.md and DESIGN §7):
+   Invariants (identical wording in DESIGN §7):
      I1 Gate safety: every action that becomes EXECUTED passes the full §6
         table at that moment; P(c) <= B(c) after every execution.
      I2 Earned trust: B(c) rises only in a verifier step that sets a claim of c
